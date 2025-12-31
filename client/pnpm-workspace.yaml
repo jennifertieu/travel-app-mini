@@ -1,0 +1,5 @@
+packages:
+  - 'shell'
+  - 'mf-pretrip'
+  - 'mf-itinerary'
+  - 'mf-duringtrip'
