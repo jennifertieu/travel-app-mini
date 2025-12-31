@@ -1,0 +1,20 @@
+{
+  "name": "travel-app-client",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter=mf-pretrip dev\" \"pnpm --filter=mf-itinerary dev\" \"pnpm --filter=mf-duringtrip dev\" \"pnpm --filter=shell dev\"",
+    "dev:shell": "pnpm --filter=shell dev",
+    "dev:pretrip": "pnpm --filter=mf-pretrip dev",
+    "dev:itinerary": "pnpm --filter=mf-itinerary dev",
+    "dev:duringtrip": "pnpm --filter=mf-duringtrip dev",
+    "build": "pnpm --filter=mf-pretrip build && pnpm --filter=mf-itinerary build && pnpm --filter=mf-duringtrip build && pnpm --filter=shell build",
+    "build:zephyr": "USE_ZEPHYR=true pnpm build",
+    "preview": "pnpm --filter=shell preview"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

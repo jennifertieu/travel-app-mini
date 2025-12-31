@@ -1,0 +1,141 @@
+import { useState, lazy, Suspense } from "react";
+import {
+  createRouter,
+  createRootRoute,
+  createRoute,
+  RouterProvider,
+  Link,
+  Outlet,
+} from "@tanstack/react-router";
+
+// Lazy load the MFE apps
+const PretripApp = lazy(() => import("mf_pretrip/App"));
+const ItineraryApp = lazy(() => import("mf_itinerary/App"));
+const DuringtripApp = lazy(() => import("mf_duringtrip/App"));
+
+// Loading fallback component
+const LoadingFallback = ({ name }: { name: string }) => (
+  <div style={{ padding: "2rem", textAlign: "center" }}>Loading {name}...</div>
+);
+
+// Root layout with navigation
+const RootLayout = () => {
+  return (
+    <div>
+      <nav
+        style={{
+          borderBottom: "1px solid #e5e7eb",
+          padding: "1rem",
+          backgroundColor: "#f9fafb",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            gap: "1rem",
+            maxWidth: "1200px",
+            margin: "0 auto",
+          }}
+        >
+          <Link
+            to="/pretrip"
+            style={{ textDecoration: "none" }}
+            activeProps={{ style: { fontWeight: "bold", color: "#2563eb" } }}
+            inactiveProps={{ style: { color: "#374151" } }}
+          >
+            Pre-Trip
+          </Link>
+          <Link
+            to="/itinerary"
+            style={{ textDecoration: "none" }}
+            activeProps={{ style: { fontWeight: "bold", color: "#2563eb" } }}
+            inactiveProps={{ style: { color: "#374151" } }}
+          >
+            Itinerary
+          </Link>
+          <Link
+            to="/duringtrip"
+            style={{ textDecoration: "none" }}
+            activeProps={{ style: { fontWeight: "bold", color: "#2563eb" } }}
+            inactiveProps={{ style: { color: "#374151" } }}
+          >
+            During Trip
+          </Link>
+        </div>
+      </nav>
+      <main style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
+        <Outlet />
+      </main>
+    </div>
+  );
+};
+
+// Define routes
+const rootRoute = createRootRoute({
+  component: RootLayout,
+});
+
+const indexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/",
+  component: () => (
+    <div>
+      <h1>Welcome to Travel App</h1>
+      <p>Select a tab above to get started.</p>
+    </div>
+  ),
+});
+
+const pretripRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/pretrip",
+  component: () => (
+    <Suspense fallback={<LoadingFallback name="Pre-Trip" />}>
+      <PretripApp />
+    </Suspense>
+  ),
+});
+
+const itineraryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/itinerary",
+  component: () => (
+    <Suspense fallback={<LoadingFallback name="Itinerary" />}>
+      <ItineraryApp />
+    </Suspense>
+  ),
+});
+
+const duringtripRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/duringtrip",
+  component: () => (
+    <Suspense fallback={<LoadingFallback name="During Trip" />}>
+      <DuringtripApp />
+    </Suspense>
+  ),
+});
+
+// Create route tree
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  pretripRoute,
+  itineraryRoute,
+  duringtripRoute,
+]);
+
+// Create router
+const router = createRouter({ routeTree });
+
+// Register router for type safety
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router;
+  }
+}
+
+const App = () => {
+  return <RouterProvider router={router} />;
+};
+
+export default App;
