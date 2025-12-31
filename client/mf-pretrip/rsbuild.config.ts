@@ -1,28 +1,28 @@
-import { defineConfig } from '@rsbuild/core';
-import { pluginReact } from '@rsbuild/plugin-react';
-import { pluginModuleFederation } from '@module-federation/rsbuild-plugin';
+import { defineConfig } from "@rsbuild/core";
+import { pluginReact } from "@rsbuild/plugin-react";
+import { pluginModuleFederation } from "@module-federation/rsbuild-plugin";
 
-const USE_ZEPHYR = process.env.USE_ZEPHYR === 'true';
+const USE_ZEPHYR = process.env.USE_ZEPHYR === "true";
 
 // Conditionally import Zephyr plugin
 const getPlugins = async () => {
   const plugins = [
     pluginReact(),
     pluginModuleFederation({
-      name: 'mf_pretrip',
-      filename: 'remoteEntry.js',
+      name: "mf_pretrip",
+      filename: "remoteEntry.js",
       exposes: {
-        './App': './src/App.tsx',
+        "./App": "./src/App.tsx",
       },
       shared: {
-        react: { singleton: true, requiredVersion: '^19.0.0' },
-        'react-dom': { singleton: true, requiredVersion: '^19.0.0' },
+        react: { singleton: true, requiredVersion: "^19.0.0" },
+        "react-dom": { singleton: true, requiredVersion: "^19.0.0" },
       },
     }),
   ];
 
   if (USE_ZEPHYR) {
-    const { withZephyr } = await import('zephyr-rsbuild-plugin');
+    const { withZephyr } = await import("zephyr-rsbuild-plugin");
     plugins.push(withZephyr());
   }
 
@@ -35,6 +35,6 @@ export default defineConfig(async () => ({
     port: 3001,
   },
   html: {
-    title: 'Pre-Trip MFE',
+    title: "Pre-Trip MFE",
   },
 }));

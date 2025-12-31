@@ -9,10 +9,19 @@
     "dev:duringtrip": "pnpm --filter=mf-duringtrip dev",
     "build": "pnpm --filter=mf-pretrip build && pnpm --filter=mf-itinerary build && pnpm --filter=mf-duringtrip build && pnpm --filter=shell build",
     "build:zephyr": "USE_ZEPHYR=true pnpm build",
-    "preview": "pnpm --filter=shell preview"
+    "preview": "pnpm --filter=shell preview",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write \"**/*.{ts,tsx}\""
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "concurrently": "^9.1.0",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "eslint-plugin-react": "^7.34.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "prettier": "^3.2.5",
+    "eslint-config-prettier": "^9.1.0"
   },
   "engines": {
     "node": ">=18.0.0"
