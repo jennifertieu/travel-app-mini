@@ -18,7 +18,7 @@ export const exampleAIFUnction = async () => {
 
     switch (functionCall.name) {
       case "example_tool":
-        answer = await toolFunctionExample({ prop: args.anyPropYouWant }); //make sure it matches the prop name you made in your tool
+        answer = await exampletoolfunction({ prop: args.anyPropYouWant }); //make sure it matches the prop name you made in your tool
 
         // inside exampleFunction() you can have it return something like: return `Here is the weather data I gathered: ${weatherData}`;... this is ideal because we can create our own polished response and not have to use ai tokens at all for this. The only ai token we use is prompting the ai and it deciding what tool to call.
         break;
