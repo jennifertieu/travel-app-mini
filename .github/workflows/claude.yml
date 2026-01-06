@@ -13,7 +13,6 @@ on:
 jobs:
   claude:
     if: |
-      github.actor == 'alexappleget' &&
       (
         (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
         (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
@@ -37,5 +36,5 @@ jobs:
         uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          model: "claude-3-haiku-20240307"
+          model: "claude-3-sonnet-20240229"
           allowed_tools: "Bash,Read,Write,Edit,Glob,Grep,WebFetch"

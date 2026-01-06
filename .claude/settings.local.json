@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node ~/.claude/skills/github-pr-reviewer/scripts/review-pr.js:*)",
+      "Bash(echo:*)"
+    ]
+  }
+}
