@@ -1,16 +1,10 @@
 import express, { Request, Response } from "express";
-import { PORT } from "./config";
-import { createClient } from "@supabase/supabase-js";
+import { PORT, supabase } from "./config";
 import { requireAuth } from "./middleware/requireAuth";
 import { IAuthenticatedRequest } from "./types/interface";
 
 const app = express();
 app.use(express.json());
-
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 app.get(
   "/exampleProtectedRoute",
