@@ -17,7 +17,7 @@ export const getMemberProfile = async (
       .select(
         "display_name, dietary, travel_style, interests, walking_tolerance"
       )
-      .eq("user_id", userId)
+      .eq("id", userId)
       .single();
 
     if (error) {
@@ -44,7 +44,7 @@ export const updateMemberProfile = async (
     const { data: updatedProfile, error } = await supabase
       .from("member_profiles")
       .update(updateData)
-      .eq("user_id", userId)
+      .eq("id", userId)
       .select(
         "display_name, dietary, travel_style, interests, walking_tolerance"
       )
@@ -73,7 +73,7 @@ export const deleteMemberProfile = async (
     const { error } = await supabase
       .from("member_profiles")
       .delete()
-      .eq("user_id", userId);
+      .eq("id", userId);
 
     if (error) {
       return response.status(404).json({ error: error.message });
