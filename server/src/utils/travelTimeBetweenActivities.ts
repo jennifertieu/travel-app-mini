@@ -15,6 +15,11 @@ export const travelTimeBetweenActivities = async (
   try {
     const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${from.latitude},${from.longitude}&destinations=${to.latitude},${to.longitude}&key=${GOOGLE_MAPS_API_KEY}&mode=${mode}`;
     const response = await fetch(url);
+    if (!response.ok) {
+      return {
+        error: `Google Maps API error: ${response.status} ${response.statusText}`,
+      };
+    }
     const data = await response.json();
 
     const duration = data?.rows?.[0]?.elements?.[0]?.duration?.value;
