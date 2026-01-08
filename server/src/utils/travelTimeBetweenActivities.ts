@@ -1,4 +1,4 @@
-import { GOOGLE_MAPS_API_KEY } from "../config";
+import { GOOGLE_MAPS_API_KEY } from "../config.js";
 
 export type TravelMode = "driving" | "walking" | "transit";
 

@@ -21,12 +21,13 @@ const LoadingFallback = ({ name }: { name: string }) => (
 // Root layout with navigation
 const RootLayout = () => {
   return (
-    <div>
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       <nav
         style={{
           borderBottom: "1px solid #e5e7eb",
           padding: "1rem",
           backgroundColor: "#f9fafb",
+          flexShrink: 0,
         }}
       >
         <div
@@ -63,7 +64,7 @@ const RootLayout = () => {
           </Link>
         </div>
       </nav>
-      <main style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
+      <main style={{ flex: 1, overflow: "hidden" }}>
         <Outlet />
       </main>
     </div>
@@ -79,7 +80,7 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: () => (
-    <div>
+    <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
       <h1>Welcome to Travel App</h1>
       <p>Select a tab above to get started.</p>
     </div>
@@ -139,3 +140,4 @@ const App = () => {
 };
 
 export default App;
+

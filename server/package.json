@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "description": "Express backend with TypeScript and Prisma",
   "main": "dist/app.js",
+  "type": "module",
   "scripts": {
-    "dev": "nodemon src/app.ts",
+    "dev": "tsx watch src/app.ts",
     "build": "tsc",
     "start": "node dist/app.js"
   },
@@ -13,6 +14,9 @@
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0",
+    "@travel-app/shared-types": "workspace:*",
+    "@types/cors": "^2.8.19",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
     "openai": "^6.15.0"

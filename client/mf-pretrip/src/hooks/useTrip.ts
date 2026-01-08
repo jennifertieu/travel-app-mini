@@ -1,0 +1,77 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../lib/supabase';
+import { Database, TablesInsert, TablesUpdate } from '@travel-app/shared-types';
+
+type Trip = Database['public']['Tables']['trips']['Row'];
+type TripInsert = TablesInsert<'trips'>;
+type TripUpdate = TablesUpdate<'trips'>;
+
+/**
+ * Fetch a single trip by ID
+ */
+export function useTrip(tripId: string | null) {
+  return useQuery({
+    queryKey: ['trip', tripId],
+    queryFn: async () => {
+      if (!tripId) return null;
+
+      const { data, error } = await supabase
+        .from('trips')
+        .select('*')
+        .eq('id', tripId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!tripId,
+  });
+}
+
+/**
+ * Create a new trip
+ */
+export function useCreateTrip() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (trip: TripInsert) => {
+      const { data, error } = await supabase
+        .from('trips')
+        .insert(trip)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['trip', data.id] });
+    },
+  });
+}
+
+/**
+ * Update an existing trip
+ */
+export function useUpdateTrip(tripId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (updates: TripUpdate) => {
+      const { data, error } = await supabase
+        .from('trips')
+        .update(updates)
+        .eq('id', tripId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trip', tripId] });
+    },
+  });
+}
+
