@@ -11,6 +11,7 @@ import { X, Check, AlertCircle } from "lucide-react";
 import { TikTokEmbed, YouTubeEmbed } from "react-social-media-embed";
 import { ReviewsSection } from "../cards/ReviewsSection";
 import { v4 as uuidv4 } from "uuid";
+import { Json } from "@travel-app/shared-types";
 
 // URL validation helpers
 function normalizeUrl(url: string): string {
@@ -199,10 +200,12 @@ export function AddIdeaModal() {
         trip: {
           destination: currentTrip.destination,
           dates: {
-            start: currentTrip.start_date || new Date(),
-            end:
-              currentTrip.end_date ||
-              new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            start: currentTrip.start_date
+              ? new Date(currentTrip.start_date)
+              : new Date(),
+            end: currentTrip.end_date
+              ? new Date(currentTrip.end_date)
+              : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           },
         },
         profile: {
@@ -271,7 +274,7 @@ export function AddIdeaModal() {
               address: placeData.address,
               confidence: placeData.confidence || "low",
               needsReview: placeData.confidence === "low",
-            },
+            } as unknown as Json,
             place: {
               provider: placeData.provider || "google",
               placeId: placeData.placeId || "",
@@ -281,7 +284,7 @@ export function AddIdeaModal() {
               reviews: placeData.reviews,
               photoUrl: placeData.photoUrl,
               photos: placeData.photos,
-            },
+            } as unknown as Json,
             enrichment_status: "ENRICHED",
           });
         }, 500);
