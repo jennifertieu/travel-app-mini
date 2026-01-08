@@ -1,7 +1,7 @@
 import { Response } from "express";
-import { IAuthenticatedRequest } from "../types/interface";
-import { supabase } from "../config";
-import { aiItineraryBuilderAgent } from "../utils/aiItineraryBuilderAgent";
+import { IAuthenticatedRequest } from "../types/interface.js";
+import { supabase } from "../config.js";
+import { aiItineraryBuilderAgent } from "../utils/aiItineraryBuilderAgent.js";
 
 export const createItinerary = async (
   request: IAuthenticatedRequest,
@@ -45,10 +45,23 @@ export const createItinerary = async (
       tripIdeas,
     });
 
+    const { error: saveItineraryError } = await supabase
+      .from("trip_itineraries")
+      .upsert({
+        trip_id: trip.id,
+        itinerary_data: itinerary,
+      });
+
+    if (saveItineraryError) {
+      return response.status(500).json({
+        error: "Failed to save itinerary",
+        details: saveItineraryError.message,
+      });
+    }
+
     return response.json({
       success: true,
-      itinerary,
-      trip,
+      tripId: trip.id,
       activitiesCount: tripIdeas.length,
     });
   } catch (error: any) {

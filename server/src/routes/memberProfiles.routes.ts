@@ -1,6 +1,10 @@
 import express from "express";
-import { getMemberProfile, updateMemberProfile, deleteMemberProfile } from "../controllers/memberProfiles.controller";
-import { requireAuth } from "../middleware/requireAuth";
+import {
+  getMemberProfile,
+  updateMemberProfile,
+  deleteMemberProfile,
+} from "../controllers/memberProfiles.controller.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = express.Router();
 

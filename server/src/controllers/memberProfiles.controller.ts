@@ -2,8 +2,8 @@ import { Response } from "express";
 import {
   IAuthenticatedRequest,
   IUpdateMemberProfile,
-} from "../types/interface";
-import { supabase } from "../config";
+} from "../types/interface.js";
+import { supabase } from "../config.js";
 
 export const getMemberProfile = async (
   request: IAuthenticatedRequest,
