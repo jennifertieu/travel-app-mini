@@ -1,15 +1,27 @@
+import express, { Request, Response } from "express";
+import cors from "cors";
 import aiRoutes from "./routes/ai.routes";
 import memberProfileRoutes from "./routes/memberProfiles.routes";
-import express from "express";
 import { PORT } from "./config";
-import { Request, Response } from "express";
+import { supabase } from "./lib/supabase";
+import { requireAuth } from "./middleware/requireAuth";
+import { IAuthenticatedRequest } from "./types/interface";
+import * as enrichmentController from "./controllers/enrichment.controller";
 
 const app = express();
+
+app.use(cors({
+  origin: '*', // Allow all origins for development
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false
+}));
+
 app.use(express.json());
 
 app.get("/", (_req: Request, res: Response) => {
   try {
-  return res.status(200).json({
+    return res.status(200).json({
       status: "success",
       message: "Hello, world!",
     });
@@ -20,6 +32,34 @@ app.get("/", (_req: Request, res: Response) => {
     });
   }
 });
+
+// Enrichment endpoint (no auth required for hackathon mode)
+app.post("/api/enrich", enrichmentController.enrich);
+
+app.get(
+  "/exampleProtectedRoute",
+  requireAuth,
+  async (request: Request, response: Response) => {
+    const { user } = request as IAuthenticatedRequest;
+
+    const {
+      data: { updatedUser },
+      error,
+    } = await supabase
+      .from("example_table")
+      .update({ some_column: "new_value" })
+      .eq("user_id", user.id)
+      .select()
+      .single();
+
+    if (error) {
+      return response.status(500).json({ error: error.message });
+    }
+
+    return response.json({ updatedUser });
+  }
+);
+
 app.use("/ai", aiRoutes);
 app.use("/member-profiles", memberProfileRoutes);
 

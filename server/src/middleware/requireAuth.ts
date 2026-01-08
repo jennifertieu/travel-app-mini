@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
+import { supabase } from "../lib/supabase";
 import { IAuthenticatedRequest } from "../types/interface";
-import { supabase } from "../config";
 
 export const requireAuth = async (
   request: Request,

@@ -13,6 +13,9 @@ const getPlugins = async () => {
       filename: "remoteEntry.js",
       exposes: {
         "./App": "./src/App.tsx",
+        "./place-search": "./src/lib/place-search.ts",
+        "./unfurl": "./src/lib/unfurl.ts",
+        "./IdeaDetailModal": "./src/components/modals/IdeaDetailModal.tsx",
       },
       shared: {
         react: { singleton: true, requiredVersion: "^19.0.0" },
@@ -36,5 +39,10 @@ export default defineConfig(async () => ({
   },
   html: {
     title: "Pre-Trip MFE",
+  },
+  resolve: {
+    alias: {
+      "@": "./src",
+    },
   },
 }));
