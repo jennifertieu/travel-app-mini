@@ -1,5 +1,6 @@
 import aiRoutes from "./routes/ai.routes";
 import memberProfileRoutes from "./routes/memberProfiles.routes";
+import itineraryRoutes from "./routes/itinerary.routes";
 import express from "express";
 import { PORT } from "./config";
 import { Request, Response } from "express";
@@ -22,6 +23,7 @@ app.get("/", (_req: Request, res: Response) => {
 });
 app.use("/ai", aiRoutes);
 app.use("/member-profiles", memberProfileRoutes);
+app.use("/itinerary", itineraryRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on Port: ${PORT}`);
