@@ -93,7 +93,7 @@ export function useEnrichment() {
       }));
 
       try {
-        const response = await fetch("http://localhost:5001/api/enrich", {
+        const response = await fetch("http://localhost:5001/enrich", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

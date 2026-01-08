@@ -61,7 +61,7 @@ app.get(
 
 app.use("/member-profiles", memberProfileRoutes);
 app.use("/itinerary", itineraryRoutes);
-app.post("/enrich", enrichmentRoutes);
+app.use("/enrich", enrichmentRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on Port: ${PORT}`);
