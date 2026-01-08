@@ -12,7 +12,7 @@ import {
 } from "../../lib/map-config";
 import type { Database } from "@travel-app/shared-types";
 
-type Idea = Database['public']['Tables']['trip_reel_ideas']['Row'];
+type Idea = Database["public"]["Tables"]["trip_reel_ideas"]["Row"];
 
 interface MapViewProps {
   ideas: Idea[];
@@ -50,11 +50,11 @@ export function MapView({ ideas, center = DEFAULT_MAP_CENTER }: MapViewProps) {
     markersRef.current = [];
 
     const newMarkers: L.Marker[] = [];
-    const bounds: L.LatLngBounds | null = ideas.length > 0 ? L.latLngBounds([]) : null;
+    let bounds: L.LatLngBounds | null = null;
 
     ideas.forEach((idea) => {
       const { latitude, longitude } = idea;
-      
+
       if (!latitude || !longitude) return;
 
       const location = idea.location as any;
@@ -69,7 +69,7 @@ export function MapView({ ideas, center = DEFAULT_MAP_CENTER }: MapViewProps) {
         idea.tags || undefined,
         location,
         idea.cost_bucket || undefined,
-        idea.duration_bucket || undefined
+        idea.duration_bucket || undefined,
       );
 
       marker.bindPopup(popupContent);
@@ -77,14 +77,18 @@ export function MapView({ ideas, center = DEFAULT_MAP_CENTER }: MapViewProps) {
 
       newMarkers.push(marker);
 
-      if (bounds) {
+      // Initialize bounds with the first valid coordinate, then extend for others
+      if (!bounds) {
+        bounds = L.latLngBounds([[latitude, longitude]]);
+      } else {
         bounds.extend([latitude, longitude]);
       }
     });
 
     markersRef.current = newMarkers;
 
-    if (bounds && mapRef.current && ideas.length > 0) {
+    // Only fit bounds if we have valid bounds with at least one coordinate
+    if (bounds && mapRef.current && bounds.isValid()) {
       mapRef.current.fitBounds(bounds, {
         padding: [50, 50],
         maxZoom: DEFAULT_ZOOM,
@@ -95,7 +99,7 @@ export function MapView({ ideas, center = DEFAULT_MAP_CENTER }: MapViewProps) {
   return (
     <div className="relative h-full w-full">
       <div ref={mapContainerRef} className="h-full w-full" />
-      
+
       {/* No ideas overlay */}
       {ideas.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
@@ -110,4 +114,3 @@ export function MapView({ ideas, center = DEFAULT_MAP_CENTER }: MapViewProps) {
     </div>
   );
 }
-
