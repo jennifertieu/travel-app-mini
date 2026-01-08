@@ -1,9 +1,9 @@
 import {
   travelTimeBetweenActivities,
   IActivityLocation,
-} from "./travelTimeBetweenActivities";
-import { IItineraryDay } from "./assignActivityToDay";
-import { getDurationMinutes } from "./getDurationMinutes";
+} from "./travelTimeBetweenActivities.js";
+import { IItineraryDay } from "./assignActivityToDay.js";
+import { getDurationMinutes } from "./getDurationMinutes.js";
 
 export interface IConflict {
   type: "overlap" | "duration_exceeded" | "travel_time_issue";

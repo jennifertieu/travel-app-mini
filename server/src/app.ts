@@ -1,21 +1,23 @@
+import memberProfileRoutes from "./routes/memberProfiles.routes.js";
+import enrichmentRoutes from "./routes/enrichment.routes.js";
+import itineraryRoutes from "./routes/itinerary.routes.js";
 import express, { Request, Response } from "express";
+import { PORT } from "./config.js";
 import cors from "cors";
-import memberProfileRoutes from "./routes/memberProfiles.routes";
-import itineraryRoutes from "./routes/itinerary.routes";
-import { PORT } from "./config";
-import { supabase } from "./lib/supabase";
-import { requireAuth } from "./middleware/requireAuth";
-import { IAuthenticatedRequest } from "./types/interface";
-import * as enrichmentController from "./controllers/enrichment.controller";
+import { supabase } from "./lib/supabase.js";
+import { requireAuth } from "./middleware/requireAuth.js";
+import { IAuthenticatedRequest } from "./types/interface.js";
 
 const app = express();
 
-app.use(cors({
-  origin: '*', // Allow all origins for development
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: false
-}));
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: false,
+  })
+);
 
 app.use(express.json());
 
@@ -33,9 +35,6 @@ app.get("/", (_req: Request, res: Response) => {
   }
 });
 
-// Enrichment endpoint (no auth required for hackathon mode)
-app.post("/api/enrich", enrichmentController.enrich);
-
 app.get(
   "/exampleProtectedRoute",
   requireAuth,
@@ -48,7 +47,7 @@ app.get(
     } = await supabase
       .from("example_table")
       .update({ some_column: "new_value" })
-      .eq("user_id", user.id)
+      .eq("user_id", user!.id)
       .select()
       .single();
 
@@ -62,6 +61,7 @@ app.get(
 
 app.use("/member-profiles", memberProfileRoutes);
 app.use("/itinerary", itineraryRoutes);
+app.post("/enrich", enrichmentRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on Port: ${PORT}`);

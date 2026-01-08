@@ -1,4 +1,4 @@
-import { IItineraryDay, IActivity } from "../types/interface";
+import { IItineraryDay, IActivity } from "../types/interface.js";
 
 export interface IOpenSlot {
   time_of_day: "morning" | "afternoon" | "evening";

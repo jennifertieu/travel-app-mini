@@ -1,11 +1,11 @@
-import { openai } from "../config";
+import { openai } from "../config.js";
 import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { itineraryAgentTools } from "../tools/itineraryAgentTools";
-import { assignActivityToDay, IItinerary } from "./assignActivityToDay";
-import { travelTimeBetweenActivities } from "./travelTimeBetweenActivities";
-import { checkDayConflicts } from "./checkDayConflicts";
-import { getActivityDetails } from "./getActivityDetails";
-import { createOpenSlot } from "./createOpenSlot";
+import { itineraryAgentTools } from "../tools/itineraryAgentTools.js";
+import { assignActivityToDay, IItinerary } from "./assignActivityToDay.js";
+import { travelTimeBetweenActivities } from "./travelTimeBetweenActivities.js";
+import { checkDayConflicts } from "./checkDayConflicts.js";
+import { getActivityDetails } from "./getActivityDetails.js";
+import { createOpenSlot } from "./createOpenSlot.js";
 
 interface ITripData {
   trip: any;

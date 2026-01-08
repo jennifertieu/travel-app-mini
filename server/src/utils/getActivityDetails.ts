@@ -1,4 +1,4 @@
-import { IActivity } from "../types/interface";
+import { IActivity } from "../types/interface.js";
 
 export interface IGetActivityDetailsResult {
   name: string;

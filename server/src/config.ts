@@ -4,7 +4,8 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // Use port 5001 instead of 5000 to avoid conflict with macOS AirPlay
-export const PORT = process.env.PORT === "5000" ? "5001" : (process.env.PORT || "5001");
+export const PORT =
+  process.env.PORT === "5000" ? "5001" : process.env.PORT || "5001";
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
 export const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
 export const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY!;
