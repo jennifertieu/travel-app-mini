@@ -170,3 +170,35 @@ Required environment variables (set in `.env`):
 - **Forgotten middleware** - Protect routes that need auth by including `requireAuth` in the route definition
 - **Wrong error status** - Use 404 for not found with Supabase error, 500 for server errors with details
 - **Selecting all fields** - Always specify which fields you need in `.select()`; avoid selecting all for security
+
+## TypeScript Return Types
+
+- Never use inline return type objects like `{ success: boolean; message?: string; error?: string; details?: string }` directly in function signatures.
+- Always define a named interface or type for return values and use that in your function signature.
+- This improves readability, maintainability, and consistency across the codebase.
+
+**Example:**
+
+```typescript
+export interface IAssignActivityResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+  details?: string;
+}
+
+export const assignActivityToDay = async (...): IAssignActivityResult => { ... }
+```
+
+## TypeScript Function Declarations
+
+- All functions must be declared as arrow functions.
+- Use the following pattern for all function exports:
+
+```typescript
+export const functionName = async () => {
+  /* ... */
+};
+```
+
+- Do not use traditional function declarations for exported functions.
