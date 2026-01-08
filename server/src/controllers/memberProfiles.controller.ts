@@ -14,14 +14,12 @@ export const getMemberProfile = async (
 
     const { data: memberProfile, error } = await supabase
       .from("member_profiles")
-      .select(
-        "display_name, dietary, travel_style, interests, walking_tolerance"
-      )
+      .select()
       .eq("id", userId)
       .single();
 
     if (error) {
-      return response.status(404).json({ error: error.message });
+      return response.status(400).json({ error: error.message });
     }
 
     return response.status(200).json(memberProfile);
@@ -51,7 +49,7 @@ export const updateMemberProfile = async (
       .single();
 
     if (error) {
-      return response.status(404).json({ error: error.message });
+      return response.status(400).json({ error: error.message });
     }
 
     return response.status(200).json(updatedProfile);
@@ -76,7 +74,7 @@ export const deleteMemberProfile = async (
       .eq("id", userId);
 
     if (error) {
-      return response.status(404).json({ error: error.message });
+      return response.status(400).json({ error: error.message });
     }
 
     return response.status(200).json({ message: "Profile was deleted" });

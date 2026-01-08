@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
-import aiRoutes from "./routes/ai.routes";
 import memberProfileRoutes from "./routes/memberProfiles.routes";
+import itineraryRoutes from "./routes/itinerary.routes";
 import { PORT } from "./config";
 import { supabase } from "./lib/supabase";
 import { requireAuth } from "./middleware/requireAuth";
@@ -60,8 +60,8 @@ app.get(
   }
 );
 
-app.use("/ai", aiRoutes);
 app.use("/member-profiles", memberProfileRoutes);
+app.use("/itinerary", itineraryRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on Port: ${PORT}`);
