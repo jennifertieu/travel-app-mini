@@ -4,7 +4,6 @@ import itineraryRoutes from "./routes/itinerary.routes.js";
 import express, { Request, Response } from "express";
 import { PORT } from "./config.js";
 import cors from "cors";
-import { supabase } from "./lib/supabase.js";
 import { requireAuth } from "./middleware/requireAuth.js";
 import { IAuthenticatedRequest } from "./types/interface.js";
 
@@ -20,44 +19,6 @@ app.use(
 );
 
 app.use(express.json());
-
-app.get("/", (_req: Request, res: Response) => {
-  try {
-    return res.status(200).json({
-      status: "success",
-      message: "Hello, world!",
-    });
-  } catch (error) {
-    return res.status(500).json({
-      status: "error",
-      message: "Internal server error",
-    });
-  }
-});
-
-app.get(
-  "/exampleProtectedRoute",
-  requireAuth,
-  async (request: Request, response: Response) => {
-    const { user } = request as IAuthenticatedRequest;
-
-    const {
-      data: { updatedUser },
-      error,
-    } = await supabase
-      .from("example_table")
-      .update({ some_column: "new_value" })
-      .eq("user_id", user!.id)
-      .select()
-      .single();
-
-    if (error) {
-      return response.status(500).json({ error: error.message });
-    }
-
-    return response.json({ updatedUser });
-  }
-);
 
 app.use("/member-profiles", memberProfileRoutes);
 app.use("/itinerary", itineraryRoutes);
