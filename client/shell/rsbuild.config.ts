@@ -11,11 +11,24 @@ const getPlugins = async () => {
     pluginModuleFederation({
       name: "shell",
       filename: "remoteEntry.js",
-      remotes: {
-        mf_pretrip: "mf_pretrip@http://localhost:3001/remoteEntry.js",
-        mf_itinerary: "mf_itinerary@http://localhost:3002/remoteEntry.js",
-        mf_duringtrip: "mf_duringtrip@http://localhost:3003/remoteEntry.js",
-      },
+      remotes: USE_ZEPHYR
+        ? {
+            // Production: Use unique aliases to prevent Zephyr auto-resolution
+            // Latest builds with assetPrefix: "auto"
+            pretrip_main:
+              "mf_pretrip@https://thomas-nguyen-203-mf-pretrip-travel-app-lgt-champ-d3340488a-ze.zephyrcloud.app/remoteEntry.js",
+            itinerary_main:
+              "mf_itinerary@https://thomas-nguyen-204-mf-itinerary-travel-app-lgt-cha-a92a0e053-ze.zephyrcloud.app/remoteEntry.js",
+            duringtrip_main:
+              "mf_duringtrip@https://thomas-nguyen-205-mf-duringtrip-travel-app-lgt-ch-16c713679-ze.zephyrcloud.app/remoteEntry.js",
+          }
+        : {
+            // Development: Use same aliases for consistency
+            pretrip_main: "mf_pretrip@http://localhost:3001/remoteEntry.js",
+            itinerary_main: "mf_itinerary@http://localhost:3002/remoteEntry.js",
+            duringtrip_main:
+              "mf_duringtrip@http://localhost:3003/remoteEntry.js",
+          },
       shared: {
         react: { singleton: true, requiredVersion: "^19.0.0" },
         "react-dom": { singleton: true, requiredVersion: "^19.0.0" },
@@ -41,6 +54,3 @@ export default defineConfig(async () => ({
     title: "Travel App",
   },
 }));
-
-
-

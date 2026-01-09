@@ -9,9 +9,10 @@ import {
 } from "@tanstack/react-router";
 
 // Lazy load the MFE apps
-const PretripApp = lazy(() => import("mf_pretrip/App"));
-const ItineraryApp = lazy(() => import("mf_itinerary/App"));
-const DuringtripApp = lazy(() => import("mf_duringtrip/App"));
+// Using unique aliases to prevent Zephyr from auto-overriding URLs
+const PretripApp = lazy(() => import("pretrip_main/App"));
+const ItineraryApp = lazy(() => import("itinerary_main/App"));
+const DuringtripApp = lazy(() => import("duringtrip_main/App"));
 
 // Loading fallback component
 const LoadingFallback = ({ name }: { name: string }) => (

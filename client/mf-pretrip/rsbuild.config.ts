@@ -40,6 +40,9 @@ export default defineConfig(async () => ({
   html: {
     title: "Pre-Trip MFE",
   },
+  output: {
+    assetPrefix: "auto",
+  },
   resolve: {
     alias: {
       "@": "./src",

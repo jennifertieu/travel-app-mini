@@ -37,4 +37,7 @@ export default defineConfig(async () => ({
   html: {
     title: "Itinerary MFE",
   },
+  output: {
+    assetPrefix: "auto",
+  },
 }));
