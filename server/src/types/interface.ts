@@ -1,3 +1,31 @@
+// New types for aggregated reactions and trip ideas (no preference field)
+// Aggregated reaction counts for an idea
+export interface IIdeaReactionCounts {
+  idea_id: string;
+  fire: number;
+  down: number;
+  meh: number;
+  skip: number;
+}
+
+// Trip idea type (without preference field)
+export interface ITripIdea {
+  id: string;
+  trip_id: string;
+  title: string;
+  summary?: string;
+  location?: string;
+  place_id?: string;
+  time_of_day?: string;
+  duration_bucket?: string;
+  cost_bucket?: "$" | "$$" | "$$$";
+  category?: IdeaCategory;
+  tags?: string[];
+  enrichment_status?: string;
+  latitude?: number;
+  longitude?: number;
+  // ...other fields as needed
+}
 import { User } from "@supabase/supabase-js";
 import { Request } from "express";
 
