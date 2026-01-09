@@ -20,6 +20,12 @@ export const createItinerary = async (
       return response.status(404).json({ error: tripError.message });
     }
 
+    if (!trip.start_date || !trip.end_date) {
+      return response
+        .status(400)
+        .json({ error: "Trip must have both start_date and end_date" });
+    }
+
     const startDate = new Date(trip.start_date);
     const endDate = new Date(trip.end_date);
 
@@ -92,6 +98,15 @@ export const createItinerary = async (
       return hasPositiveSupport && isMorePositiveThanNegative;
     });
 
+    // Check if we have any ideas left after filtering
+    if (filteredIdeas.length === 0) {
+      return response.status(400).json({
+        error: "No suitable ideas found for itinerary generation",
+        details:
+          "All ideas were filtered out due to negative voting or lack of positive votes",
+      });
+    }
+
     // Sort by fire votes, then down votes
     filteredIdeas.sort((ideaA, ideaB) => {
       const countsA = reactionCounts[ideaA.id];
@@ -110,7 +125,7 @@ export const createItinerary = async (
       .from("trip_itineraries")
       .upsert({
         trip_id: trip.id,
-        itinerary_data: itinerary,
+        itinerary,
       });
 
     if (saveItineraryError) {
@@ -123,7 +138,7 @@ export const createItinerary = async (
     return response.json({
       success: true,
       tripId: trip.id,
-      activitiesCount: tripIdeas.length,
+      activitiesCount: filteredIdeas.length,
     });
   } catch (error: any) {
     console.error("Itinerary creation error:", error);

@@ -19,7 +19,6 @@ interface IToolCallResult {
 }
 
 export const aiItineraryBuilderAgent = async (tripData: ITripData) => {
-    // Activities now use latitude/longitude and cost_bucket ($, $$, $$$)
   const { trip, tripIdeas } = tripData;
 
   const startDate = new Date(trip.start_date);
@@ -65,11 +64,10 @@ export const aiItineraryBuilderAgent = async (tripData: ITripData) => {
         (idea) => `
     - ID: ${idea.id}
     - Name: ${idea.name}
-    - Location: lat=${idea.latitude ?? ""}, lng=${idea.longitude ?? ""}
-    - Duration: ${idea.duration_minutes || idea.duration_bucket || "Unknown"} minutes
+    - Location: ${idea.location}
+    - Duration: ${idea.duration_minutes || "Unknown"} minutes
     - Description: ${idea.description}
     - Tags: ${idea.tags ? idea.tags.join(", ") : "None"}
-    - Cost: ${idea.cost_bucket === "$" || idea.cost_bucket === "$$" || idea.cost_bucket === "$$$" ? idea.cost_bucket : "Unknown"}
     `
       )
       .join("\n")}
