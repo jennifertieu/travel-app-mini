@@ -1,11 +1,9 @@
 import memberProfileRoutes from "./routes/memberProfiles.routes.js";
 import enrichmentRoutes from "./routes/enrichment.routes.js";
 import itineraryRoutes from "./routes/itinerary.routes.js";
-import express, { Request, Response } from "express";
+import express from "express";
 import { PORT } from "./config.js";
 import cors from "cors";
-import { requireAuth } from "./middleware/requireAuth.js";
-import { IAuthenticatedRequest } from "./types/interface.js";
 
 const app = express();
 

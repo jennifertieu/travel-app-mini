@@ -18,6 +18,9 @@
 - `src/config.ts` - Environment variables and service initialization
 
 ## Coding Standards
+### Control Flow
+
+- Prefer `switch` statements over multiple `else if` chains for handling multiple discrete cases (e.g., signal types, status codes). This improves readability and maintainability.
 
 ### File Naming
 
