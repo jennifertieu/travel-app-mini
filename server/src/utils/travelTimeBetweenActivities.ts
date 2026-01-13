@@ -1,4 +1,4 @@
-import { GOOGLE_MAPS_API_KEY } from "../config.js";
+import { GOOGLE_MAPS_PLATFORM_API_KEY } from "../config.js";
 
 export type TravelMode = "driving" | "walking" | "transit";
 
@@ -13,7 +13,7 @@ export const travelTimeBetweenActivities = async (
   mode: TravelMode = "walking"
 ) => {
   try {
-    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${from.latitude},${from.longitude}&destinations=${to.latitude},${to.longitude}&key=${GOOGLE_MAPS_API_KEY}&mode=${mode}`;
+    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${from.latitude},${from.longitude}&destinations=${to.latitude},${to.longitude}&key=${GOOGLE_MAPS_PLATFORM_API_KEY}&mode=${mode}`;
     const response = await fetch(url);
     if (!response.ok) {
       return {

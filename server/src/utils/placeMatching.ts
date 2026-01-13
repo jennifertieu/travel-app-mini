@@ -1,4 +1,5 @@
 import { PlaceReview } from "../types/interface.js";
+import { GOOGLE_MAPS_PLATFORM_API_KEY } from "../config.js";
 
 interface PlaceMatchResult {
   provider: "google";
@@ -70,7 +71,7 @@ function getPlacePhotoUrl(
   photoReference: string,
   maxWidth: number = 800
 ): string | null {
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  const apiKey = GOOGLE_MAPS_PLATFORM_API_KEY;
   if (!apiKey) {
     return null;
   }
@@ -85,7 +86,7 @@ async function fetchPlaceDetails(placeId: string): Promise<{
   reviews: PlaceReview[] | null;
   photos: string[] | null;
 } | null> {
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  const apiKey = GOOGLE_MAPS_PLATFORM_API_KEY;
 
   console.log("📝 [Google Places Details] Fetching place details...");
   console.log(`   Place ID: ${placeId}`);
@@ -195,7 +196,7 @@ async function searchGooglePlaces(
   query: string,
   location: string
 ): Promise<PlaceMatchResult | null> {
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  const apiKey = GOOGLE_MAPS_PLATFORM_API_KEY;
 
   console.log("🗺️ [Google Places] Starting place search...");
   console.log(`   Query: "${query}"`);
