@@ -51,10 +51,21 @@ export const checkDayConflicts = async (day: IItineraryDay) => {
       const next = activitiesInSlot[i + 1];
 
       let travelMinutes = 0;
-      if (current.location && next.location) {
+      if (
+        current.latitude != null &&
+        current.longitude != null &&
+        next.latitude != null &&
+        next.longitude != null
+      ) {
         const travelResult = await travelTimeBetweenActivities(
-          current.location as IActivityLocation,
-          next.location as IActivityLocation,
+          {
+            latitude: current.latitude,
+            longitude: current.longitude,
+          },
+          {
+            latitude: next.latitude,
+            longitude: next.longitude,
+          },
           current.travel_mode || "driving"
         );
         travelMinutes =

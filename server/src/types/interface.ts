@@ -60,6 +60,8 @@ export interface IActivity {
   name: string;
   description?: string;
   location?: IActivityLocation;
+  latitude?: number;
+  longitude?: number;
   duration_minutes?: number;
   duration?: number | string;
   time_of_day?: "morning" | "afternoon" | "evening";

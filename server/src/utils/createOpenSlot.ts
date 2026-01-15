@@ -1,23 +1,35 @@
-import { IItineraryDay, IActivity } from "../types/interface.js";
+import { IItineraryDay } from "../types/interface.js";
 
 export interface IOpenSlot {
+  id: string;
+  type: "open_slot";
+  title: string;
   time_of_day: "morning" | "afternoon" | "evening";
-  available_minutes: number;
-  activities: IActivity[];
+  duration_minutes: number;
 }
 
+/**
+ * Creates an open time slot for free time or unplanned activities.
+ * This adds an "Open Slot" activity to the day's activities array.
+ */
 export const createOpenSlot = (
   day: IItineraryDay,
   time_of_day: "morning" | "afternoon" | "evening",
-  available_minutes: number
+  duration_minutes: number
 ): IOpenSlot => {
-  const activities = day.activities.filter(
-    (activity: IActivity) => activity.time_of_day === time_of_day
-  );
-
-  return {
+  const openSlot: IOpenSlot = {
+    id: `open-slot-${day.day_number}-${time_of_day}-${Date.now()}`,
+    type: "open_slot",
+    title: "Free Time",
     time_of_day,
-    available_minutes,
-    activities,
+    duration_minutes,
   };
+
+  // Add the open slot to the day's activities
+  day.activities.push({
+    ...openSlot,
+    description: `${Math.floor(duration_minutes / 60)}h of free time for relaxation or spontaneous exploration`,
+  } as any);
+
+  return openSlot;
 };

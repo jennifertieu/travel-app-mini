@@ -18,8 +18,8 @@ export const getActivityDetails = (
   return {
     name: activity.name,
     location: {
-      lat: activity.location?.lat ?? 0,
-      lng: activity.location?.lng ?? 0,
+      lat: activity.latitude ?? 0,
+      lng: activity.longitude ?? 0,
       address: activity.location?.address,
     },
     duration_minutes:
