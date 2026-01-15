@@ -4,6 +4,88 @@ export const itineraryAgentTools: ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "get_all_travel_times",
+      description:
+        "Get travel times between two activities for ALL travel modes (walking, transit, driving). Use this to compare options and decide the best way to travel. Returns times for each mode, whether multiple time slots are needed, and the recommended mode based on walking priority.",
+      parameters: {
+        type: "object",
+        properties: {
+          from_activity_id: {
+            type: "string",
+            description: "The ID of the starting activity",
+          },
+          to_activity_id: {
+            type: "string",
+            description: "The ID of the destination activity",
+          },
+          available_minutes: {
+            type: "number",
+            description:
+              "Optional: Maximum minutes available for travel. If provided, will recommend the best mode that fits.",
+          },
+        },
+        required: ["from_activity_id", "to_activity_id"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_travel_segment",
+      description:
+        "Add a 'Travel to [destination]' activity to the itinerary. Use this when activities are in different cities/regions and require significant travel time. The travel segment will show up as an activity so users know when to travel. Can span multiple time slots for long journeys (e.g., morning+afternoon for a 5-hour train ride).",
+      parameters: {
+        type: "object",
+        properties: {
+          destination_name: {
+            type: "string",
+            description:
+              "The name of the destination city/area (e.g., 'Nice', 'Lyon')",
+          },
+          destination_location: {
+            type: "string",
+            description: "The full location string (e.g., 'Nice, France')",
+          },
+          travel_mode: {
+            type: "string",
+            enum: ["walking", "transit", "driving"],
+            description: "The mode of transportation",
+          },
+          duration_minutes: {
+            type: "number",
+            description: "Total travel time in minutes",
+          },
+          day_number: {
+            type: "number",
+            description: "The day number to add the travel segment to",
+          },
+          time_slots: {
+            type: "array",
+            items: {
+              type: "string",
+              enum: ["morning", "afternoon", "evening"],
+            },
+            description:
+              "The time slot(s) this travel occupies. Use multiple slots for long journeys (e.g., ['morning', 'afternoon'] for a 5-hour trip)",
+          },
+        },
+        required: [
+          "destination_name",
+          "destination_location",
+          "travel_mode",
+          "duration_minutes",
+          "day_number",
+          "time_slots",
+        ],
+        additionalProperties: false,
+      },
+      strict: true,
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "assign_activity_to_day",
       description:
         "Assign a specific activity to a day and time slot in the itinerary. Use this to place activities strategically across the trip days, considering travel times, preferences, and logical flow.",
@@ -33,34 +115,6 @@ export const itineraryAgentTools: ChatCompletionTool[] = [
   {
     type: "function",
     function: {
-      name: "get_travel_time_between_activities",
-      description:
-        "Calculate the travel time in minutes between two specific activities using Google Maps. Use this to optimize activity placement and minimize travel time between consecutive activities.",
-      parameters: {
-        type: "object",
-        properties: {
-          from: {
-            type: "string",
-            description: "The ID of the starting activity",
-          },
-          to: {
-            type: "string",
-            description: "The ID of the destination activity",
-          },
-          travel_mode: {
-            type: "string",
-            enum: ["driving", "walking", "transit"],
-            description: "The mode of transportation to calculate for",
-          },
-        },
-        required: ["from", "to"],
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
       name: "check_day_conflicts",
       description:
         "Validate that activities assigned to a specific day don't have time or duration conflicts. Use this before finalizing day assignments to ensure a realistic schedule.",
@@ -83,6 +137,7 @@ export const itineraryAgentTools: ChatCompletionTool[] = [
                 },
               },
               required: ["activity_id", "time_of_day"],
+              additionalProperties: false,
             },
             description:
               "Array of activities with their assigned time slots to validate",
@@ -109,39 +164,6 @@ export const itineraryAgentTools: ChatCompletionTool[] = [
           },
         },
         required: ["activity_id"],
-        additionalProperties: false,
-      },
-      strict: true,
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "create_open_slot",
-      description:
-        "Create an open time slot for free time or unplanned activities in the itinerary. Use this to ensure the schedule isn't too packed and allows for flexibility.",
-      parameters: {
-        type: "object",
-        properties: {
-          day_number: {
-            type: "number",
-            description: "The day number to add the open slot to",
-          },
-          time_of_day: {
-            type: "string",
-            enum: ["morning", "afternoon", "evening"],
-            description: "The time slot for the open period",
-          },
-          duration_hours: {
-            type: "number",
-            description: "How many hours this open slot should be",
-          },
-          note: {
-            type: "string",
-            description: "Optional note about what this time could be used for",
-          },
-        },
-        required: ["day_number", "time_of_day", "duration_hours"],
         additionalProperties: false,
       },
       strict: true,
