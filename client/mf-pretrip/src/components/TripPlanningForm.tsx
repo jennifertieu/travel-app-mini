@@ -5,6 +5,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Search, MapPin, Calendar } from "lucide-react";
 import { Database, TablesInsert } from "@travel-app/shared-types";
+import { useGenerateSuggestions } from "../hooks/useSuggestions";
 
 type TripInsert = TablesInsert<"trips">;
 
@@ -43,6 +44,7 @@ export function TripPlanningForm({
   memberId,
   onSuccess,
 }: TripPlanningFormProps) {
+  const generateSuggestions = useGenerateSuggestions();
   const [destination, setDestination] = useState("");
   const [selectedPlace, setSelectedPlace] = useState<PlaceSearchResult | null>(
     null
@@ -121,7 +123,19 @@ export function TripPlanningForm({
 
     try {
       const result = await createTripMutation.mutateAsync(tripData);
+      
+      // Show map view immediately
       onSuccess(result.id);
+      
+      // Generate AI suggestions in the background
+      generateSuggestions.mutate({
+        tripId: result.id,
+        destination: selectedPlace?.displayName || destination.trim(),
+        durationDays: typeof durationDays === 'number' ? durationDays : null,
+        budgetLevel: budgetLevel || null,
+        interests: interests.length > 0 ? interests : null,
+        createdBy: memberId,
+      });
     } catch (error) {
       console.error("Failed to create trip:", error);
       alert("Failed to create trip. Please try again.");

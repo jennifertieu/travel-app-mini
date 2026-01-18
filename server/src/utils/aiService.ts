@@ -25,6 +25,24 @@ interface AIEnrichmentOutput {
   iconType?: string;
 }
 
+export interface TripSuggestionsInput {
+  destination: string;
+  durationDays: number | null;
+  budgetLevel: string | null;
+  interests: string[] | null;
+}
+
+export interface ActivitySuggestion {
+  name: string;
+  summary: string;
+  category: IdeaCategory;
+  costGuess: "$" | "$$" | "$$$";
+  durationGuess: "30m" | "1-2h" | "half-day";
+  placeQuery: string;
+  tags: string[];
+  iconType: string;
+}
+
 /**
  * Generate AI enrichment data using OpenAI
  * Extracts summary, tags, place query, and estimates from video metadata
@@ -327,4 +345,189 @@ export async function withRateLimit<T>(
 
   console.error(`❌ [Rate Limit] Max retries (${maxRetries}) reached`);
   throw lastError || new Error("Max retries reached");
+}
+
+/**
+ * Generate AI activity suggestions for a trip
+ * Returns 10 diverse activity recommendations based on destination, budget, and interests
+ */
+export async function generateActivitySuggestions(
+  input: TripSuggestionsInput
+): Promise<ActivitySuggestion[]> {
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  console.log("🎯 [AI Suggestions] Starting activity suggestion generation...");
+  console.log("📍 [AI Suggestions] Destination:", input.destination);
+  console.log("📅 [AI Suggestions] Duration:", input.durationDays, "days");
+  console.log("💰 [AI Suggestions] Budget:", input.budgetLevel || "not specified");
+  console.log("🎨 [AI Suggestions] Interests:", input.interests?.join(", ") || "general");
+
+  if (!apiKey) {
+    console.error("❌ [AI Suggestions] OPENAI_API_KEY is not configured");
+    throw new Error("OPENAI_API_KEY is not configured");
+  }
+
+  const prompt = buildSuggestionsPrompt(input);
+  console.log("📝 [AI Suggestions] Prompt built");
+
+  try {
+    console.log("🌐 [AI Suggestions] Sending request to OpenAI API...");
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an expert travel planning assistant specializing in creating diverse, practical activity recommendations. You have deep knowledge of destinations worldwide and can suggest specific places, restaurants, attractions, and experiences that match traveler preferences. Always provide specific, actionable suggestions with real place names.",
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+        response_format: { type: "json_object" },
+      }),
+    });
+
+    console.log(
+      "📡 [AI Suggestions] Response status:",
+      response.status,
+      response.statusText
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("❌ [AI Suggestions] OpenAI API error:", {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData,
+      });
+      throw new Error(
+        `OpenAI API error: ${response.status} ${
+          response.statusText
+        } - ${JSON.stringify(errorData)}`
+      );
+    }
+
+    const data = await response.json();
+    console.log("✅ [AI Suggestions] Response received from OpenAI");
+    console.log("📊 [AI Suggestions] Usage:", data.usage);
+
+    const content = data.choices?.[0]?.message?.content;
+
+    if (!content) {
+      console.error("❌ [AI Suggestions] No content in OpenAI response");
+      throw new Error("No content in OpenAI response");
+    }
+
+    const parsed = JSON.parse(content);
+    
+    if (!parsed.suggestions || !Array.isArray(parsed.suggestions)) {
+      console.error("❌ [AI Suggestions] Invalid response format");
+      throw new Error("Invalid response format from OpenAI");
+    }
+
+    console.log(`✨ [AI Suggestions] Parsed ${parsed.suggestions.length} suggestions`);
+
+    const validatedSuggestions: ActivitySuggestion[] = parsed.suggestions.map(
+      (suggestion: any, index: number) => {
+        console.log(`   ${index + 1}. ${suggestion.name || "Unnamed"}`);
+        return {
+          name: suggestion.name || `Activity ${index + 1}`,
+          summary: suggestion.summary || "A great travel experience.",
+          category: validateCategory(suggestion.category) || "other",
+          costGuess: validateCostGuess(suggestion.costGuess) || "$$",
+          durationGuess: validateDurationGuess(suggestion.durationGuess) || "1-2h",
+          placeQuery: suggestion.placeQuery || `${suggestion.name} ${input.destination}`,
+          tags: Array.isArray(suggestion.tags) ? suggestion.tags.slice(0, 5) : [],
+          iconType: validateIconType(suggestion.iconType) || "attraction",
+        };
+      }
+    );
+
+    console.log("🎉 [AI Suggestions] Activity suggestions generated successfully!");
+    return validatedSuggestions;
+  } catch (error) {
+    console.error("💥 [AI Suggestions] Error during generation:", error);
+    console.error("💥 [AI Suggestions] Error details:", {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    throw error;
+  }
+}
+
+/**
+ * Build a prompt for generating activity suggestions
+ */
+function buildSuggestionsPrompt(input: TripSuggestionsInput): string {
+  const { destination, durationDays, budgetLevel, interests } = input;
+
+  const durationText = durationDays
+    ? `${durationDays} day${durationDays !== 1 ? "s" : ""}`
+    : "a few days";
+  const budgetText = budgetLevel
+    ? budgetLevel === "$"
+      ? "budget-friendly (under $15/person)"
+      : budgetLevel === "$$"
+      ? "moderate ($15-50/person)"
+      : "premium/luxury (over $50/person)"
+    : "various price ranges";
+  const interestsText =
+    interests && interests.length > 0 ? interests.join(", ") : "general travel";
+
+  return `Generate 10 diverse and specific activity suggestions for a trip to ${destination} for ${durationText}.
+
+Traveler Preferences:
+- Budget: ${budgetText}
+- Interests: ${interestsText}
+
+CRITICAL REQUIREMENTS:
+1. Provide SPECIFIC place names, not generic descriptions (e.g., "Pike Place Market" not "local market")
+2. Mix different categories: food, sightseeing, nature, shopping, nightlife, activities
+3. Include a variety of durations: quick stops, half-day activities, and longer experiences
+4. Match the budget preference when possible
+5. Prioritize places that align with stated interests
+6. Include both popular tourist spots AND hidden gems
+7. Ensure activities are actually available in ${destination}
+
+Return EXACTLY this JSON format:
+{
+  "suggestions": [
+    {
+      "name": "Specific place or activity name",
+      "summary": "2-3 sentences. What it is, why it's worth visiting, practical details like best time/what to order/key features. NO marketing fluff.",
+      "category": "food|sightseeing|nature|shopping|nightlife|activity|stay|other",
+      "costGuess": "$|$$|$$$",
+      "durationGuess": "30m|1-2h|half-day",
+      "placeQuery": "Specific search query for Google Places (e.g., 'Pike Place Market Seattle' or 'Ramen Ichiran Shibuya Tokyo')",
+      "tags": ["tag1", "tag2", "tag3"],
+      "iconType": "restaurant|cafe|bar|museum|park|beach|temple|market|hotel|shop|landmark|attraction|nature|food|activity|other"
+    }
+  ]
+}
+
+CATEGORY RULES:
+- food: restaurants, cafes, street food, bakeries, food markets
+- sightseeing: museums, temples, landmarks, historical sites, viewpoints
+- nature: parks, beaches, hiking trails, gardens, waterfalls
+- shopping: markets, malls, shops, boutiques
+- nightlife: bars, clubs, night markets, evening entertainment
+- activity: tours, experiences, classes, sports, entertainment
+- stay: hotels, hostels, unique accommodations
+- other: anything that doesn't fit above
+
+SUMMARY WRITING RULES:
+✅ GOOD: "Traditional ramen shop famous for their tonkotsu broth. Order the original with extra noodles, open until 2am."
+❌ BAD: "This unique dining experience offers an authentic atmosphere where visitors can enjoy..."
+
+Generate 10 activities now. Make them specific, actionable, and tailored to ${destination}.`;
 }

@@ -13,6 +13,7 @@ import { TripPlanningForm } from "../components/TripPlanningForm";
 export function TripView() {
   const { member } = useMember();
   const [tripId, setTripId] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const createTripMutation = useCreateTrip();
 
   // Load trip ID from localStorage
@@ -20,16 +21,32 @@ export function TripView() {
     if (typeof window !== 'undefined') {
       const storedTripId = localStorage.getItem('current-trip-id');
       setTripId(storedTripId);
+      
+      // Check if we're currently generating suggestions
+      const generating = localStorage.getItem('generating-suggestions');
+      if (generating === 'true') {
+        setIsGenerating(true);
+      }
     }
   }, []);
 
   const { data: trip, isLoading: tripLoading } = useTrip(tripId);
   const { data: ideas = [], isLoading: ideasLoading } = useIdeas(tripId);
 
+  // Stop showing generating state once we have ideas
+  useEffect(() => {
+    if (ideas.length > 0 && isGenerating) {
+      setIsGenerating(false);
+      localStorage.removeItem('generating-suggestions');
+    }
+  }, [ideas.length, isGenerating]);
+
   const handleTripCreated = (newTripId: string) => {
     // Save to localStorage
     localStorage.setItem('current-trip-id', newTripId);
+    localStorage.setItem('generating-suggestions', 'true');
     setTripId(newTripId);
+    setIsGenerating(true);
   };
 
   // Show trip planning form if no trip
@@ -77,7 +94,11 @@ export function TripView() {
 
         {/* Sidebar */}
         <div className="w-80 flex-shrink-0 overflow-hidden">
-          <IdeaSidebar ideas={ideas} isLoading={ideasLoading} />
+          <IdeaSidebar 
+            ideas={ideas} 
+            isLoading={ideasLoading} 
+            isGenerating={isGenerating}
+          />
         </div>
       </div>
     </div>

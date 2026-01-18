@@ -285,6 +285,9 @@ importers:
       openai:
         specifier: ^6.15.0
         version: 6.15.0(ws@8.19.0)(zod@4.3.6)
+      uuid:
+        specifier: ^9.0.1
+        version: 9.0.1
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -295,6 +298,9 @@ importers:
       '@types/node':
         specifier: ^24.0.14
         version: 24.10.4
+      '@types/uuid':
+        specifier: ^9.0.8
+        version: 9.0.8
       nodemon:
         specifier: ^3.1.10
         version: 3.1.11
