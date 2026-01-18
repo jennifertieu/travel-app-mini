@@ -221,9 +221,18 @@ importers:
 
   client/shell:
     dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.39.0
+        version: 2.90.0
       '@tanstack/react-router':
         specifier: ^1.93.0
         version: 1.145.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@travel-app/shared-types':
+        specifier: workspace:*
+        version: link:../shared-types
+      lucide-react:
+        specifier: ^0.562.0
+        version: 0.562.0(react@19.2.3)
       react:
         specifier: ^19.0.0
         version: 19.2.3

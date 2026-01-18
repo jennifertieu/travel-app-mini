@@ -323,37 +323,46 @@ export type Database = {
       };
       trips: {
         Row: {
+          budget_level: string | null;
           created_at: string;
           created_by: string | null;
           destination: string;
           destination_lat: number | null;
           destination_lng: number | null;
+          duration_days: number | null;
           end_date: string | null;
           id: string;
+          interests: string[] | null;
           start_date: string | null;
           title: string | null;
           updated_at: string;
         };
         Insert: {
+          budget_level?: string | null;
           created_at?: string;
           created_by?: string | null;
           destination: string;
           destination_lat?: number | null;
           destination_lng?: number | null;
+          duration_days?: number | null;
           end_date?: string | null;
           id?: string;
+          interests?: string[] | null;
           start_date?: string | null;
           title?: string | null;
           updated_at?: string;
         };
         Update: {
+          budget_level?: string | null;
           created_at?: string;
           created_by?: string | null;
           destination?: string;
           destination_lat?: number | null;
           destination_lng?: number | null;
+          duration_days?: number | null;
           end_date?: string | null;
           id?: string;
+          interests?: string[] | null;
           start_date?: string | null;
           title?: string | null;
           updated_at?: string;

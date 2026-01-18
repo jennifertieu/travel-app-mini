@@ -7,6 +7,9 @@ import {
   Link,
   Outlet,
 } from "@tanstack/react-router";
+import { AuthProvider } from "./contexts/AuthContext";
+import { AuthNav } from "./components/AuthNav";
+import { AuthGuard } from "./components/AuthGuard";
 
 // Lazy load the MFE apps
 // Using unique aliases to prevent Zephyr from auto-overriding URLs
@@ -37,6 +40,7 @@ const RootLayout = () => {
             gap: "1rem",
             maxWidth: "1200px",
             margin: "0 auto",
+            alignItems: "center",
           }}
         >
           <Link
@@ -63,6 +67,7 @@ const RootLayout = () => {
           >
             During Trip
           </Link>
+          <AuthNav />
         </div>
       </nav>
       <main style={{ flex: 1, overflow: "hidden" }}>
@@ -81,10 +86,12 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: () => (
-    <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
-      <h1>Welcome to Travel App</h1>
-      <p>Select a tab above to get started.</p>
-    </div>
+    <AuthGuard>
+      <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
+        <h1>Welcome to Travel App</h1>
+        <p>Select a tab above to get started.</p>
+      </div>
+    </AuthGuard>
   ),
 });
 
@@ -92,9 +99,11 @@ const pretripRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/pretrip",
   component: () => (
-    <Suspense fallback={<LoadingFallback name="Pre-Trip" />}>
-      <PretripApp />
-    </Suspense>
+    <AuthGuard>
+      <Suspense fallback={<LoadingFallback name="Pre-Trip" />}>
+        <PretripApp />
+      </Suspense>
+    </AuthGuard>
   ),
 });
 
@@ -102,9 +111,11 @@ const itineraryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/itinerary",
   component: () => (
-    <Suspense fallback={<LoadingFallback name="Itinerary" />}>
-      <ItineraryApp />
-    </Suspense>
+    <AuthGuard>
+      <Suspense fallback={<LoadingFallback name="Itinerary" />}>
+        <ItineraryApp />
+      </Suspense>
+    </AuthGuard>
   ),
 });
 
@@ -112,9 +123,11 @@ const duringtripRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/duringtrip",
   component: () => (
-    <Suspense fallback={<LoadingFallback name="During Trip" />}>
-      <DuringtripApp />
-    </Suspense>
+    <AuthGuard>
+      <Suspense fallback={<LoadingFallback name="During Trip" />}>
+        <DuringtripApp />
+      </Suspense>
+    </AuthGuard>
   ),
 });
 
@@ -137,7 +150,11 @@ declare module "@tanstack/react-router" {
 }
 
 const App = () => {
-  return <RouterProvider router={router} />;
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
 };
 
 export default App;
