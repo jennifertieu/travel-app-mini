@@ -31,7 +31,7 @@ export const buildUserLocation = (
   tripDestination: { lat: number; lng: number }
 ): IUserLocation => {
   // If no location provided or accuracy is poor (>500m), use trip destination
-  if (!requestLocation || requestLocation.accuracy_meters > 500) {
+  if (!requestLocation || (requestLocation.accuracy_meters !== undefined && requestLocation.accuracy_meters > 500)) {
     return {
       lat: tripDestination.lat,
       lng: tripDestination.lng,
@@ -170,7 +170,37 @@ export const findNextActivity = (
 
 /**
  * Build complete trip context for during-trip agents
- * This is the main entry point for building context
+ * 
+ * This is the main entry point for building context. It aggregates data from multiple sources:
+ * - Trip metadata (destination, dates, timezone)
+ * - User preferences (dietary, travel style, interests)
+ * - Current location (with fallback to trip destination)
+ * - Weather conditions (via OpenWeatherMap API)
+ * - Today's scheduled activities from itinerary
+ * - Temporal context (current time, time of day in trip timezone)
+ * 
+ * The result is cached for 5 minutes (configurable via DURING_TRIP_CACHE_TTL) to reduce
+ * API calls and database queries. Location updates bypass cache expiration.
+ * 
+ * @param params - Context building parameters
+ * @param params.tripId - UUID of the trip
+ * @param params.userId - UUID of the authenticated user
+ * @param params.location - Optional user location from client (lat/lng/accuracy)
+ * @param params.supabase - Supabase client instance
+ * 
+ * @returns Promise resolving to context object or error
+ * @returns context - Complete trip context object (ITripContext) or null if trip not found
+ * @returns error - Error message string if context building failed
+ * 
+ * @example
+ * ```typescript
+ * const { context, error } = await buildTripContext({
+ *   tripId: "uuid",
+ *   userId: "uuid",
+ *   location: { lat: 48.8566, lng: 2.3522, accuracy_meters: 10 },
+ *   supabase
+ * });
+ * ```
  */
 export const buildTripContext = async (
   params: IBuildContextParams
@@ -184,14 +214,17 @@ export const buildTripContext = async (
 
   // Check if cached context is still valid
   if (cached && Date.now() - cached.timestamp < cacheTTL) {
+    // Return deep copy to avoid mutating cached data
+    const contextCopy: ITripContext = JSON.parse(JSON.stringify(cached.data));
+    
     // Update location if provided (location changes frequently)
     if (location) {
-      cached.data.user.location = buildUserLocation(location, {
-        lat: cached.data.trip.destination_lat,
-        lng: cached.data.trip.destination_lng,
+      contextCopy.user.location = buildUserLocation(location, {
+        lat: contextCopy.trip.destination_lat,
+        lng: contextCopy.trip.destination_lng,
       });
     }
-    return { context: cached.data };
+    return { context: contextCopy };
   }
 
   try {
@@ -225,7 +258,14 @@ export const buildTripContext = async (
     // Build current time context
     const now = new Date();
     const timezone = trip.timezone || "UTC";
-    const currentHour = now.getHours(); // Simplified - ideally use timezone conversion
+    
+    // Get current hour in trip timezone
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour: "numeric",
+      hour12: false,
+    });
+    const currentHour = parseInt(formatter.format(now), 10);
 
     const timeOfDay = getTimeOfDay(currentHour);
     const currentDayNumber = calculateDayNumber(trip.start_date, now);
@@ -299,9 +339,10 @@ export const buildTripContext = async (
     contextCache.set(cacheKey, { data: context, timestamp: Date.now() });
 
     return { context };
-  } catch (error: any) {
-    console.error(`[contextBuilder] Error building context: ${error.message}`);
-    return { context: null, error: error.message };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error(`[contextBuilder] Error building context: ${errorMessage}`);
+    return { context: null, error: errorMessage };
   }
 };
 

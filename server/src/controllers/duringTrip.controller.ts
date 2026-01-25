@@ -1,22 +1,25 @@
 import { Response } from "express";
 import {
   IAuthenticatedRequest,
-  IContextRequest,
-  IDecideRequest,
-  IFoodRequest,
-  IMapIntelligenceRequest,
-  IActivityStatusRequest,
   IAcceptSuggestionRequest,
   IAcceptSuggestionResponse,
 } from "../types/interface.js";
 import { supabase } from "../config.js";
 import { buildTripContext } from "../utils/contextBuilder.js";
-import { verifyTripAccess } from "../utils/verifyTripAccess.js";
 import { runDecisionAgent } from "../utils/decisionAgent.js";
 import { getFoodRecommendations } from "../utils/foodRecommendations.js";
 import { getMapIntelligence } from "../utils/mapIntelligence.js";
 import { convertSuggestionToActivity } from "../utils/convertSuggestionToActivity.js";
 import { checkActivityConflicts } from "../utils/checkActivityConflicts.js";
+import {
+  contextRequestSchema,
+  decideRequestSchema,
+  foodRequestSchema,
+  mapIntelligenceRequestSchema,
+  activityStatusRequestSchema,
+  acceptSuggestionRequestSchema,
+  validateRequest,
+} from "../utils/validationSchemas.js";
 
 /**
  * POST /during-trip/context
@@ -28,19 +31,16 @@ export const getContext = async (
 ) => {
   try {
     const { id: userId } = request.user!;
-    const { trip_id, location } = request.body as IContextRequest;
-
-    if (!trip_id) {
-      return response.status(400).json({ error: "trip_id is required" });
+    
+    // Validate request body
+    const validation = validateRequest(contextRequestSchema, request.body);
+    if (!validation.success) {
+      return response.status(400).json({ error: validation.error });
     }
+    
+    const { trip_id, location } = validation.data;
 
-    // Verify trip access
-    const hasAccess = await verifyTripAccess(trip_id, userId, supabase);
-    if (!hasAccess) {
-      return response
-        .status(403)
-        .json({ error: "Not authorized for this trip" });
-    }
+    // Trip access verified by requireTripAccess middleware
 
     // Build context
     const { context, error } = await buildTripContext({
@@ -55,11 +55,12 @@ export const getContext = async (
     }
 
     return response.status(200).json(context);
-  } catch (error: any) {
-    console.error("[getContext] Error:", error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("[getContext] Error:", errorMessage);
     return response.status(500).json({
       error: "Failed to get context",
-      details: error.message,
+      details: errorMessage,
     });
   }
 };
@@ -74,19 +75,16 @@ export const getDecision = async (
 ) => {
   try {
     const { id: userId } = request.user!;
-    const { trip_id, location } = request.body as IDecideRequest;
-
-    if (!trip_id) {
-      return response.status(400).json({ error: "trip_id is required" });
+    
+    // Validate request body
+    const validation = validateRequest(decideRequestSchema, request.body);
+    if (!validation.success) {
+      return response.status(400).json({ error: validation.error });
     }
+    
+    const { trip_id, location } = validation.data;
 
-    // Verify trip access
-    const hasAccess = await verifyTripAccess(trip_id, userId, supabase);
-    if (!hasAccess) {
-      return response
-        .status(403)
-        .json({ error: "Not authorized for this trip" });
-    }
+    // Trip access verified by requireTripAccess middleware
 
     // Build context
     const { context, error: contextError } = await buildTripContext({
@@ -109,11 +107,12 @@ export const getDecision = async (
       ...decisionResponse,
       location_approximate: context.user.location.is_approximate,
     });
-  } catch (error: any) {
-    console.error("[getDecision] Error:", error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("[getDecision] Error:", errorMessage);
     return response.status(500).json({
       error: "Failed to get decision suggestions",
-      details: error.message,
+      details: errorMessage,
     });
   }
 };
@@ -128,19 +127,16 @@ export const getFood = async (
 ) => {
   try {
     const { id: userId } = request.user!;
-    const { trip_id, location } = request.body as IFoodRequest;
-
-    if (!trip_id) {
-      return response.status(400).json({ error: "trip_id is required" });
+    
+    // Validate request body
+    const validation = validateRequest(foodRequestSchema, request.body);
+    if (!validation.success) {
+      return response.status(400).json({ error: validation.error });
     }
+    
+    const { trip_id, location } = validation.data;
 
-    // Verify trip access
-    const hasAccess = await verifyTripAccess(trip_id, userId, supabase);
-    if (!hasAccess) {
-      return response
-        .status(403)
-        .json({ error: "Not authorized for this trip" });
-    }
+    // Trip access verified by requireTripAccess middleware
 
     // Build context
     const { context, error: contextError } = await buildTripContext({
@@ -160,11 +156,12 @@ export const getFood = async (
     const foodResponse = await getFoodRecommendations(context);
 
     return response.status(200).json(foodResponse);
-  } catch (error: any) {
-    console.error("[getFood] Error:", error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("[getFood] Error:", errorMessage);
     return response.status(500).json({
       error: "Failed to get food recommendations",
-      details: error.message,
+      details: errorMessage,
     });
   }
 };
@@ -179,20 +176,16 @@ export const getMapAnnotations = async (
 ) => {
   try {
     const { id: userId } = request.user!;
-    const { trip_id, location, viewport } =
-      request.body as IMapIntelligenceRequest;
-
-    if (!trip_id) {
-      return response.status(400).json({ error: "trip_id is required" });
+    
+    // Validate request body
+    const validation = validateRequest(mapIntelligenceRequestSchema, request.body);
+    if (!validation.success) {
+      return response.status(400).json({ error: validation.error });
     }
+    
+    const { trip_id, location, viewport } = validation.data;
 
-    // Verify trip access
-    const hasAccess = await verifyTripAccess(trip_id, userId, supabase);
-    if (!hasAccess) {
-      return response
-        .status(403)
-        .json({ error: "Not authorized for this trip" });
-    }
+    // Trip access verified by requireTripAccess middleware
 
     // Build context
     const { context, error: contextError } = await buildTripContext({
@@ -215,11 +208,12 @@ export const getMapAnnotations = async (
     });
 
     return response.status(200).json(mapResponse);
-  } catch (error: any) {
-    console.error("[getMapAnnotations] Error:", error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("[getMapAnnotations] Error:", errorMessage);
     return response.status(500).json({
       error: "Failed to get map annotations",
-      details: error.message,
+      details: errorMessage,
     });
   }
 };
@@ -235,34 +229,20 @@ export const updateActivityStatus = async (
   try {
     const { id: userId } = request.user!;
     const { activityId } = request.params;
-    const { trip_id, status, notes } = request.body as IActivityStatusRequest;
-
-    if (!trip_id) {
-      return response.status(400).json({ error: "trip_id is required" });
-    }
-
+    
     if (!activityId) {
       return response.status(400).json({ error: "activityId is required" });
     }
-
-    if (!status) {
-      return response.status(400).json({ error: "status is required" });
+    
+    // Validate request body
+    const validation = validateRequest(activityStatusRequestSchema, request.body);
+    if (!validation.success) {
+      return response.status(400).json({ error: validation.error });
     }
+    
+    const { trip_id, status, notes } = validation.data;
 
-    const validStatuses = ["scheduled", "in_progress", "completed", "skipped"];
-    if (!validStatuses.includes(status)) {
-      return response.status(400).json({
-        error: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
-      });
-    }
-
-    // Verify trip access
-    const hasAccess = await verifyTripAccess(trip_id, userId, supabase);
-    if (!hasAccess) {
-      return response
-        .status(403)
-        .json({ error: "Not authorized for this trip" });
-    }
+    // Trip access verified by requireTripAccess middleware
 
     // Fetch current itinerary
     const { data: itineraryData, error: fetchError } = await supabase
@@ -319,6 +299,11 @@ export const updateActivityStatus = async (
     }
 
     // Save updated itinerary
+    // NOTE: This update pattern has a race condition risk if multiple requests
+    // update the same itinerary simultaneously. For production, consider:
+    // 1. Using PostgreSQL RPC function with jsonb_set for atomic updates
+    // 2. Adding optimistic locking with updated_at timestamp check
+    // 3. Using PostgreSQL transactions via RPC
     const { error: updateError } = await supabase
       .from("trip_itineraries")
       .update({ itinerary })
@@ -339,11 +324,12 @@ export const updateActivityStatus = async (
         updated_at: now,
       },
     });
-  } catch (error: any) {
-    console.error("[updateActivityStatus] Error:", error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("[updateActivityStatus] Error:", errorMessage);
     return response.status(500).json({
       error: "Failed to update activity status",
-      details: error.message,
+      details: errorMessage,
     });
   }
 };
@@ -358,6 +344,13 @@ export const acceptSuggestion = async (
 ) => {
   try {
     const { id: userId } = request.user!;
+    
+    // Validate request body
+    const validation = validateRequest(acceptSuggestionRequestSchema, request.body);
+    if (!validation.success) {
+      return response.status(400).json({ error: validation.error });
+    }
+    
     const {
       trip_id,
       suggestion,
@@ -365,38 +358,9 @@ export const acceptSuggestion = async (
       duration_minutes,
       override_conflicts,
       remove_conflicting_activity_ids,
-    } = request.body as IAcceptSuggestionRequest;
+    } = validation.data;
 
-    // Validation
-    if (!trip_id) {
-      return response.status(400).json({ error: "trip_id is required" });
-    }
-
-    if (!suggestion || !suggestion.id || !suggestion.title) {
-      return response
-        .status(400)
-        .json({ error: "suggestion with id and title is required" });
-    }
-
-    if (!time_of_day || !["morning", "afternoon", "evening"].includes(time_of_day)) {
-      return response
-        .status(400)
-        .json({ error: "time_of_day must be morning, afternoon, or evening" });
-    }
-
-    if (!duration_minutes || duration_minutes <= 0) {
-      return response
-        .status(400)
-        .json({ error: "duration_minutes must be a positive number" });
-    }
-
-    // Verify trip access
-    const hasAccess = await verifyTripAccess(trip_id, userId, supabase);
-    if (!hasAccess) {
-      return response
-        .status(403)
-        .json({ error: "Not authorized for this trip" });
-    }
+    // Trip access verified by requireTripAccess middleware
 
     // Build context to get current day number
     const { context, error: contextError } = await buildTripContext({
@@ -428,7 +392,7 @@ export const acceptSuggestion = async (
 
     // Find today's day
     const today = itinerary.days?.find(
-      (d: any) => d.day_number === currentDayNumber
+      (d: { day_number: number }) => d.day_number === currentDayNumber
     );
 
     if (!today) {
@@ -475,7 +439,7 @@ export const acceptSuggestion = async (
     if (remove_conflicting_activity_ids && remove_conflicting_activity_ids.length > 0) {
       for (const activityId of remove_conflicting_activity_ids) {
         const activityIndex = today.activities.findIndex(
-          (a: any) => a.id === activityId
+          (a: { id: string }) => a.id === activityId
         );
         if (activityIndex !== -1) {
           const removed = today.activities.splice(activityIndex, 1)[0];
@@ -491,6 +455,11 @@ export const acceptSuggestion = async (
     today.activities.push(newActivity);
 
     // Save updated itinerary
+    // NOTE: This update pattern has a race condition risk if multiple requests
+    // update the same itinerary simultaneously. For production, consider:
+    // 1. Using PostgreSQL RPC function with jsonb_set for atomic updates
+    // 2. Adding optimistic locking with updated_at timestamp check
+    // 3. Using PostgreSQL transactions via RPC
     const { error: updateError } = await supabase
       .from("trip_itineraries")
       .update({ itinerary })
@@ -530,11 +499,12 @@ export const acceptSuggestion = async (
     }
 
     return response.status(200).json(responseData);
-  } catch (error: any) {
-    console.error("[acceptSuggestion] Error:", error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("[acceptSuggestion] Error:", errorMessage);
     return response.status(500).json({
       error: "Failed to accept suggestion",
-      details: error.message,
+      details: errorMessage,
     });
   }
 };

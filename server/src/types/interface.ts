@@ -157,7 +157,7 @@ export interface IMapIntelligenceResponse {
 export interface ILocationRequest {
   lat: number;
   lng: number;
-  accuracy_meters: number; // From browser Geolocation API
+  accuracy_meters?: number; // From browser Geolocation API (optional)
 }
 
 export interface IDuringTripRequest {

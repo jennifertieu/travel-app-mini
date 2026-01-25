@@ -2,6 +2,27 @@ import { IAcceptSuggestionRequest, IActivity } from "../types/interface.js";
 
 /**
  * Converts a suggestion (from decision agent or food recommendations) to an itinerary activity
+ * 
+ * Transforms a suggestion object (IDecisionOption or IFoodRecommendation) into the
+ * IActivity format used in the itinerary JSONB structure. Handles ID generation,
+ * coordinate mapping, and tag assignment based on suggestion type.
+ * 
+ * @param request - Accept suggestion request containing suggestion, time_of_day, duration
+ * @param request.suggestion - The suggestion object to convert (must have id, title, coordinates, type)
+ * @param request.time_of_day - Time slot for the activity ("morning" | "afternoon" | "evening")
+ * @param request.duration_minutes - Duration of the activity in minutes
+ * 
+ * @returns IActivity object ready to be added to itinerary
+ * 
+ * @example
+ * ```typescript
+ * const activity = convertSuggestionToActivity({
+ *   suggestion: { id: "place_123", title: "Eiffel Tower", ... },
+ *   time_of_day: "afternoon",
+ *   duration_minutes: 120
+ * });
+ * today.activities.push(activity);
+ * ```
  */
 export const convertSuggestionToActivity = (
   request: IAcceptSuggestionRequest

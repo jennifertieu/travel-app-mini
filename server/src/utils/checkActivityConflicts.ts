@@ -21,7 +21,30 @@ export interface ICheckActivityConflictsResult {
 const SLOT_LIMIT_MINUTES = 300; // 5 hours
 
 /**
- * Check if adding a new activity to a day would cause conflicts
+ * Check if adding a new activity to a day would cause scheduling conflicts
+ * 
+ * Validates two types of conflicts:
+ * 1. Duration exceeded: Total activities in time slot exceed 5-hour limit
+ * 2. Travel time issue: Travel time + activity durations exceed slot limit
+ * 
+ * This function is used when accepting suggestions to prevent over-scheduling.
+ * It checks the specified time_of_day slot and calculates total duration including
+ * travel time from the last activity in that slot.
+ * 
+ * @param day - The itinerary day object containing existing activities
+ * @param newActivity - The new activity to be added (must have time_of_day and duration_minutes)
+ * 
+ * @returns Promise resolving to conflict check result
+ * @returns hasConflicts - Boolean indicating if conflicts were detected
+ * @returns conflicts - Array of conflict objects with type, description, and conflicting activities
+ * 
+ * @example
+ * ```typescript
+ * const result = await checkActivityConflicts(today, newActivity);
+ * if (result.hasConflicts && !override_conflicts) {
+ *   return response.status(409).json({ conflicts: result.conflicts });
+ * }
+ * ```
  */
 export const checkActivityConflicts = async (
   day: IItineraryDay,
@@ -29,6 +52,14 @@ export const checkActivityConflicts = async (
 ): Promise<ICheckActivityConflictsResult> => {
   const conflicts: IActivityConflict[] = [];
   const { time_of_day, duration_minutes } = newActivity;
+
+  // Validate required fields
+  if (!time_of_day) {
+    return {
+      hasConflicts: false,
+      conflicts: [],
+    };
+  }
 
   // Get existing activities in the same time slot
   const activitiesInSlot = day.activities.filter(

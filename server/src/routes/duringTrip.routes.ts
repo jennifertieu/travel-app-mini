@@ -1,6 +1,7 @@
 import express from "express";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { rateLimitDuringTrip } from "../middleware/rateLimitDuringTrip.js";
+import { requireTripAccess } from "../middleware/requireTripAccess.js";
 import {
   getContext,
   getDecision,
@@ -16,21 +17,21 @@ const router = express.Router();
 // Rate limiting applies to agent-powered endpoints (decide, food)
 
 // POST /during-trip/context - Get current trip context
-router.post("/context", requireAuth, getContext);
+router.post("/context", requireAuth, requireTripAccess, getContext);
 
 // POST /during-trip/decide - Get "What Now?" suggestions (rate limited)
-router.post("/decide", requireAuth, rateLimitDuringTrip, getDecision);
+router.post("/decide", requireAuth, requireTripAccess, rateLimitDuringTrip, getDecision);
 
 // POST /during-trip/food - Get food recommendations (rate limited)
-router.post("/food", requireAuth, rateLimitDuringTrip, getFood);
+router.post("/food", requireAuth, requireTripAccess, rateLimitDuringTrip, getFood);
 
 // POST /during-trip/map-intelligence - Get map annotations
-router.post("/map-intelligence", requireAuth, getMapAnnotations);
+router.post("/map-intelligence", requireAuth, requireTripAccess, getMapAnnotations);
 
 // PATCH /during-trip/activity/:activityId/status - Update activity progress
-router.patch("/activity/:activityId/status", requireAuth, updateActivityStatus);
+router.patch("/activity/:activityId/status", requireAuth, requireTripAccess, updateActivityStatus);
 
 // POST /during-trip/suggestions/accept - Accept a suggestion and add to itinerary
-router.post("/suggestions/accept", requireAuth, acceptSuggestion);
+router.post("/suggestions/accept", requireAuth, requireTripAccess, acceptSuggestion);
 
 export default router;

@@ -2,7 +2,29 @@ import { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Verify that a user has access to a specific trip
- * Returns true if user is the trip creator or a trip member
+ * 
+ * Checks two conditions:
+ * 1. User is the trip creator (trips.created_by)
+ * 2. User is a trip member (trip_members.member_id)
+ * 
+ * This function is used for authorization before allowing access to trip data.
+ * Returns false on any error (trip not found, database error, etc.) for security.
+ * 
+ * @param tripId - UUID of the trip to check access for
+ * @param userId - UUID of the user requesting access
+ * @param supabase - Supabase client instance
+ * 
+ * @returns Promise resolving to boolean
+ * @returns true - User has access (creator or member)
+ * @returns false - User does not have access, trip not found, or error occurred
+ * 
+ * @example
+ * ```typescript
+ * const hasAccess = await verifyTripAccess(tripId, userId, supabase);
+ * if (!hasAccess) {
+ *   return response.status(403).json({ error: "Not authorized" });
+ * }
+ * ```
  */
 export const verifyTripAccess = async (
   tripId: string,
@@ -26,19 +48,22 @@ export const verifyTripAccess = async (
       return true;
     }
 
-    // TODO: Check trip_members table when group trips are implemented
-    // const { data: membership } = await supabase
-    //   .from("trip_members")
-    //   .select("id")
-    //   .eq("trip_id", tripId)
-    //   .eq("user_id", userId)
-    //   .single();
-    //
-    // if (membership) return true;
+    // Check if user is a trip member (group trips)
+    const { data: membership } = await supabase
+      .from("trip_members")
+      .select("id")
+      .eq("trip_id", tripId)
+      .eq("member_id", userId)
+      .single();
+
+    if (membership) {
+      return true;
+    }
 
     return false;
-  } catch (error: any) {
-    console.error(`[verifyTripAccess] Error: ${error.message}`);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error(`[verifyTripAccess] Error: ${errorMessage}`);
     return false;
   }
 };

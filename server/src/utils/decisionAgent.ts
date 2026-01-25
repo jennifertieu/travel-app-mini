@@ -1,5 +1,4 @@
 import { openai, GOOGLE_MAPS_PLATFORM_API_KEY } from "../config.js";
-import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { duringTripAgentTools } from "../tools/duringTripAgentTools.js";
 import {
   ITripContext,
@@ -9,10 +8,11 @@ import {
 } from "../types/interface.js";
 import { getFoodRecommendations } from "./foodRecommendations.js";
 import { travelTimeBetweenActivities } from "./travelTimeBetweenActivities.js";
+import { decisionResponseSchema } from "./validationSchemas.js";
 
 interface IToolCallResult {
   success: boolean;
-  data?: any;
+  data?: unknown;
   error?: string;
 }
 
@@ -43,9 +43,10 @@ const fetchNearbyPlaces = async (
     }
 
     return data.results || [];
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error(
-      `[Decision Agent] Failed to fetch places: ${error.message}`
+      `[Decision Agent] Failed to fetch places: ${errorMessage}`
     );
     return [];
   }
@@ -187,10 +188,34 @@ const generateFallbackResponse = (
 
 /**
  * Run the Decision Agent to get "What Now?" suggestions
+ * 
+ * This is the primary AI agent for during-trip decision making. It uses OpenAI GPT-4o
+ * with function calling to:
+ * 1. Analyze current trip context (location, time, weather, schedule)
+ * 2. Call tools to gather nearby places, travel times, food recommendations
+ * 3. Generate 3-5 personalized activity suggestions
+ * 
+ * The agent has a 10-second timeout and maximum 10 iterations. If it times out or fails,
+ * a rule-based fallback is returned with basic suggestions (next scheduled activity, rest, explore).
+ * 
+ * @param context - Complete trip context from buildTripContext()
+ * @param logger - Optional logging function for debugging (defaults to no-op)
+ * 
+ * @returns Promise resolving to decision response with options and context summary
+ * @returns options - Array of 3-5 activity suggestions (IDecisionOption[])
+ * @returns context_summary - Human-readable summary of current situation
+ * @returns fallback_used - True if AI timed out and rule-based fallback was used
+ * 
+ * @example
+ * ```typescript
+ * const response = await runDecisionAgent(context);
+ * // response.options = [{ id: "...", title: "Visit Eiffel Tower", ... }, ...]
+ * // response.context_summary = "Good morning! Day 2 of 5 in Paris..."
+ * ```
  */
 export const runDecisionAgent = async (
   context: ITripContext,
-  logger?: (...args: any[]) => void
+  logger?: (message: string, ...args: unknown[]) => void
 ): Promise<IDecisionResponse> => {
   const TIMEOUT_MS = 10000; // 10 second timeout
   const MAX_ITERATIONS = 10;
@@ -239,7 +264,8 @@ When you have gathered enough information, respond with a JSON object in this ex
   "context_summary": "Brief friendly summary of the current situation"
 }`;
 
-  const messages: ChatCompletionMessageParam[] = [
+  type Message = Parameters<typeof openai.chat.completions.create>[0]["messages"][number];
+  const messages: Message[] = [
     { role: "system", content: systemPrompt },
     {
       role: "user",
@@ -285,16 +311,23 @@ When you have gathered enough information, respond with a JSON object in this ex
             const jsonMatch = message.content.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
               const parsed = JSON.parse(jsonMatch[0]);
+              
+              // Validate with zod schema
+              const validated = decisionResponseSchema.parse(parsed);
+              
               return {
-                options: parsed.options || [],
-                context_summary:
-                  parsed.context_summary || buildContextSummary(context),
+                options: validated.options,
+                context_summary: validated.context_summary,
                 fallback_used: false,
               };
             }
           } catch (parseError) {
-            if (logger)
-              logger(`[Decision Agent] Failed to parse response: ${parseError}`);
+            if (logger) {
+              const errorMessage = parseError instanceof Error 
+                ? parseError.message 
+                : String(parseError);
+              logger(`[Decision Agent] Failed to parse/validate response: ${errorMessage}`);
+            }
           }
         }
         // If parsing failed, use fallback
@@ -374,8 +407,9 @@ When you have gathered enough information, respond with a JSON object in this ex
             default:
               toolResult = { success: false, error: `Unknown tool: ${name}` };
           }
-        } catch (error: any) {
-          toolResult = { success: false, error: error.message };
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          toolResult = { success: false, error: errorMessage };
         }
 
         messages.push({
@@ -389,8 +423,9 @@ When you have gathered enough information, respond with a JSON object in this ex
     // Max iterations reached
     if (logger) logger("[Decision Agent] Max iterations - using fallback");
     return generateFallbackResponse(context);
-  } catch (error: any) {
-    console.error(`[Decision Agent] Error: ${error.message}`);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error(`[Decision Agent] Error: ${errorMessage}`);
     return generateFallbackResponse(context);
   }
 };
