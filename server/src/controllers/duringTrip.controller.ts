@@ -6,6 +6,8 @@ import {
   IFoodRequest,
   IMapIntelligenceRequest,
   IActivityStatusRequest,
+  IAcceptSuggestionRequest,
+  IAcceptSuggestionResponse,
 } from "../types/interface.js";
 import { supabase } from "../config.js";
 import { buildTripContext } from "../utils/contextBuilder.js";
@@ -13,6 +15,8 @@ import { verifyTripAccess } from "../utils/verifyTripAccess.js";
 import { runDecisionAgent } from "../utils/decisionAgent.js";
 import { getFoodRecommendations } from "../utils/foodRecommendations.js";
 import { getMapIntelligence } from "../utils/mapIntelligence.js";
+import { convertSuggestionToActivity } from "../utils/convertSuggestionToActivity.js";
+import { checkActivityConflicts } from "../utils/checkActivityConflicts.js";
 
 /**
  * POST /during-trip/context
@@ -339,6 +343,197 @@ export const updateActivityStatus = async (
     console.error("[updateActivityStatus] Error:", error);
     return response.status(500).json({
       error: "Failed to update activity status",
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * POST /during-trip/suggestions/accept
+ * Accept a suggestion and add it to today's itinerary
+ */
+export const acceptSuggestion = async (
+  request: IAuthenticatedRequest,
+  response: Response
+) => {
+  try {
+    const { id: userId } = request.user!;
+    const {
+      trip_id,
+      suggestion,
+      time_of_day,
+      duration_minutes,
+      override_conflicts,
+      remove_conflicting_activity_ids,
+    } = request.body as IAcceptSuggestionRequest;
+
+    // Validation
+    if (!trip_id) {
+      return response.status(400).json({ error: "trip_id is required" });
+    }
+
+    if (!suggestion || !suggestion.id || !suggestion.title) {
+      return response
+        .status(400)
+        .json({ error: "suggestion with id and title is required" });
+    }
+
+    if (!time_of_day || !["morning", "afternoon", "evening"].includes(time_of_day)) {
+      return response
+        .status(400)
+        .json({ error: "time_of_day must be morning, afternoon, or evening" });
+    }
+
+    if (!duration_minutes || duration_minutes <= 0) {
+      return response
+        .status(400)
+        .json({ error: "duration_minutes must be a positive number" });
+    }
+
+    // Verify trip access
+    const hasAccess = await verifyTripAccess(trip_id, userId, supabase);
+    if (!hasAccess) {
+      return response
+        .status(403)
+        .json({ error: "Not authorized for this trip" });
+    }
+
+    // Build context to get current day number
+    const { context, error: contextError } = await buildTripContext({
+      tripId: trip_id,
+      userId,
+      supabase,
+    });
+
+    if (contextError || !context) {
+      return response
+        .status(404)
+        .json({ error: contextError || "Trip not found" });
+    }
+
+    const currentDayNumber = context.trip.day_number;
+
+    // Fetch current itinerary
+    const { data: itineraryData, error: fetchError } = await supabase
+      .from("trip_itineraries")
+      .select("itinerary")
+      .eq("trip_id", trip_id)
+      .single();
+
+    if (fetchError || !itineraryData) {
+      return response.status(404).json({ error: "Itinerary not found" });
+    }
+
+    const itinerary = itineraryData.itinerary;
+
+    // Find today's day
+    const today = itinerary.days?.find(
+      (d: any) => d.day_number === currentDayNumber
+    );
+
+    if (!today) {
+      return response.status(404).json({
+        error: `Day ${currentDayNumber} not found in itinerary`,
+      });
+    }
+
+    // Convert suggestion to activity
+    const newActivity = convertSuggestionToActivity({
+      trip_id,
+      suggestion,
+      time_of_day,
+      duration_minutes,
+    } as IAcceptSuggestionRequest);
+
+    // Check for conflicts
+    const conflictCheck = await checkActivityConflicts(today, newActivity);
+
+    // If conflicts exist and not overridden, return conflict details
+    if (conflictCheck.hasConflicts && !override_conflicts) {
+      const responseData: IAcceptSuggestionResponse = {
+        success: false,
+        activity: {
+          id: newActivity.id,
+          name: newActivity.name,
+          time_of_day,
+          duration_minutes,
+        },
+        conflicts_detected: true,
+        conflicts: conflictCheck.conflicts.map((conflict) => ({
+          type: conflict.type,
+          time_of_day: conflict.time_of_day,
+          description: conflict.description,
+          conflicting_activities: conflict.conflicting_activities,
+        })),
+      };
+
+      return response.status(409).json(responseData); // 409 Conflict
+    }
+
+    // Remove conflicting activities if requested
+    const removedActivities: Array<{ id: string; name: string }> = [];
+    if (remove_conflicting_activity_ids && remove_conflicting_activity_ids.length > 0) {
+      for (const activityId of remove_conflicting_activity_ids) {
+        const activityIndex = today.activities.findIndex(
+          (a: any) => a.id === activityId
+        );
+        if (activityIndex !== -1) {
+          const removed = today.activities.splice(activityIndex, 1)[0];
+          removedActivities.push({
+            id: removed.id,
+            name: removed.name || removed.title || "Unknown Activity",
+          });
+        }
+      }
+    }
+
+    // Add the new activity to today's activities
+    today.activities.push(newActivity);
+
+    // Save updated itinerary
+    const { error: updateError } = await supabase
+      .from("trip_itineraries")
+      .update({ itinerary })
+      .eq("trip_id", trip_id);
+
+    if (updateError) {
+      return response.status(500).json({
+        error: "Failed to update itinerary",
+        details: updateError.message,
+      });
+    }
+
+    // Return success response
+    const responseData: IAcceptSuggestionResponse = {
+      success: true,
+      activity: {
+        id: newActivity.id,
+        name: newActivity.name,
+        time_of_day,
+        duration_minutes,
+      },
+      conflicts_detected: conflictCheck.hasConflicts,
+      conflicts_resolved: conflictCheck.hasConflicts && (override_conflicts || removedActivities.length > 0),
+    };
+
+    if (removedActivities.length > 0) {
+      responseData.removed_activities = removedActivities;
+    }
+
+    if (conflictCheck.hasConflicts) {
+      responseData.conflicts = conflictCheck.conflicts.map((conflict) => ({
+        type: conflict.type,
+        time_of_day: conflict.time_of_day,
+        description: conflict.description,
+        conflicting_activities: conflict.conflicting_activities,
+      }));
+    }
+
+    return response.status(200).json(responseData);
+  } catch (error: any) {
+    console.error("[acceptSuggestion] Error:", error);
+    return response.status(500).json({
+      error: "Failed to accept suggestion",
       details: error.message,
     });
   }

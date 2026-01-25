@@ -185,6 +185,32 @@ export interface IActivityStatusRequest {
   notes?: string;
 }
 
+// Standardized suggestion structure for accepting suggestions
+export interface IAcceptSuggestionRequest {
+  trip_id: string;
+  suggestion: {
+    id: string;
+    title: string;
+    type: "scheduled" | "spontaneous" | "rest" | "restaurant" | "cafe" | "quick_bite" | "park_rest";
+    coordinates: { lat: number; lng: number };
+    // Optional fields that may be present
+    distance_km?: number;
+    time_required_minutes?: number;
+    energy_level?: "low" | "medium" | "high";
+    reason?: string;
+    cuisine?: string;
+    price_level?: number;
+    rating?: number;
+    photo_url?: string;
+    dietary_match?: boolean;
+  };
+  time_of_day: "morning" | "afternoon" | "evening";
+  duration_minutes: number;
+  // Conflict resolution options
+  override_conflicts?: boolean; // If true, add even if conflicts exist
+  remove_conflicting_activity_ids?: string[]; // IDs of activities to remove if conflicts exist
+}
+
 // Activity progress tracking (extends existing IActivity)
 export interface IActivityProgress {
   status: "scheduled" | "in_progress" | "completed" | "skipped";
@@ -199,6 +225,32 @@ export interface IDuringTripErrorResponse {
   details?: string;
   fallback_used?: boolean;
   fallback_type?: "rule_based" | "cached";
+}
+
+// Response for accept suggestion endpoint
+export interface IAcceptSuggestionResponse {
+  success: boolean;
+  activity: {
+    id: string;
+    name: string;
+    time_of_day: "morning" | "afternoon" | "evening";
+    duration_minutes: number;
+  };
+  conflicts_detected?: boolean;
+  conflicts?: Array<{
+    type: "overlap" | "duration_exceeded" | "travel_time_issue";
+    time_of_day: "morning" | "afternoon" | "evening";
+    description: string;
+    conflicting_activities: Array<{
+      id: string;
+      name: string;
+    }>;
+  }>;
+  conflicts_resolved?: boolean;
+  removed_activities?: Array<{
+    id: string;
+    name: string;
+  }>;
 }
 
 // Context builder types

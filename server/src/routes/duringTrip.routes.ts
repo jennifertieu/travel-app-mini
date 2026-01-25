@@ -7,6 +7,7 @@ import {
   getFood,
   getMapAnnotations,
   updateActivityStatus,
+  acceptSuggestion,
 } from "../controllers/duringTrip.controller.js";
 
 const router = express.Router();
@@ -28,5 +29,8 @@ router.post("/map-intelligence", requireAuth, getMapAnnotations);
 
 // PATCH /during-trip/activity/:activityId/status - Update activity progress
 router.patch("/activity/:activityId/status", requireAuth, updateActivityStatus);
+
+// POST /during-trip/suggestions/accept - Accept a suggestion and add to itinerary
+router.post("/suggestions/accept", requireAuth, acceptSuggestion);
 
 export default router;
