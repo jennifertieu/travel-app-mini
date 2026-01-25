@@ -11,7 +11,6 @@ export const GOOGLE_MAPS_PLATFORM_API_KEY =
   process.env.GOOGLE_MAPS_PLATFORM_API_KEY!;
 
 // During-Trip Agent Configuration
-export const OPENWEATHERMAP_API_KEY = process.env.OPENWEATHERMAP_API_KEY || "";
 export const DURING_TRIP_RATE_LIMIT = parseInt(
   process.env.DURING_TRIP_RATE_LIMIT || "20",
   10

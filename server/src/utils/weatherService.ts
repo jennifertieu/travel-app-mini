@@ -1,26 +1,14 @@
-import { OPENWEATHERMAP_API_KEY } from "../config.js";
-
 interface IWeatherData {
   condition: string;
   temperature: number;
   precipitation: boolean;
 }
 
-interface IOpenWeatherResponse {
-  weather: Array<{
-    main: string;
-    description: string;
-  }>;
-  main: {
-    temp: number;
-  };
-  rain?: {
-    "1h"?: number;
-    "3h"?: number;
-  };
-  snow?: {
-    "1h"?: number;
-    "3h"?: number;
+interface IOpenMeteoResponse {
+  current: {
+    temperature_2m: number;
+    weather_code: number;
+    precipitation: number;
   };
 }
 
@@ -32,8 +20,25 @@ const weatherCache = new Map<
 const WEATHER_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 /**
+ * Map WMO weather codes to simple condition strings
+ * https://open-meteo.com/en/docs#weathervariables
+ */
+const mapWeatherCodeToCondition = (code: number): string => {
+  if (code === 0) return "clear";
+  if (code >= 1 && code <= 3) return "clouds";
+  if (code >= 45 && code <= 48) return "fog";
+  if (code >= 51 && code <= 57) return "drizzle";
+  if (code >= 61 && code <= 67) return "rain";
+  if (code >= 71 && code <= 77) return "snow";
+  if (code >= 80 && code <= 82) return "rain";
+  if (code >= 85 && code <= 86) return "snow";
+  if (code >= 95 && code <= 99) return "thunderstorm";
+  return "unknown";
+};
+
+/**
  * Get weather conditions for a specific location
- * Uses OpenWeatherMap API with 30-minute caching
+ * Uses Open-Meteo API (free, no API key required) with 30-minute caching
  */
 export const getWeather = async (
   lat: number,
@@ -47,15 +52,8 @@ export const getWeather = async (
     return cached.data;
   }
 
-  if (!OPENWEATHERMAP_API_KEY) {
-    console.warn(
-      "[Weather Service] OPENWEATHERMAP_API_KEY not configured, skipping weather"
-    );
-    return null;
-  }
-
   try {
-    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&appid=${OPENWEATHERMAP_API_KEY}&units=metric`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code,precipitation`;
 
     const response = await fetch(url);
 
@@ -66,27 +64,21 @@ export const getWeather = async (
       return null;
     }
 
-    const data: IOpenWeatherResponse = await response.json();
+    const data: IOpenMeteoResponse = await response.json();
 
     const weather: IWeatherData = {
-      condition: data.weather[0]?.main.toLowerCase() || "unknown",
-      temperature: Math.round(data.main.temp),
-      precipitation: !!(
-        data.rain?.["1h"] ||
-        data.rain?.["3h"] ||
-        data.snow?.["1h"] ||
-        data.snow?.["3h"]
-      ),
+      condition: mapWeatherCodeToCondition(data.current.weather_code),
+      temperature: Math.round(data.current.temperature_2m),
+      precipitation: data.current.precipitation > 0,
     };
 
     // Cache the result
     weatherCache.set(cacheKey, { data: weather, timestamp: Date.now() });
 
     return weather;
-  } catch (error: any) {
-    console.error(
-      `[Weather Service] Failed to fetch weather: ${error.message}`
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error(`[Weather Service] Failed to fetch weather: ${message}`);
     return null;
   }
 };

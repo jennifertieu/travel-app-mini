@@ -73,7 +73,7 @@ own OpenAI calls. Only the Decision Agent uses OpenAI for reasoning.
 - **Framework:** Express
 - **AI:** OpenAI GPT-4o / GPT-4o-mini (model selection by agent complexity)
 - **Maps:** Google Maps APIs (Places, Geocoding, Distance Matrix)
-- **Weather:** OpenWeatherMap API (free tier friendly, good documentation)
+- **Weather:** Open-Meteo API (free, no API key required, open-source)
 - **Database:** Supabase (existing schema)
 - **Auth:** Supabase JWT (existing middleware)
 
@@ -115,7 +115,7 @@ src/types/context.ts         // TypeScript interface
 - User location (lat/lng from web app - user clicks "fetch location" button)
 - Time of day
 - Day of trip
-- Weather conditions (OpenWeatherMap API)
+- Weather conditions (Open-Meteo API)
 - Trip metadata (destination, duration) - from `trips` table
 - User preferences - from `member_profiles` table
 - Today's scheduled activities - from `trip_itineraries` table
@@ -532,8 +532,8 @@ if (!(await verifyTripAccess(tripId, userId, supabase))) {
 - Location data is PII and must be handled carefully
 - Use separate logging middleware that redacts `location` fields
 
-**API Key Security**
-- `OPENWEATHERMAP_API_KEY` must never be exposed to client
+**Weather API**
+- Open-Meteo is free and requires no API key
 - All weather calls are server-side only
 
 ### Geolocation Handling
@@ -781,7 +781,7 @@ Mobile/Web App Request
 1. Build Context (contextBuilder.ts)
    ├─ Query user location (from request)
    ├─ Fetch trip data (Supabase)
-   ├─ Get weather (OpenWeatherMap - with fallback)
+   ├─ Get weather (Open-Meteo - with fallback)
    └─ Load preferences (Supabase)
        ↓
 2. Check Rate Limit
@@ -914,7 +914,7 @@ server/src/
 │   ├── decisionAgent.ts              # Decision Agent (OpenAI agent with tools)
 │   ├── foodRecommendations.ts        # Food utility function (NOT an AI agent)
 │   ├── mapIntelligence.ts            # Map utility function (NOT an AI agent)
-│   ├── weatherService.ts             # OpenWeatherMap API wrapper
+│   ├── weatherService.ts             # Open-Meteo API wrapper
 │   ├── verifyTripAccess.ts           # Trip authorization helper
 │   ├── contextBuilderTestFunction.ts # Test script for context builder
 │   ├── decisionAgentTestFunction.ts  # Test script for decision agent
@@ -933,6 +933,7 @@ separate type files.
 
 | Variable | Purpose |
 |----------|---------|
-| `OPENWEATHERMAP_API_KEY` | Weather API access |
 | `DURING_TRIP_RATE_LIMIT` | Max requests per user per day (default: 20) |
 | `DURING_TRIP_CACHE_TTL` | Cache TTL in seconds (default: 300) |
+
+**Note**: Open-Meteo API is free and requires no API key.
