@@ -11,7 +11,10 @@
   "dependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@tanstack/react-router": "^1.93.0"
+    "@tanstack/react-router": "^1.93.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "@travel-app/shared-types": "workspace:*",
+    "lucide-react": "^0.562.0"
   },
   "devDependencies": {
     "@module-federation/rsbuild-plugin": "^0.8.4",
