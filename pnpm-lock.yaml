@@ -284,7 +284,10 @@ importers:
         version: 5.2.1
       openai:
         specifier: ^6.15.0
-        version: 6.15.0(ws@8.19.0)
+        version: 6.15.0(ws@8.19.0)(zod@4.3.6)
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@types/express':
         specifier: ^5.0.3
@@ -4850,6 +4853,9 @@ packages:
   zephyr-xpack-internal@0.1.2:
     resolution: {integrity: sha512-PFWwQ/2RQSY+UkLw1zJOhFbk5Ge0BXl+emI+BokQLesG5XH066BvtcNtZa/kMTMl78zkAvsswztSEUIJ9AM68Q==}
 
+  zod@4.3.6:
+    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
+
 snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
@@ -8531,9 +8537,10 @@ snapshots:
       is-inside-container: 1.0.0
       wsl-utils: 0.1.0
 
-  openai@6.15.0(ws@8.19.0):
+  openai@6.15.0(ws@8.19.0)(zod@4.3.6):
     optionalDependencies:
       ws: 8.19.0
+      zod: 4.3.6
 
   optionator@0.9.4:
     dependencies:
@@ -9855,3 +9862,5 @@ snapshots:
       - supports-color
       - utf-8-validate
       - webpack
+
+  zod@4.3.6: {}

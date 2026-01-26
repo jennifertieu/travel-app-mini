@@ -45,6 +45,28 @@ pnpm tsx src/utils/aiItineraryBuilderTestFunction.ts
 
 This runs a mock 5-day trip through Southern France (Paris → Lyon → Marseille) with 10 activities, testing city clustering, travel segments, and optimal scheduling.
 
+### During Trip Agents
+
+**If asked about the during-trip feature, READ THIS FILE FIRST:**
+
+```
+server/docs/features/during-trip-agents.md
+```
+
+This covers:
+- Real-time contextual trip assistance
+- Decision Agent (GPT-4o with tool calling)
+- Context building and caching strategy
+- Food recommendations and map intelligence
+- Conflict detection for activity scheduling
+
+**To run a test of the during-trip decision agent:**
+
+```bash
+cd server
+pnpm tsx src/tools/decisionAgentTestFunction.ts
+```
+
 ---
 
 ## Directory Structure
@@ -91,6 +113,17 @@ server/
 |--------|------|------|---------|
 | POST | `/enrich/` | No | Enrich TikTok/YouTube content with AI |
 
+### During Trip (`/during-trip`)
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| POST | `/during-trip/context` | Yes | Get current trip context |
+| POST | `/during-trip/decide` | Yes | Get "What Now?" suggestions (rate-limited) |
+| POST | `/during-trip/food` | Yes | Get food recommendations (rate-limited) |
+| POST | `/during-trip/map-intelligence` | Yes | Get map annotations |
+| PATCH | `/during-trip/activity/:id/status` | Yes | Update activity progress |
+| POST | `/during-trip/suggestions/accept` | Yes | Accept suggestion & add to itinerary |
+
 ---
 
 ## Key Files
@@ -102,12 +135,15 @@ server/
 | `memberProfiles.controller.ts` | CRUD for user profiles |
 | `itinerary.controller.ts` | Itinerary generation with voting logic |
 | `enrichment.controller.ts` | Content enrichment pipeline |
+| `duringTrip.controller.ts` | During-trip context, decisions, food, map annotations |
 
 ### Middleware
 
 | File | Purpose |
 |------|---------|
 | `requireAuth.ts` | JWT validation via Supabase |
+| `requireTripAccess.ts` | Trip ownership/membership verification |
+| `rateLimitDuringTrip.ts` | Per-user daily rate limiting (20/day default) |
 
 ### AI & Utils
 
@@ -118,6 +154,13 @@ server/
 | `unfurl.ts` | TikTok/YouTube metadata extraction |
 | `placeMatching.ts` | Google Places API integration |
 | `itineraryAgentTools.ts` | OpenAI tool definitions for itinerary agent |
+| `contextBuilder.ts` | Aggregates trip context from multiple sources |
+| `decisionAgent.ts` | GPT-4o agent for "What Now?" suggestions |
+| `foodRecommendations.ts` | Google Places food recommendations |
+| `mapIntelligence.ts` | Map annotation generation |
+| `weatherService.ts` | Open-Meteo integration |
+| `validationSchemas.ts` | Zod schemas for request validation |
+| `duringTripAgentTools.ts` | OpenAI tool definitions for decision agent |
 
 ---
 
@@ -130,6 +173,7 @@ server/
 | `trip_reel_ideas` | Activities from TikTok/YouTube content |
 | `trip_reel_idea_reactions` | Member votes (fire/down/meh/skip) |
 | `trip_itineraries` | Generated itineraries (JSONB) |
+| `trip_members` | Trip membership for group trips |
 
 ---
 
@@ -154,6 +198,8 @@ The `requireAuth` middleware validates the token and sets `request.user` to the 
 | `GOOGLE_MAPS_PLATFORM_API_KEY` | Google Maps/Places API |
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key |
+| `DURING_TRIP_RATE_LIMIT` | Daily request limit per user (default: 20) |
+| `DURING_TRIP_CACHE_TTL` | Context cache TTL in seconds (default: 300) |
 
 ---
 
@@ -171,6 +217,9 @@ pnpm start
 
 # Run AI itinerary builder test
 pnpm tsx src/utils/aiItineraryBuilderTestFunction.ts
+
+# Run during-trip decision agent test
+pnpm tsx src/tools/decisionAgentTestFunction.ts
 ```
 
 ---
@@ -189,7 +238,10 @@ All endpoints return errors in this format:
 Status codes:
 - `400` - Bad request / validation error
 - `401` - Unauthorized (missing/invalid token)
+- `403` - Forbidden (not authorized for trip)
 - `404` - Resource not found
+- `409` - Conflict (scheduling conflicts)
+- `429` - Rate limit exceeded
 - `500` - Server error
 
 ---
