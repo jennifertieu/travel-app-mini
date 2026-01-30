@@ -64,7 +64,7 @@ This covers:
 
 ```bash
 cd server
-pnpm tsx src/tools/decisionAgentTestFunction.ts
+pnpm tsx src/utils/decisionAgentTestFunction.ts
 ```
 
 ---
@@ -219,7 +219,7 @@ pnpm start
 pnpm tsx src/utils/aiItineraryBuilderTestFunction.ts
 
 # Run during-trip decision agent test
-pnpm tsx src/tools/decisionAgentTestFunction.ts
+pnpm tsx src/utils/decisionAgentTestFunction.ts
 ```
 
 ---
