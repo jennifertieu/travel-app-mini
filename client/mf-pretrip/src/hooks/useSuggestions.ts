@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../lib/queryKeys";
+import { createApiUrl, defaultFetchOptions } from "../lib/api";
 
 interface TripSuggestionInput {
   tripId: string;
@@ -20,8 +21,6 @@ interface GenerateSuggestionsResponse {
   message?: string;
 }
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5001";
-
 export function useGenerateSuggestions() {
   const queryClient = useQueryClient();
 
@@ -34,11 +33,9 @@ export function useGenerateSuggestions() {
         tripData.tripId,
       );
 
-      const response = await fetch(`${BACKEND_URL}/suggestions/generate`, {
+      const response = await fetch(createApiUrl("/suggestions/generate"), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        ...defaultFetchOptions,
         body: JSON.stringify(tripData),
       });
 

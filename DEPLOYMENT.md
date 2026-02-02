@@ -193,7 +193,7 @@ Update your frontend environment files with production URLs:
 ```env
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_API_URL=https://your-backend-url.railway.app
+VITE_BACKEND_URL=https://your-backend-url.railway.app
 ```
 
 **Note**: You may also need to update environment files for other micro frontends if they make direct API calls.

@@ -59,7 +59,14 @@ Edit `client/shell/.env.local`:
 ```env
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_BACKEND_URL=http://localhost:5001
 ```
+
+**Note**: For production, set `VITE_BACKEND_URL` to your deployed backend URL.
+
+**Additional Environment Files**: 
+- Copy `client/mf-pretrip/.env.local.example` to `client/mf-pretrip/.env.local` if using AI features
+- Copy `client/mf-duringtrip/.env.local.example` to `client/mf-duringtrip/.env.local` if using maps
 
 ### 3. Start Development Servers
 
@@ -129,6 +136,23 @@ travel-app/
 │   └── package.json      # Server dependencies
 └── docs/                 # Documentation
 ```
+
+### Environment Variables
+
+The app uses environment variables for configuration:
+
+**Backend** (`server/.env`):
+- `PORT` - Server port (default: 5001)
+- `SUPABASE_URL` - Your Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key
+- `OPENAI_API_KEY` - OpenAI API key for AI features
+- `GOOGLE_MAPS_API_KEY` - Google Maps API key
+
+**Frontend** (`.env.local` files):
+- `VITE_SUPABASE_URL` - Your Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key
+- `VITE_BACKEND_URL` - Backend API URL (dev: `http://localhost:5001`, prod: your deployed URL)
+- `VITE_MAPBOX_TOKEN` - Mapbox token for maps (during-trip MF only)
 
 ### Available Scripts
 

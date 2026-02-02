@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { createApiUrl, defaultFetchOptions } from "../lib/api";
 
 export interface EnrichmentRequest {
   url: string;
@@ -83,7 +84,7 @@ export function useEnrichment() {
   const enrich = useCallback(
     async (
       request: EnrichmentRequest,
-      retryAttempt = 0
+      retryAttempt = 0,
     ): Promise<EnrichmentResponse> => {
       setState((prev) => ({
         ...prev,
@@ -93,11 +94,9 @@ export function useEnrichment() {
       }));
 
       try {
-        const response = await fetch("http://localhost:5001/enrich", {
+        const response = await fetch(createApiUrl("/enrich"), {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          ...defaultFetchOptions,
           body: JSON.stringify(request),
         });
 
@@ -114,7 +113,7 @@ export function useEnrichment() {
             console.log(
               `Retrying enrichment (attempt ${
                 retryAttempt + 1
-              }/${MAX_RETRIES})...`
+              }/${MAX_RETRIES})...`,
             );
             await delay(RETRY_DELAY * (retryAttempt + 1)); // Exponential backoff
             return enrich(request, retryAttempt + 1);
@@ -150,7 +149,7 @@ export function useEnrichment() {
           console.log(
             `Retrying enrichment after network error (attempt ${
               retryAttempt + 1
-            }/${MAX_RETRIES})...`
+            }/${MAX_RETRIES})...`,
           );
           await delay(RETRY_DELAY * (retryAttempt + 1));
           return enrich(request, retryAttempt + 1);
@@ -165,7 +164,7 @@ export function useEnrichment() {
         throw error;
       }
     },
-    []
+    [],
   );
 
   const reset = useCallback(() => {
@@ -181,4 +180,3 @@ export function useEnrichment() {
     isError: state.status === "error",
   };
 }
-
