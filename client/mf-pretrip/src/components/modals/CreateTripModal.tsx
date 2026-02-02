@@ -6,6 +6,7 @@ import { useModals } from "../../contexts/ModalContext";
 import { useMember } from "../../contexts/MemberContext";
 import { useCreateTrip } from "../../hooks/useTrip";
 import { useCurrentTrip } from "../../hooks/useCurrentTrip";
+import { mapBudgetLevelToDatabase } from "../../lib/utils";
 import { X, MapPin, Calendar, Users, DollarSign } from "lucide-react";
 
 export function CreateTripModal() {
@@ -36,7 +37,7 @@ export function CreateTripModal() {
         title: formData.title.trim() || null,
         start_date: formData.startDate || null,
         end_date: formData.endDate || null,
-        budget_level: formData.budgetLevel,
+        budget_level: mapBudgetLevelToDatabase(formData.budgetLevel),
         interests: formData.interests.length > 0 ? formData.interests : null,
         created_by: member.id,
       };

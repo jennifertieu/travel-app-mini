@@ -7,22 +7,27 @@ import { Plus, Sparkles } from "lucide-react";
 import { useModals } from "../../contexts/ModalContext";
 import type { Database } from "@travel-app/shared-types";
 
-type Idea = Database['public']['Tables']['trip_reel_ideas']['Row'];
+type Idea = Database["public"]["Tables"]["trip_reel_ideas"]["Row"];
 
 interface IdeaSidebarProps {
   ideas: Idea[];
   isLoading?: boolean;
   isGenerating?: boolean;
+  tripId?: string | null;
 }
 
-export function IdeaSidebar({ ideas, isLoading, isGenerating }: IdeaSidebarProps) {
+export function IdeaSidebar({
+  ideas,
+  isLoading,
+  isGenerating,
+}: IdeaSidebarProps) {
   const { openModal } = useModals();
 
   const showSkeletons = isLoading || (ideas.length === 0 && isGenerating);
 
   return (
     <div className="h-full flex flex-col bg-background border-r">
-      {/* Header */}
+      {/* Ideas Header */}
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold text-lg">Ideas</h2>
@@ -59,9 +64,7 @@ export function IdeaSidebar({ ideas, isLoading, isGenerating }: IdeaSidebarProps
         ) : ideas.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="text-4xl mb-3">💡</div>
-            <p className="text-sm text-muted-foreground mb-4">
-              No ideas yet
-            </p>
+            <p className="text-sm text-muted-foreground mb-4">No ideas yet</p>
             <Button
               onClick={() => openModal("addIdea")}
               size="sm"
@@ -72,12 +75,9 @@ export function IdeaSidebar({ ideas, isLoading, isGenerating }: IdeaSidebarProps
             </Button>
           </div>
         ) : (
-          ideas.map((idea) => (
-            <IdeaCard key={idea.id} idea={idea} />
-          ))
+          ideas.map((idea) => <IdeaCard key={idea.id} idea={idea} />)
         )}
       </div>
     </div>
   );
 }
-

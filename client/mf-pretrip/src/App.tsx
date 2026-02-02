@@ -1,9 +1,11 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemberProvider } from './contexts/MemberContext';
-import { ModalProvider } from './contexts/ModalContext';
-import { TripView } from './views/TripView';
-import { ModalManager } from './components/modals/ModalManager';
-import './globals.css';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemberProvider } from "./contexts/MemberContext";
+import { ModalProvider } from "./contexts/ModalContext";
+import { TripView } from "./views/TripView";
+import { JoinTripPage } from "./views/JoinTripPage";
+import { ModalManager } from "./components/modals/ModalManager";
+import { setupGlobalDebugUtils } from "./lib/debugUtils";
+import "./globals.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -14,15 +16,30 @@ const queryClient = new QueryClient({
   },
 });
 
+// Setup debug utilities in development
+const isDevelopment =
+  typeof window !== "undefined" && window.location.hostname === "localhost";
+if (isDevelopment) {
+  setupGlobalDebugUtils(queryClient);
+}
+
 function App() {
+  // Check if we're in join mode by looking at the URL
+  const isJoinMode = window.location.pathname.startsWith("/join/");
+
   return (
     <QueryClientProvider client={queryClient}>
       <MemberProvider>
         <ModalProvider>
-          <TripView />
+          {isJoinMode ? <JoinTripPage /> : <TripView />}
           <ModalManager />
         </ModalProvider>
       </MemberProvider>
+      {/* 
+        React Query DevTools can be added by installing: 
+        pnpm add @tanstack/react-query-devtools
+        Then import and use: <ReactQueryDevtools initialIsOpen={false} />
+      */}
     </QueryClientProvider>
   );
 }

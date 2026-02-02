@@ -1,11 +1,12 @@
 import React, { useEffect, useRef } from "react";
 import { cn } from "../lib/utils";
 import { Tables } from "@travel-app/shared-types";
+import { CollaborativeTrip } from "../hooks/useUserTrips";
 
 type Trip = Tables<"trips">;
 
 interface TripDropdownContentProps {
-  trips: Trip[];
+  trips: CollaborativeTrip[];
   currentTripId: string | null;
   isLoading: boolean;
   error: Error | null;

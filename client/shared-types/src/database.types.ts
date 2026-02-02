@@ -50,6 +50,80 @@ export type Database = {
         };
         Relationships: [];
       };
+      trip_collaborators: {
+        Row: {
+          created_at: string | null;
+          id: string;
+          invite_token: string | null;
+          joined_at: string | null;
+          trip_id: string;
+          user_id: string | null;
+        };
+        Insert: {
+          created_at?: string | null;
+          id?: string;
+          invite_token?: string | null;
+          joined_at?: string | null;
+          trip_id: string;
+          user_id?: string | null;
+        };
+        Update: {
+          created_at?: string | null;
+          id?: string;
+          invite_token?: string | null;
+          joined_at?: string | null;
+          trip_id?: string;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fk_trip_collaborators_trip_id";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "fk_trip_collaborators_user_id";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "member_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      trip_itineraries: {
+        Row: {
+          created_at: string;
+          id: string;
+          itinerary: Json | null;
+          trip_id: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          itinerary?: Json | null;
+          trip_id?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          itinerary?: Json | null;
+          trip_id?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "trip_itineraries_trip_id_fkey";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       trip_members: {
         Row: {
           id: string;
@@ -196,8 +270,8 @@ export type Database = {
           place: Json | null;
           source_canonical_url: string | null;
           source_platform: string;
-          source_url: string;
-          source_video_id: string;
+          source_url: string | null;
+          source_video_id: string | null;
           summary: string | null;
           tags: string[] | null;
           time_of_day: string | null;
@@ -221,8 +295,8 @@ export type Database = {
           place?: Json | null;
           source_canonical_url?: string | null;
           source_platform: string;
-          source_url: string;
-          source_video_id: string;
+          source_url?: string | null;
+          source_video_id?: string | null;
           summary?: string | null;
           tags?: string[] | null;
           time_of_day?: string | null;
@@ -246,8 +320,8 @@ export type Database = {
           place?: Json | null;
           source_canonical_url?: string | null;
           source_platform?: string;
-          source_url?: string;
-          source_video_id?: string;
+          source_url?: string | null;
+          source_video_id?: string | null;
           summary?: string | null;
           tags?: string[] | null;
           time_of_day?: string | null;

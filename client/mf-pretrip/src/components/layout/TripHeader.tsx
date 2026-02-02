@@ -4,18 +4,16 @@ import { Button } from "../ui/button";
 import { useModals } from "../../contexts/ModalContext";
 import { Settings, MapPin, Plus } from "lucide-react";
 import { TripSelector } from "../TripSelector";
+import { TripMembersAvatars } from "../TripMembersAvatars";
 import { useCurrentTrip } from "../../hooks/useCurrentTrip";
 import { useUserTrips } from "../../hooks/useUserTrips";
 import { useMember } from "../../contexts/MemberContext";
+import { Database } from "@travel-app/shared-types";
+
+type Trip = Database["public"]["Tables"]["trips"]["Row"];
 
 interface TripHeaderProps {
-  trip: {
-    id: string;
-    title?: string | null;
-    destination: string;
-    start_date?: string | null;
-    end_date?: string | null;
-  } | null;
+  trip: Trip | null;
 }
 
 export function TripHeader({ trip }: TripHeaderProps) {
@@ -29,6 +27,7 @@ export function TripHeader({ trip }: TripHeaderProps) {
   } = useUserTrips(member?.id || null);
 
   const handleTripSelect = (tripId: string) => {
+    console.log(`🎯 TripHeader: Selecting trip ${tripId}`);
     setCurrentTrip(tripId);
   };
 
@@ -90,6 +89,9 @@ export function TripHeader({ trip }: TripHeaderProps) {
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
+          {/* Trip Members Avatars */}
+          <TripMembersAvatars tripId={trip.id} />
+
           <Button
             variant="ghost"
             size="sm"

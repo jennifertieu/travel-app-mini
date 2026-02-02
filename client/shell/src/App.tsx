@@ -46,6 +46,8 @@ const RootLayout = () => {
           padding: "1rem",
           backgroundColor: "#f9fafb",
           flexShrink: 0,
+          position: "relative",
+          zIndex: 2000,
         }}
       >
         <div
@@ -121,6 +123,18 @@ const pretripRoute = createRoute({
   ),
 });
 
+const joinRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/join/$inviteToken",
+  component: () => (
+    <AuthGuard>
+      <Suspense fallback={<LoadingFallback name="Pre-Trip" />}>
+        <PretripApp />
+      </Suspense>
+    </AuthGuard>
+  ),
+});
+
 const itineraryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/itinerary",
@@ -149,6 +163,7 @@ const duringtripRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   pretripRoute,
+  joinRoute,
   itineraryRoute,
   duringtripRoute,
 ]);

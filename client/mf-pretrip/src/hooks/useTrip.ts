@@ -1,24 +1,25 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../lib/supabase';
-import { Database, TablesInsert, TablesUpdate } from '@travel-app/shared-types';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "../lib/supabase";
+import { Database, TablesInsert, TablesUpdate } from "@travel-app/shared-types";
+import { queryKeys } from "../lib/queryKeys";
 
-type Trip = Database['public']['Tables']['trips']['Row'];
-type TripInsert = TablesInsert<'trips'>;
-type TripUpdate = TablesUpdate<'trips'>;
+type Trip = Database["public"]["Tables"]["trips"]["Row"];
+type TripInsert = TablesInsert<"trips">;
+type TripUpdate = TablesUpdate<"trips">;
 
 /**
  * Fetch a single trip by ID
  */
 export function useTrip(tripId: string | null) {
   return useQuery({
-    queryKey: ['trip', tripId],
+    queryKey: queryKeys.trip(tripId || ""),
     queryFn: async () => {
       if (!tripId) return null;
 
       const { data, error } = await supabase
-        .from('trips')
-        .select('*')
-        .eq('id', tripId)
+        .from("trips")
+        .select("*")
+        .eq("id", tripId)
         .single();
 
       if (error) throw error;
@@ -37,7 +38,7 @@ export function useCreateTrip() {
   return useMutation({
     mutationFn: async (trip: TripInsert) => {
       const { data, error } = await supabase
-        .from('trips')
+        .from("trips")
         .insert(trip)
         .select()
         .single();
@@ -46,7 +47,7 @@ export function useCreateTrip() {
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['trip', data.id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.trip(data.id) });
     },
   });
 }
@@ -60,9 +61,9 @@ export function useUpdateTrip(tripId: string) {
   return useMutation({
     mutationFn: async (updates: TripUpdate) => {
       const { data, error } = await supabase
-        .from('trips')
+        .from("trips")
         .update(updates)
-        .eq('id', tripId)
+        .eq("id", tripId)
         .select()
         .single();
 
@@ -70,8 +71,7 @@ export function useUpdateTrip(tripId: string) {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['trip', tripId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.trip(tripId) });
     },
   });
 }
-

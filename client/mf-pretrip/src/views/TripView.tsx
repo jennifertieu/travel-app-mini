@@ -26,6 +26,13 @@ export function TripView() {
 
   const { data: ideas = [], isLoading: ideasLoading } = useIdeas(tripId);
 
+  // Debug logging
+  useEffect(() => {
+    console.log(`🎯 TripView: tripId changed to ${tripId}`);
+    console.log(`🎯 TripView: trip object:`, trip);
+    console.log(`🎯 TripView: ideas count:`, ideas.length);
+  }, [tripId, trip, ideas.length]);
+
   // Reset generating state when trip changes
   useEffect(() => {
     if (tripId) {

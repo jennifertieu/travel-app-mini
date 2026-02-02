@@ -2,29 +2,100 @@ import { useState, useEffect, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTrip } from "./useTrip";
 import { Database } from "@travel-app/shared-types";
+import {
+  getTripCacheManager,
+  TripLoadingState,
+} from "../services/TripCacheManager";
 
 type Trip = Database["public"]["Tables"]["trips"]["Row"];
 
 const CURRENT_TRIP_KEY = "current-trip-id";
 
 /**
- * Enhanced hook for managing the current trip with localStorage persistence
- * Extends the existing useTrip hook with trip switching and cache invalidation
+ * Enhanced hook for managing the current trip with URL and localStorage persistence
+ * Extends the existing useTrip hook with comprehensive cache management and trip switching
  */
 export function useCurrentTrip() {
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
   const [isLocalStorageAvailable, setIsLocalStorageAvailable] = useState(true);
+  const [loadingState, setLoadingState] = useState<TripLoadingState | null>(
+    null,
+  );
   const queryClient = useQueryClient();
+  const tripCacheManager = getTripCacheManager(queryClient);
 
   // Use the existing useTrip hook to fetch trip data
   const { data: currentTrip, isLoading, error } = useTrip(currentTripId);
 
-  // Initialize trip ID from localStorage on mount
+  // Subscribe to loading state changes from cache manager
+  useEffect(() => {
+    if (!currentTripId) return;
+
+    console.log(
+      `🎯 useCurrentTrip: Setting up loading state subscription for trip ${currentTripId}`,
+    );
+
+    const unsubscribe = tripCacheManager.subscribeToLoadingStateChanges(
+      (state) => {
+        if (state.tripId === currentTripId) {
+          console.log(
+            `🔄 useCurrentTrip: Loading state changed for trip ${currentTripId}:`,
+            state,
+          );
+          setLoadingState(state);
+        }
+      },
+    );
+
+    // Get initial loading state
+    const initialState = tripCacheManager.getTripLoadingState(currentTripId);
+    setLoadingState(initialState);
+
+    return unsubscribe;
+  }, [currentTripId, tripCacheManager]);
+
+  // Get trip ID from URL parameters
+  const getTripIdFromUrl = useCallback(() => {
+    if (typeof window === "undefined") return null;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get("tripId");
+  }, []);
+
+  // Update URL with trip ID
+  const updateUrlWithTripId = useCallback((tripId: string | null) => {
+    if (typeof window === "undefined") return;
+
+    const url = new URL(window.location.href);
+    if (tripId) {
+      url.searchParams.set("tripId", tripId);
+    } else {
+      url.searchParams.delete("tripId");
+    }
+
+    // Update URL without triggering a page reload
+    window.history.replaceState({}, "", url.toString());
+  }, []);
+
+  // Initialize trip ID from URL first, then localStorage on mount
   useEffect(() => {
     try {
       if (typeof window !== "undefined") {
-        const storedTripId = localStorage.getItem(CURRENT_TRIP_KEY);
-        setCurrentTripId(storedTripId);
+        // Check URL first
+        const urlTripId = getTripIdFromUrl();
+        if (urlTripId) {
+          setCurrentTripId(urlTripId);
+          // Also update localStorage to match URL
+          localStorage.setItem(CURRENT_TRIP_KEY, urlTripId);
+        } else {
+          // Fall back to localStorage
+          const storedTripId = localStorage.getItem(CURRENT_TRIP_KEY);
+          if (storedTripId) {
+            setCurrentTripId(storedTripId);
+            // Update URL to match localStorage
+            updateUrlWithTripId(storedTripId);
+          }
+        }
       }
     } catch (error) {
       console.warn(
@@ -33,18 +104,46 @@ export function useCurrentTrip() {
       );
       setIsLocalStorageAvailable(false);
     }
-  }, []);
+  }, [getTripIdFromUrl, updateUrlWithTripId]);
+
+  // Listen for URL changes (browser back/forward)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handlePopState = () => {
+      const urlTripId = getTripIdFromUrl();
+      if (urlTripId !== currentTripId) {
+        setCurrentTripId(urlTripId);
+        if (urlTripId && isLocalStorageAvailable) {
+          try {
+            localStorage.setItem(CURRENT_TRIP_KEY, urlTripId);
+          } catch (error) {
+            console.warn("Failed to update localStorage on URL change:", error);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [currentTripId, getTripIdFromUrl, isLocalStorageAvailable]);
 
   /**
-   * Set the current trip and persist to localStorage
-   * Invalidates trip-specific caches when switching trips
+   * Set the current trip and persist to URL and localStorage
+   * Uses comprehensive cache management for proper trip switching
    */
   const setCurrentTrip = useCallback(
     (tripId: string) => {
       const previousTripId = currentTripId;
 
-      // Update state immediately
+      // Update state immediately for UI responsiveness
+      console.log(
+        `🎯 useCurrentTrip: Updating currentTripId from ${previousTripId} to ${tripId}`,
+      );
       setCurrentTripId(tripId);
+
+      // Update URL
+      updateUrlWithTripId(tripId);
 
       // Persist to localStorage if available
       if (isLocalStorageAvailable) {
@@ -56,38 +155,40 @@ export function useCurrentTrip() {
         }
       }
 
-      // Invalidate trip-specific data caches when switching trips
-      if (previousTripId && previousTripId !== tripId) {
-        // Invalidate ideas cache for the previous trip
-        queryClient.invalidateQueries({
-          queryKey: ["ideas", previousTripId],
-        });
-
-        // Invalidate suggestions cache for the previous trip
-        queryClient.invalidateQueries({
-          queryKey: ["suggestions", previousTripId],
-        });
-
-        // Remove generating suggestions flag when switching trips
-        if (isLocalStorageAvailable) {
+      // Use Trip Cache Manager for comprehensive cache invalidation and data refetching
+      // Run this asynchronously to not block UI updates
+      if (previousTripId !== tripId) {
+        (async () => {
           try {
-            localStorage.removeItem("generating-suggestions");
-          } catch (error) {
-            console.warn(
-              "Failed to remove generating-suggestions flag:",
-              error,
+            console.log(
+              `🔄 Switching from trip ${previousTripId} to ${tripId}`,
             );
-          }
-        }
-      }
+            await tripCacheManager.switchTrip(previousTripId, tripId);
 
-      // Prefetch the new trip data
-      queryClient.prefetchQuery({
-        queryKey: ["trip", tripId],
-        staleTime: 5 * 60 * 1000, // 5 minutes
-      });
+            // Remove generating suggestions flag when switching trips
+            if (isLocalStorageAvailable) {
+              try {
+                localStorage.removeItem("generating-suggestions");
+              } catch (error) {
+                console.warn(
+                  "Failed to remove generating-suggestions flag:",
+                  error,
+                );
+              }
+            }
+          } catch (error) {
+            console.error("Failed to switch trip:", error);
+            // Don't throw here - let the user continue even if cache management fails
+          }
+        })();
+      }
     },
-    [currentTripId, isLocalStorageAvailable, queryClient],
+    [
+      currentTripId,
+      isLocalStorageAvailable,
+      updateUrlWithTripId,
+      tripCacheManager,
+    ],
   );
 
   /**
@@ -95,6 +196,9 @@ export function useCurrentTrip() {
    */
   const clearCurrentTrip = useCallback(() => {
     setCurrentTripId(null);
+
+    // Clear URL parameter
+    updateUrlWithTripId(null);
 
     if (isLocalStorageAvailable) {
       try {
@@ -104,7 +208,7 @@ export function useCurrentTrip() {
         console.warn("Failed to clear trip data from localStorage:", error);
       }
     }
-  }, [isLocalStorageAvailable]);
+  }, [isLocalStorageAvailable, updateUrlWithTripId]);
 
   /**
    * Handle trip creation - automatically set as current trip
@@ -130,6 +234,32 @@ export function useCurrentTrip() {
     [setCurrentTrip, isLocalStorageAvailable, queryClient],
   );
 
+  /**
+   * Manually refresh all data for the current trip
+   */
+  const refreshTripData = useCallback(async () => {
+    if (!currentTripId) return;
+
+    try {
+      await tripCacheManager.refreshTripData(currentTripId);
+    } catch (error) {
+      console.error("Failed to refresh trip data:", error);
+    }
+  }, [currentTripId, tripCacheManager]);
+
+  /**
+   * Retry failed queries for the current trip
+   */
+  const retryFailedQueries = useCallback(async () => {
+    if (!currentTripId) return;
+
+    try {
+      await tripCacheManager.retryFailedQueries(currentTripId);
+    } catch (error) {
+      console.error("Failed to retry failed queries:", error);
+    }
+  }, [currentTripId, tripCacheManager]);
+
   return {
     currentTrip,
     currentTripId,
@@ -139,5 +269,11 @@ export function useCurrentTrip() {
     isLoading,
     error,
     isLocalStorageAvailable,
+    // Enhanced properties
+    loadingState,
+    isSwitching: loadingState?.isSwitching || false,
+    // New methods
+    refreshTripData,
+    retryFailedQueries,
   };
 }

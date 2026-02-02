@@ -26,3 +26,30 @@ export function generateUUID(): string {
   });
 }
 
+/**
+ * Maps frontend budget level values to database values
+ */
+export function mapBudgetLevelToDatabase(
+  frontendLevel: "low" | "medium" | "high",
+): "$" | "$$" | "$$$" {
+  const budgetLevelMap = {
+    low: "$" as const,
+    medium: "$$" as const,
+    high: "$$$" as const,
+  };
+  return budgetLevelMap[frontendLevel];
+}
+
+/**
+ * Maps database budget level values to frontend values
+ */
+export function mapBudgetLevelFromDatabase(
+  dbLevel: "$" | "$$" | "$$$",
+): "low" | "medium" | "high" {
+  const budgetLevelMap = {
+    $: "low" as const,
+    $$: "medium" as const,
+    $$$: "high" as const,
+  };
+  return budgetLevelMap[dbLevel];
+}

@@ -1,14 +1,16 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from "react";
 
-type ModalType = 
-  | 'createTrip'
-  | 'addIdea'
-  | 'ideaDetail'
-  | 'tripSettings'
-  | 'profile'
-  | 'shortlist'
-  | 'ratingMode'
-  | 'changeLocation';
+type ModalType =
+  | "createTrip"
+  | "addIdea"
+  | "ideaDetail"
+  | "tripSettings"
+  | "profile"
+  | "shortlist"
+  | "ratingMode"
+  | "changeLocation"
+  | "inviteLink"
+  | "tripMembers";
 
 interface ModalState {
   [key: string]: boolean;
@@ -58,7 +60,9 @@ export function ModalProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <ModalContext.Provider value={{ isOpen, openModal, closeModal, getModalData, modalData }}>
+    <ModalContext.Provider
+      value={{ isOpen, openModal, closeModal, getModalData, modalData }}
+    >
       {children}
     </ModalContext.Provider>
   );
@@ -67,8 +71,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
 export function useModals() {
   const context = useContext(ModalContext);
   if (context === undefined) {
-    throw new Error('useModals must be used within a ModalProvider');
+    throw new Error("useModals must be used within a ModalProvider");
   }
   return context;
 }
-

@@ -3,12 +3,14 @@
 import { AddIdeaModal } from "./AddIdeaModal";
 import { IdeaDetailModal } from "./IdeaDetailModal";
 import { CreateTripModal } from "./CreateTripModal";
+import { InviteLinkModal } from "./InviteLinkModal";
+import { TripMembersModal } from "./TripMembersModal";
 import { useModals } from "../../contexts/ModalContext";
 import { useIdeas } from "../../hooks/useIdeas";
 import { useCurrentTrip } from "../../hooks/useCurrentTrip";
 
 export function ModalManager() {
-  const { getModalData, isOpen } = useModals();
+  const { getModalData, isOpen, closeModal } = useModals();
 
   // Use enhanced current trip management
   const { currentTripId } = useCurrentTrip();
@@ -20,12 +22,24 @@ export function ModalManager() {
     ? ideas.find((idea: any) => idea.id === ideaDetailData.ideaId)
     : null;
 
+  // Get trip members modal data
+  const tripMembersData = getModalData("tripMembers");
+
   return (
     <>
       <AddIdeaModal />
       <CreateTripModal />
+      <InviteLinkModal />
       {/* Show modal immediately, even if idea is still loading */}
       {isOpen("ideaDetail") && <IdeaDetailModal idea={selectedIdea} />}
+      {/* Trip Members Modal */}
+      {isOpen("tripMembers") && tripMembersData?.tripId && (
+        <TripMembersModal
+          isOpen={true}
+          onClose={() => closeModal("tripMembers")}
+          tripId={tripMembersData.tripId}
+        />
+      )}
     </>
   );
 }
