@@ -11,11 +11,25 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { AuthNav } from "./components/AuthNav";
 import { AuthGuard } from "./components/AuthGuard";
 
-// Lazy load the MFE apps
-// Using unique aliases to prevent Zephyr from auto-overriding URLs
-const PretripApp = lazy(() => import("pretrip_main/App"));
-const ItineraryApp = lazy(() => import("itinerary_main/App"));
-const DuringtripApp = lazy(() => import("duringtrip_main/App"));
+// Lazy load the MFE apps with error handling
+const PretripApp = lazy(() =>
+  import("pretrip_main/App").catch((err) => {
+    console.error("Failed to load pretrip app:", err);
+    return { default: () => <div>Error loading Pre-Trip app</div> };
+  }),
+);
+const ItineraryApp = lazy(() =>
+  import("itinerary_main/App").catch((err) => {
+    console.error("Failed to load itinerary app:", err);
+    return { default: () => <div>Error loading Itinerary app</div> };
+  }),
+);
+const DuringtripApp = lazy(() =>
+  import("duringtrip_main/App").catch((err) => {
+    console.error("Failed to load duringtrip app:", err);
+    return { default: () => <div>Error loading During Trip app</div> };
+  }),
+);
 
 // Loading fallback component
 const LoadingFallback = ({ name }: { name: string }) => (
@@ -158,4 +172,3 @@ const App = () => {
 };
 
 export default App;
-
