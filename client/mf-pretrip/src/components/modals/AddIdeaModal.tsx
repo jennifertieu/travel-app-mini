@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "../ui/button";
 import { useModals } from "../../contexts/ModalContext";
 import { useMember } from "../../contexts/MemberContext";
-import { useTrip } from "../../hooks/useTrip";
+import { useCurrentTrip } from "../../hooks/useCurrentTrip";
 import { useAddIdea, useUpdateIdea } from "../../hooks/useIdeas";
 import { useEnrichment, PlaceReview } from "../../hooks/useEnrichment";
 import { X, Check, AlertCircle } from "lucide-react";
@@ -69,11 +69,7 @@ export function AddIdeaModal() {
     reset,
   } = useEnrichment();
 
-  const tripId =
-    typeof window !== "undefined"
-      ? localStorage.getItem("current-trip-id")
-      : null;
-  const { data: currentTrip } = useTrip(tripId);
+  const { currentTrip, currentTripId } = useCurrentTrip();
 
   const [url, setUrl] = useState("");
   const [comment, setComment] = useState("");
@@ -159,7 +155,7 @@ export function AddIdeaModal() {
   };
 
   const startEnrichmentPipeline = async (videoUrl: string) => {
-    if (!currentTrip || !member) {
+    if (!currentTripId || !member) {
       console.error("No trip or member selected");
       return;
     }
@@ -174,7 +170,7 @@ export function AddIdeaModal() {
     const videoId = extractVideoId(videoUrl);
     const initialIdea = {
       id: newIdeaId,
-      trip_id: currentTrip.id,
+      trip_id: currentTripId,
       created_by: member.id,
       source_url: videoUrl,
       source_platform: platform || "youtube",

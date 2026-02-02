@@ -3,6 +3,10 @@
 import { Button } from "../ui/button";
 import { useModals } from "../../contexts/ModalContext";
 import { Settings, MapPin, Plus } from "lucide-react";
+import { TripSelector } from "../TripSelector";
+import { useCurrentTrip } from "../../hooks/useCurrentTrip";
+import { useUserTrips } from "../../hooks/useUserTrips";
+import { useMember } from "../../contexts/MemberContext";
 
 interface TripHeaderProps {
   trip: {
@@ -16,16 +20,35 @@ interface TripHeaderProps {
 
 export function TripHeader({ trip }: TripHeaderProps) {
   const { openModal } = useModals();
+  const { member } = useMember();
+  const { setCurrentTrip } = useCurrentTrip();
+  const {
+    data: userTrips = [],
+    isLoading: tripsLoading,
+    error: tripsError,
+  } = useUserTrips(member?.id || null);
+
+  const handleTripSelect = (tripId: string) => {
+    setCurrentTrip(tripId);
+  };
 
   if (!trip) {
     return (
-      <header className="border-b bg-muted/30 px-4 py-3 md:px-6">
+      <header className="relative z-[1001] border-b bg-muted/30 px-4 py-3 md:px-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Travel Itinerary</h1>
+          <div className="flex-1 max-w-xs">
+            <TripSelector
+              currentTrip={null}
+              trips={userTrips}
+              isLoading={tripsLoading}
+              error={tripsError}
+              onTripSelect={handleTripSelect}
+            />
+          </div>
           <Button
             onClick={() => openModal("createTrip")}
             size="sm"
-            className="bg-primary hover:bg-primary/90"
+            className="bg-primary hover:bg-primary/90 ml-4"
           >
             <Plus className="h-4 w-4 mr-2" />
             Create Trip
@@ -38,11 +61,17 @@ export function TripHeader({ trip }: TripHeaderProps) {
   const displayTitle = trip.title || trip.destination;
 
   return (
-    <header className="border-b bg-background px-4 py-3 md:px-6">
+    <header className="relative z-[1001] border-b bg-background px-4 py-3 md:px-6">
       <div className="flex items-center justify-between gap-4">
-        {/* Left: Trip Title */}
-        <div className="flex items-center gap-3 min-w-0">
-          <h1 className="text-xl font-semibold truncate">{displayTitle}</h1>
+        {/* Left: Trip Selector */}
+        <div className="flex items-center gap-3 min-w-0 flex-1 max-w-xs">
+          <TripSelector
+            currentTrip={trip}
+            trips={userTrips}
+            isLoading={tripsLoading}
+            error={tripsError}
+            onTripSelect={handleTripSelect}
+          />
         </div>
 
         {/* Center: Trip Metadata */}
@@ -53,7 +82,8 @@ export function TripHeader({ trip }: TripHeaderProps) {
           </div>
           {trip.start_date && trip.end_date && (
             <div className="text-sm text-muted-foreground">
-              {new Date(trip.start_date).toLocaleDateString()} - {new Date(trip.end_date).toLocaleDateString()}
+              {new Date(trip.start_date).toLocaleDateString()} -{" "}
+              {new Date(trip.end_date).toLocaleDateString()}
             </div>
           )}
         </div>
@@ -73,4 +103,3 @@ export function TripHeader({ trip }: TripHeaderProps) {
     </header>
   );
 }
-

@@ -10,12 +10,9 @@ export default defineConfig({
       name: "shell",
       filename: "remoteEntry.js",
       remotes: {
-        pretrip_main:
-          "mf_pretrip@https://thomas-nguyen-207-travel-app-pretrip-travel-app-l-4da9edcda-ze.zephyrcloud.app/remoteEntry.js",
-        itinerary_main:
-          "mf_itinerary@https://thomas-nguyen-208-travel-app-itinerary-travel-app-ca488dd61-ze.zephyrcloud.app/remoteEntry.js",
-        duringtrip_main:
-          "mf_duringtrip@https://thomas-nguyen-209-travel-app-duringtrip-travel-ap-bcb0cdfbd-ze.zephyrcloud.app/remoteEntry.js",
+        pretrip_main: "mf_pretrip@http://localhost:3001/remoteEntry.js",
+        itinerary_main: "mf_itinerary@http://localhost:3002/remoteEntry.js",
+        duringtrip_main: "mf_duringtrip@http://localhost:3003/remoteEntry.js",
       },
       shared: {
         react: {
