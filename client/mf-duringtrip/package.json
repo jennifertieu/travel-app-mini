@@ -1,33 +1,12 @@
 {
-  "name": "mf-duringtrip",
+  "name": "travel-app-duringtrip",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
+  "description": "Travel App During Trip Micro Frontend",
+  "main": "dist/index.js",
   "scripts": {
-    "build": "rsbuild build",
     "dev": "DISABLE_DTS=true MF_DISABLE_DTS=true rsbuild dev",
+    "build": "rsbuild build",
     "preview": "rsbuild preview"
-  },
-  "dependencies": {
-    "@radix-ui/react-slot": "^1.2.4",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "mapbox-gl": "^3.17.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "tailwind-merge": "^3.4.0"
-  },
-  "devDependencies": {
-    "@module-federation/rsbuild-plugin": "^0.8.4",
-    "@rsbuild/core": "^1.1.10",
-    "@rsbuild/plugin-react": "^1.0.7",
-    "@types/mapbox-gl": "^3.4.1",
-    "@types/react": "^19.0.1",
-    "@types/react-dom": "^19.0.2",
-    "autoprefixer": "^10.4.23",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.19",
-    "typescript": "^5.7.2",
-    "zephyr-rsbuild-plugin": "^0.1.2"
   }
 }
