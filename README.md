@@ -11,7 +11,7 @@ A modern travel planning application built with **Module Federation** micro fron
 - **During Trip MF** (`localhost:3003`) - Live trip features and maps
 
 ### Backend
-- **Express API** (`localhost:5000`) - REST API with Supabase integration
+- **Express API** (`localhost:5001`) - REST API with Supabase integration
 - **Supabase** - Database, authentication, and real-time features
 
 ## 🚀 Quick Start
@@ -41,7 +41,7 @@ cp .env.example .env
 
 Edit `server/.env` with your configuration:
 ```env
-PORT=5000
+PORT=5001
 SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
@@ -70,7 +70,7 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 cd server
 pnpm dev
 ```
-Wait for the server to start (you'll see "Server running on port 5000").
+Wait for the server to start (you'll see "Server running on port 5001").
 
 #### Step 2: Start Frontend Services
 In a new terminal:
@@ -106,7 +106,7 @@ cd client && pnpm dev:shell      # Port 2000
 ### 4. Access the Application
 
 - **Main App**: http://localhost:2000
-- **API**: http://localhost:5000
+- **API**: http://localhost:5001
 - **Individual MFs** (for development):
   - Pre-Trip: http://localhost:3001
   - Itinerary: http://localhost:3002
