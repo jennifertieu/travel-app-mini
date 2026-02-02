@@ -19,6 +19,7 @@ export function TripView() {
   const {
     currentTrip: trip,
     currentTripId: tripId,
+    setCurrentTrip,
     handleTripCreated,
     isLoading: tripLoading,
     error: tripError,
@@ -81,10 +82,10 @@ export function TripView() {
   }
 
   // Loading state - show after we know there's a tripId
-  if (tripLoading) {
+    if (tripLoading) {
     return (
       <div className="h-full flex flex-col bg-background">
-        <TripHeader trip={null} />
+        <TripHeader trip={null} onTripSelect={setCurrentTrip} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto"></div>
@@ -99,7 +100,7 @@ export function TripView() {
   if (tripError && tripId) {
     return (
       <div className="h-full flex flex-col bg-background">
-        <TripHeader trip={null} />
+        <TripHeader trip={null} onTripSelect={setCurrentTrip} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <p className="text-destructive">Failed to load trip</p>
@@ -127,7 +128,7 @@ export function TripView() {
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Header */}
-      <TripHeader trip={trip || null} />
+      <TripHeader trip={trip || null} onTripSelect={setCurrentTrip} />
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">

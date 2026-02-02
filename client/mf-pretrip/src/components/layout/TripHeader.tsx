@@ -5,7 +5,6 @@ import { useModals } from "../../contexts/ModalContext";
 import { Settings, MapPin, Plus } from "lucide-react";
 import { TripSelector } from "../TripSelector";
 import { TripMembersAvatars } from "../TripMembersAvatars";
-import { useCurrentTrip } from "../../hooks/useCurrentTrip";
 import { useUserTrips } from "../../hooks/useUserTrips";
 import { useMember } from "../../contexts/MemberContext";
 import { Database } from "@travel-app/shared-types";
@@ -14,12 +13,12 @@ type Trip = Database["public"]["Tables"]["trips"]["Row"];
 
 interface TripHeaderProps {
   trip: Trip | null;
+  onTripSelect: (tripId: string) => void;
 }
 
-export function TripHeader({ trip }: TripHeaderProps) {
+export function TripHeader({ trip, onTripSelect }: TripHeaderProps) {
   const { openModal } = useModals();
   const { member } = useMember();
-  const { setCurrentTrip } = useCurrentTrip();
   const {
     data: userTrips = [],
     isLoading: tripsLoading,
@@ -28,7 +27,7 @@ export function TripHeader({ trip }: TripHeaderProps) {
 
   const handleTripSelect = (tripId: string) => {
     console.log(`🎯 TripHeader: Selecting trip ${tripId}`);
-    setCurrentTrip(tripId);
+    onTripSelect(tripId);
   };
 
   if (!trip) {
