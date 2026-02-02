@@ -6,13 +6,10 @@ export default defineConfig({
   plugins: [
     pluginReact(),
     pluginModuleFederation({
-      name: "mf_pretrip",
+      name: "mf_duringtrip",
       filename: "remoteEntry.js",
       exposes: {
         "./App": "./src/App.tsx",
-        "./place-search": "./src/lib/place-search.ts",
-        "./unfurl": "./src/lib/unfurl.ts",
-        "./IdeaDetailModal": "./src/components/modals/IdeaDetailModal.tsx",
       },
       shared: {
         react: {
@@ -36,10 +33,10 @@ export default defineConfig({
     }),
   ],
   server: {
-    port: 3001,
+    port: 3003,
   },
   html: {
-    title: "Pre-Trip MFE",
+    title: "During Trip MFE",
   },
   output: {
     assetPrefix: "auto",

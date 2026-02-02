@@ -2,11 +2,8 @@ import { defineConfig } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
 import { pluginModuleFederation } from "@module-federation/rsbuild-plugin";
 
-const USE_ZEPHYR = process.env.USE_ZEPHYR === "true";
-
-// Conditionally import Zephyr plugin
-const getPlugins = async () => {
-  const plugins = [
+export default defineConfig({
+  plugins: [
     pluginReact(),
     pluginModuleFederation({
       name: "mf_itinerary",
@@ -15,22 +12,21 @@ const getPlugins = async () => {
         "./App": "./src/App.tsx",
       },
       shared: {
-        react: { singleton: true, requiredVersion: "^19.0.0" },
-        "react-dom": { singleton: true, requiredVersion: "^19.0.0" },
+        react: {
+          singleton: true,
+          requiredVersion: "^19.0.0",
+          eager: false, // Change back to false for remotes
+          strictVersion: false,
+        },
+        "react-dom": {
+          singleton: true,
+          requiredVersion: "^19.0.0",
+          eager: false, // Change back to false for remotes
+          strictVersion: false,
+        },
       },
     }),
-  ];
-
-  if (USE_ZEPHYR) {
-    const { withZephyr } = await import("zephyr-rsbuild-plugin");
-    plugins.push(withZephyr());
-  }
-
-  return plugins;
-};
-
-export default defineConfig(async () => ({
-  plugins: await getPlugins(),
+  ],
   server: {
     port: 3002,
   },
@@ -40,4 +36,4 @@ export default defineConfig(async () => ({
   output: {
     assetPrefix: "auto",
   },
-}));
+});

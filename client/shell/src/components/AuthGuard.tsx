@@ -6,10 +6,6 @@ interface AuthGuardProps {
 }
 
 export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
-  // TEMPORARILY DISABLED - Auth requirement bypassed for development/testing
-  // TODO: Re-enable authentication by uncommenting the code below
-  
-  /*
   const { user, loading, signInWithGoogle } = useAuth();
 
   const handleSignIn = async () => {
@@ -60,10 +56,25 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
           }}
         >
           <div>
-            <h1 style={{ fontSize: "1.5rem", fontWeight: "500", color: "#374151", margin: "0 0 0.75rem 0", letterSpacing: "-0.01em" }}>
+            <h1
+              style={{
+                fontSize: "1.5rem",
+                fontWeight: "500",
+                color: "#374151",
+                margin: "0 0 0.75rem 0",
+                letterSpacing: "-0.01em",
+              }}
+            >
               Travel App
             </h1>
-            <p style={{ fontSize: "0.875rem", color: "#9ca3af", margin: 0, lineHeight: "1.5" }}>
+            <p
+              style={{
+                fontSize: "0.875rem",
+                color: "#9ca3af",
+                margin: 0,
+                lineHeight: "1.5",
+              }}
+            >
               Sign in to access your trips and continue planning
             </p>
           </div>
@@ -101,7 +112,6 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
       </div>
     );
   }
-  */
 
   return <>{children}</>;
 };

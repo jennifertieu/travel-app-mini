@@ -18,6 +18,9 @@ build/
 *.swo
 *~
 
+# Kiro files (AI assistant workspace files)
+.kiro/
+
 # OS
 .DS_Store
 Thumbs.db

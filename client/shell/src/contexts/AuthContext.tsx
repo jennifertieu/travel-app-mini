@@ -27,6 +27,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
    */
   const ensureProfile = async (userId: string, userData: User) => {
     try {
+      console.log("Checking profile for user:", userId);
+
       // Check if profile exists
       const { data: existingProfile, error: fetchError } = await supabase
         .from("member_profiles")
@@ -41,9 +43,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       if (existingProfile) {
+        console.log("Profile found:", existingProfile);
         setProfile(existingProfile);
         return existingProfile;
       }
+
+      console.log("No profile found, creating new profile...");
 
       // Create new profile for first-time user
       const displayName =
@@ -71,6 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         return null;
       }
 
+      console.log("Profile created:", newProfile);
       setProfile(newProfile);
       return newProfile;
     } catch (error) {
@@ -123,29 +129,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    // Get initial session with timeout and error handling
+    const initializeAuth = async () => {
+      try {
+        console.log("Initializing auth...");
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
 
-      if (session?.user) {
-        ensureProfile(session.user.id, session.user).finally(() => {
+        if (error) {
+          console.error("Error getting session:", error);
           setLoading(false);
-        });
-      } else {
+          return;
+        }
+
+        console.log(
+          "Session retrieved:",
+          session ? "authenticated" : "not authenticated",
+        );
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          console.log("Ensuring profile for user:", session.user.id);
+          // Don't let profile creation block the auth flow
+          ensureProfile(session.user.id, session.user).catch((error) => {
+            console.error(
+              "Profile creation failed, but continuing with auth:",
+              error,
+            );
+          });
+        }
+
+        setLoading(false);
+      } catch (error) {
+        console.error("Unexpected error during auth initialization:", error);
         setLoading(false);
       }
+    };
+
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.warn("Auth initialization timed out, setting loading to false");
+      setLoading(false);
+    }, 5000); // 5 second timeout
+
+    initializeAuth().finally(() => {
+      clearTimeout(timeoutId);
     });
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log(
+        "Auth state changed:",
+        event,
+        session ? "authenticated" : "not authenticated",
+      );
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        await ensureProfile(session.user.id, session.user);
+        // Don't let profile creation block the auth flow
+        ensureProfile(session.user.id, session.user).catch((error) => {
+          console.error("Profile creation failed during auth change:", error);
+        });
       } else {
         setProfile(null);
       }
@@ -154,6 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     });
 
     return () => {
+      clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);
