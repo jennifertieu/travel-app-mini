@@ -27,6 +27,6 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "zephyr-webpack-plugin": "^0.1.10"
+    "zephyr-rspack-plugin": "^0.1.10"
   }
 }
