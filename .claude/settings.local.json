@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(code:*)",
+      "Bash(tree:*)",
+      "Bash(grep:*)",
+      "Bash(pnpm install:*)"
+    ]
+  },
+  "outputStyle": "Learning",
+  "enabledMcpjsonServers": [
+    "chrome-devtools"
+  ]
+}

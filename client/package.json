@@ -7,6 +7,8 @@
     "dev:pretrip": "pnpm --filter=travel-app-pretrip dev",
     "dev:itinerary": "pnpm --filter=travel-app-itinerary dev",
     "dev:duringtrip": "pnpm --filter=travel-app-duringtrip dev",
+    "dev:browser": "pnpm dev & wait-on http://localhost:2000 && ./scripts/launch-chrome-beta.sh",
+    "dev:browser:fresh": "pnpm dev & wait-on http://localhost:2000 && ./scripts/launch-chrome-beta.sh --fresh",
     "build": "pnpm --filter=travel-app-pretrip build && pnpm --filter=travel-app-itinerary build && pnpm --filter=travel-app-duringtrip build && pnpm --filter=travel-app-shell build",
     "build:zephyr": "USE_ZEPHYR=true pnpm build",
     "preview": "pnpm --filter=travel-app-shell preview",
@@ -21,7 +23,8 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-react": "^7.34.0",
     "eslint-plugin-react-hooks": "^4.6.0",
-    "prettier": "^3.2.5"
+    "prettier": "^3.2.5",
+    "wait-on": "^9.0.3"
   },
   "engines": {
     "node": ">=18.0.0"
