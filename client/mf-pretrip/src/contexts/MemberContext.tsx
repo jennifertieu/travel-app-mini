@@ -17,7 +17,7 @@ interface MemberContextValue {
   isInitialized: boolean;
 }
 
-const MemberContext = createContext<MemberContextContextValue | undefined>(undefined);
+const MemberContext = createContext<MemberContextValue | undefined>(undefined);
 
 const STORAGE_KEY = 'travel-app-member-id';
 const PROFILE_STORAGE_KEY = 'travel-app-member-profile';

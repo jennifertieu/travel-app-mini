@@ -1,9 +1,12 @@
 packages:
-  - 'client'
-  - 'client/shell'
-  - 'client/mf-pretrip'
-  - 'client/mf-itinerary'
-  - 'client/mf-duringtrip'
-  - 'client/shared-types'
-  - 'server'
+  - client
+  - client/shell
+  - client/mf-pretrip
+  - client/mf-itinerary
+  - client/mf-duringtrip
+  - client/shared-types
+  - server
 
+ignoredBuiltDependencies:
+  - core-js
+  - esbuild

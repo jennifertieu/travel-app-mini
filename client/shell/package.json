@@ -9,9 +9,21 @@
     "build": "rsbuild build",
     "preview": "rsbuild preview"
   },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.47.10",
+    "@tanstack/react-router": "^1.92.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
   "devDependencies": {
     "@module-federation/rsbuild-plugin": "^0.23.0",
     "@rsbuild/core": "^1.7.2",
-    "@rsbuild/plugin-react": "^1.4.5"
+    "@rsbuild/plugin-react": "^1.4.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.20",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2"
   }
 }

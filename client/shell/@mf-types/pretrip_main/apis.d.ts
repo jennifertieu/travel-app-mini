@@ -1,3 +1,3 @@
 
-    export type RemoteKeys = 'pretrip_main/App';
-    type PackageType<T> = T extends 'pretrip_main/App' ? typeof import('pretrip_main/App') :any;
+    export type RemoteKeys = 'pretrip_main/App' | 'pretrip_main/place-search' | 'pretrip_main/unfurl' | 'pretrip_main/IdeaDetailModal';
+    type PackageType<T> = T extends 'pretrip_main/IdeaDetailModal' ? typeof import('pretrip_main/IdeaDetailModal') :T extends 'pretrip_main/unfurl' ? typeof import('pretrip_main/unfurl') :T extends 'pretrip_main/place-search' ? typeof import('pretrip_main/place-search') :T extends 'pretrip_main/App' ? typeof import('pretrip_main/App') :any;
