@@ -12,8 +12,7 @@ The Chrome DevTools MCP server lets Claude Code (or other AI assistants) **see a
 **Without MCP:** "I see a blank screen" → You screenshot, paste, describe the error
 **With MCP:** Claude runs `devtools_screenshot` and `devtools_console_log` → sees everything instantly
 
-## Setup (5 minutes)
-
+## Setup for MacOS (details below for Windows) - 5 minutes
 ### 1. Install Chrome Beta
 
 Download from: https://www.google.com/chrome/beta/
@@ -83,16 +82,52 @@ Once set up, Claude can use DevTools tools automatically when debugging. You can
 | `pnpm dev:browser` | Development with MCP debugging (persistent profile) |
 | `pnpm dev:browser:fresh` | Testing fresh user experience (temporary profile) |
 
+## Setup for Windows (untested)
+
+The `pnpm dev:browser` command only works on macOS. Windows users have two options:
+
+### Option A: Use WSL (Windows Subsystem for Linux)
+
+If you're running the dev server in WSL, the existing bash script should work. You'll need Chrome Beta installed in WSL or accessible from WSL.
+
+### Option B: Native Windows with batch file
+
+**1. Complete steps 1-3 above** (install Chrome Beta, copy config files)
+
+**2. Create a batch file** at `client/scripts/launch-chrome-beta.bat`:
+```batch
+@echo off
+"C:\Program Files\Google\Chrome Beta\Application\chrome.exe" ^
+  --remote-debugging-port=9222 ^
+  --user-data-dir="%USERPROFILE%\.tripweave-chrome-debug" ^
+  --no-first-run ^
+  --no-default-browser-check ^
+  --disable-default-apps ^
+  http://localhost:2000
+```
+
+**3. Run manually in two terminals:**
+```bash
+# Terminal 1: Start dev servers
+cd client && pnpm dev
+
+# Terminal 2: Once servers are ready, launch Chrome Beta
+.\scripts\launch-chrome-beta.bat
+```
+
+**Note:** The Chrome Beta path may vary. Check your installation location if the script fails.
+
 ## Troubleshooting
 
 **MCP not connecting?**
-- Ensure Chrome Beta is running (started via `pnpm dev:browser`)
-- Check that port 9222 is available: `lsof -i :9222`
+- Ensure Chrome Beta is running (started via `pnpm dev:browser` or the batch file)
+- Check that port 9222 is available: `lsof -i :9222` (macOS) or `netstat -ano | findstr :9222` (Windows)
 - Restart Claude Code to reload MCP servers
 
 **"Chrome Beta not found" error?**
 - Install Chrome Beta from the link above
-- macOS only for now (the script uses macOS paths)
+- macOS: The script expects Chrome Beta at `/Applications/Google Chrome Beta.app/`
+- Windows: Update the batch file path if Chrome Beta is installed elsewhere
 
 ## How it works
 

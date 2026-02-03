@@ -271,7 +271,7 @@ Deploy to your preferred platform (Railway, Render, AWS, etc.)
 
 This project supports **Chrome DevTools MCP**, which lets your AI assistant (Claude Code, etc.) directly see and interact with your browser. Instead of copy-pasting errors, your AI can take screenshots, read console logs, and inspect network requests itself.
 
-**Quick setup:**
+**Quick setup (macOS):**
 ```bash
 # 1. Install Chrome Beta: https://www.google.com/chrome/beta/
 # 2. Copy config files
