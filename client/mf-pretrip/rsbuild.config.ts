@@ -57,8 +57,11 @@ export default defineConfig({
       config,
       { addRules, prependPlugins, appendPlugins, mergeConfig },
     ) => {
-      const zephyrConfig = await withZephyr()(config);
-      return zephyrConfig;
+      if (process.env.USE_ZEPHYR === "true") {
+        const zephyrConfig = await withZephyr()(config);
+        return zephyrConfig;
+      }
+      return config;
     },
   },
 });
