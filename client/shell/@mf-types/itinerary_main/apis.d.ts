@@ -1,1 +1,3 @@
-<!DOCTYPE html><html><head><title>Itinerary MFE</title><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><script defer src="http://localhost:3002/static/js/vendors-node_modules_pnpm_rsbuild_core_1_7_2_node_modules_rsbuild_core_dist_client_overlay_js-b92ff1.js"></script><script defer src="http://localhost:3002/static/js/index.js"></script></head><body><div id="root"></div></body></html>
+
+    export type RemoteKeys = 'itinerary_main/App';
+    type PackageType<T> = T extends 'itinerary_main/App' ? typeof import('itinerary_main/App') :any;
