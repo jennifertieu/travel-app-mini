@@ -283,7 +283,7 @@ cd client && pnpm dev:browser        # persistent profile (keeps logins)
 cd client && pnpm dev:browser:fresh  # temporary profile (fresh session)
 ```
 
-See [CHROME_DEVTOOLS_MCP_GUIDE.md](./CHROME_DEVTOOLS_MCP_GUIDE.md) for full setup instructions.
+See [CHROME_DEVTOOLS_MCP_GUIDE.md](./CHROME_DEVTOOLS_MCP_GUIDE.md) for full setup instructions and details for Windows.
 
 ## 📚 Additional Resources
 
