@@ -21,6 +21,9 @@ build/
 # Kiro files (AI assistant workspace files)
 .kiro/
 
+# Claude local settings file
+settings.local.json
+
 # OS
 .DS_Store
 Thumbs.db

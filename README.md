@@ -167,6 +167,8 @@ pnpm install              # Install all dependencies
 ```bash
 cd client
 pnpm dev                  # Run all MFs + shell concurrently
+pnpm dev:browser         # Same as above + opens Chrome Beta with MCP debugging
+pnpm dev:browser:fresh   # Same as above but with temporary browser profile
 pnpm dev:shell           # Shell only (requires MFs running)
 pnpm dev:pretrip         # Pre-trip MF only
 pnpm dev:itinerary       # Itinerary MF only
@@ -265,8 +267,27 @@ pnpm start
 
 Deploy to your preferred platform (Railway, Render, AWS, etc.)
 
+## 🤖🔧 Real-time AI Browser Debugging with MCP
+
+This project supports **Chrome DevTools MCP**, which lets your AI assistant (Claude Code, etc.) directly see and interact with your browser. Instead of copy-pasting errors, your AI can take screenshots, read console logs, and inspect network requests itself.
+
+**Quick setup:**
+```bash
+# 1. Install Chrome Beta: https://www.google.com/chrome/beta/
+# 2. Copy config files
+cp .mcp.json.example .mcp.json
+cp .claude/settings.local.json.example .claude/settings.local.json
+
+# 3. Run with MCP debugging
+cd client && pnpm dev:browser        # persistent profile (keeps logins)
+cd client && pnpm dev:browser:fresh  # temporary profile (fresh session)
+```
+
+See [CHROME_DEVTOOLS_MCP_GUIDE.md](./CHROME_DEVTOOLS_MCP_GUIDE.md) for full setup instructions.
+
 ## 📚 Additional Resources
 
+- [Chrome DevTools MCP Guide](./CHROME_DEVTOOLS_MCP_GUIDE.md) - AI-assisted debugging setup
 - [Module Federation Documentation](https://module-federation.io/)
 - [Rsbuild Documentation](https://rsbuild.dev/)
 - [Supabase Documentation](https://supabase.com/docs)
