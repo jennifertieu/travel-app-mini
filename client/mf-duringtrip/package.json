@@ -11,8 +11,12 @@
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.1",
+    "@supabase/supabase-js": "^2.95.2",
+    "@tanstack/react-query": "^5.90.20",
+    "@travel-app/shared-types": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "lucide-react": "^0.468.0",
     "mapbox-gl": "^3.9.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

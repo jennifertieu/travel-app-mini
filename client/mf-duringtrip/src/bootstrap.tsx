@@ -2,8 +2,6 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./styles/globals.css";
-import "./styles/app.css";
-import "mapbox-gl/dist/mapbox-gl.css";
 
 const container = document.getElementById("root");
 
