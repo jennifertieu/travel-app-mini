@@ -166,16 +166,26 @@ pnpm install              # Install all dependencies
 #### Client (Frontend)
 ```bash
 cd client
-pnpm dev                  # Run all MFs + shell concurrently
-pnpm dev:browser         # Same as above + opens Chrome Beta with MCP debugging
-pnpm dev:browser:fresh   # Same as above but with temporary browser profile
-pnpm dev:shell           # Shell only (requires MFs running)
-pnpm dev:pretrip         # Pre-trip MF only
-pnpm dev:itinerary       # Itinerary MF only
-pnpm dev:duringtrip      # During trip MF only
-pnpm build               # Build all for production
-pnpm lint                # Lint all frontend code
-pnpm format              # Format code with Prettier
+pnpm dev                         # Run all MFs + shell concurrently
+
+pnpm dev:shell                   # Shell only (requires MFs running)
+pnpm dev:pretrip                 # Pre-trip MF only
+pnpm dev:itinerary               # Itinerary MF only
+pnpm dev:duringtrip              # During trip MF only
+
+pnpm build                       # Build all for production
+pnpm lint                        # Lint all frontend code
+pnpm format                      # Format code with Prettier
+
+# MCP browser debugging + auto-launch Chrome Beta (macOS, untested on Windows)
+pnpm dev:browser                 # saves logins
+pnpm dev:browser:fresh           # temporary profile
+
+pnpm dev:shell:browser           # Shell (port 2000)
+pnpm dev:pretrip:browser         # Pre-trip (port 3001)
+pnpm dev:itinerary:browser       # Itinerary (port 3002)
+pnpm dev:duringtrip:browser      # During-trip (port 3003)
+# ^Add :fresh for temporary profile (e.g., pnpm dev:pretrip:browser:fresh)
 ```
 
 #### Server (Backend)

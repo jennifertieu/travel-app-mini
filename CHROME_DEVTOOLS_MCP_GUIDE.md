@@ -79,8 +79,21 @@ Once set up, Claude can use DevTools tools automatically when debugging. You can
 | Command | When to use |
 |---------|-------------|
 | `pnpm dev` | Normal development (no browser auto-launch) |
-| `pnpm dev:browser` | Development with MCP debugging (persistent profile) |
-| `pnpm dev:browser:fresh` | Testing fresh user experience (temporary profile) |
+| `pnpm dev:browser` | All MFEs + MCP debugging (persistent profile) |
+| `pnpm dev:browser:fresh` | All MFEs + MCP debugging (temporary profile) |
+
+### Individual MFE Debugging
+
+Debug a single micro-frontend with Chrome Beta:
+
+| Command | Port | Description |
+|---------|------|-------------|
+| `pnpm dev:shell:browser` | 2000 | Shell app only |
+| `pnpm dev:pretrip:browser` | 3001 | Pre-trip MFE only |
+| `pnpm dev:itinerary:browser` | 3002 | Itinerary MFE only |
+| `pnpm dev:duringtrip:browser` | 3003 | During-trip MFE only |
+
+Add `:fresh` suffix for a temporary profile (e.g., `pnpm dev:pretrip:browser:fresh`).
 
 ## Setup for Windows (untested)
 
