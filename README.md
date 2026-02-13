@@ -286,7 +286,7 @@ This project ships **two browser MCP servers** that let your AI assistant (Claud
 | **Chrome DevTools MCP** | Connects to your running Chrome Beta | Inspecting console errors, network requests, performance traces |
 | **Playwright MCP** | Launches and drives its own browser | Clicking buttons, filling forms, testing user flows end-to-end |
 
-### Quick setup (macOS)
+### Quick setup
 
 ```bash
 # 1. Install Chrome Beta: https://www.google.com/chrome/beta/
@@ -295,7 +295,7 @@ cp .mcp.json.example .mcp.json
 cp .claude/settings.local.json.example .claude/settings.local.json
 ```
 
-**Chrome DevTools MCP** — attach to your browser:
+**Chrome DevTools MCP (MacOS)** — attach to your browser:
 ```bash
 cd client && pnpm dev:browser        # persistent profile (keeps logins)
 cd client && pnpm dev:browser:fresh  # temporary profile (fresh session)
@@ -309,7 +309,7 @@ cd client && pnpm dev    # Playwright launches its own browser when Claude needs
 Both can run simultaneously without conflict.
 
 See the full guides:
-- [CHROME_DEVTOOLS_MCP_GUIDE.md](./CHROME_DEVTOOLS_MCP_GUIDE.md) — setup, Windows instructions, troubleshooting
+- [CHROME_DEVTOOLS_MCP_GUIDE.md](./CHROME_DEVTOOLS_MCP_GUIDE.md) — setup, **Windows specific setup**, troubleshooting
 - [PLAYWRIGHT_MCP_GUIDE.md](./PLAYWRIGHT_MCP_GUIDE.md) — setup, capabilities comparison, artifacts
 
 ## 📚 Additional Resources
