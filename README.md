@@ -279,25 +279,43 @@ Deploy to your preferred platform (Railway, Render, AWS, etc.)
 
 ## 🤖🔧 Real-time AI Browser Debugging with MCP
 
-This project supports **Chrome DevTools MCP**, which lets your AI assistant (Claude Code, etc.) directly see and interact with your browser. Instead of copy-pasting errors, your AI can take screenshots, read console logs, and inspect network requests itself.
+This project ships **two browser MCP servers** that let your AI assistant (Claude Code) directly see and interact with your running app — no more copy-pasting errors or describing what's on screen.
 
-**Quick setup (macOS):**
+| Server | What it does | Best for |
+|--------|-------------|----------|
+| **Chrome DevTools MCP** | Connects to your running Chrome Beta | Inspecting console errors, network requests, performance traces |
+| **Playwright MCP** | Launches and drives its own browser | Clicking buttons, filling forms, testing user flows end-to-end |
+
+### Quick setup (macOS)
+
 ```bash
 # 1. Install Chrome Beta: https://www.google.com/chrome/beta/
 # 2. Copy config files
 cp .mcp.json.example .mcp.json
 cp .claude/settings.local.json.example .claude/settings.local.json
+```
 
-# 3. Run with MCP debugging
+**Chrome DevTools MCP** — attach to your browser:
+```bash
 cd client && pnpm dev:browser        # persistent profile (keeps logins)
 cd client && pnpm dev:browser:fresh  # temporary profile (fresh session)
 ```
 
-See [CHROME_DEVTOOLS_MCP_GUIDE.md](./CHROME_DEVTOOLS_MCP_GUIDE.md) for full setup instructions and details for Windows.
+**Playwright MCP** — no extra launch step needed:
+```bash
+cd client && pnpm dev    # Playwright launches its own browser when Claude needs it
+```
+
+Both can run simultaneously without conflict.
+
+See the full guides:
+- [CHROME_DEVTOOLS_MCP_GUIDE.md](./CHROME_DEVTOOLS_MCP_GUIDE.md) — setup, Windows instructions, troubleshooting
+- [PLAYWRIGHT_MCP_GUIDE.md](./PLAYWRIGHT_MCP_GUIDE.md) — setup, capabilities comparison, artifacts
 
 ## 📚 Additional Resources
 
-- [Chrome DevTools MCP Guide](./CHROME_DEVTOOLS_MCP_GUIDE.md) - AI-assisted debugging setup
+- [Chrome DevTools MCP Guide](./CHROME_DEVTOOLS_MCP_GUIDE.md) - AI-assisted browser inspection
+- [Playwright MCP Guide](./PLAYWRIGHT_MCP_GUIDE.md) - AI-driven browser interaction and testing
 - [Module Federation Documentation](https://module-federation.io/)
 - [Rsbuild Documentation](https://rsbuild.dev/)
 - [Supabase Documentation](https://supabase.com/docs)

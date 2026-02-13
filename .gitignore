@@ -35,6 +35,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# MCP artifacts
+.playwright-mcp/
+
 # Misc
 *.zip
 .cache/
