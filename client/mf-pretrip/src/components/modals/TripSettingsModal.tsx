@@ -1,19 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "../ui/button";
 import { useModals } from "../../contexts/ModalContext";
 import { useMember } from "../../contexts/MemberContext";
-import { useCreateTrip } from "../../hooks/useTrip";
 import { useCurrentTrip } from "../../hooks/useCurrentTrip";
-import { mapBudgetLevelToDatabase } from "../../lib/utils";
-import { X, MapPin, Calendar, Users, DollarSign } from "lucide-react";
+import { useDeleteTrip, useUpdateTrip } from "../../hooks/useTrip";
+import { useUserTrips } from "../../hooks/useUserTrips";
+import {
+  mapBudgetLevelFromDatabase,
+  mapBudgetLevelToDatabase,
+} from "../../lib/utils";
+import { queryKeys } from "../../lib/queryKeys";
+import { Calendar, DollarSign, MapPin, Users, X, Trash2 } from "lucide-react";
 
-export function CreateTripModal() {
+export function TripSettingsModal() {
   const { isOpen, closeModal } = useModals();
   const { member } = useMember();
-  const createTripMutation = useCreateTrip();
-  const { handleTripCreated } = useCurrentTrip();
+  const {
+    currentTrip: trip,
+    currentTripId,
+    setCurrentTrip,
+    clearCurrentTrip,
+  } = useCurrentTrip();
+  const { data: userTrips = [] } = useUserTrips(member?.id || null);
+  const updateTripMutation = useUpdateTrip(currentTripId || "");
+  const deleteTripMutation = useDeleteTrip(currentTripId || "");
+  const queryClient = useQueryClient();
+
+  const modalOpen = isOpen("tripSettings");
 
   const [formData, setFormData] = useState({
     destination: "",
@@ -23,74 +39,48 @@ export function CreateTripModal() {
     budgetLevel: "medium" as "low" | "medium" | "high",
     interests: [] as string[],
   });
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const activeTrips = useMemo(
+    () => userTrips.filter((candidate) => !candidate.deleted_at),
+    [userTrips],
+  );
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const availableInterests = useMemo(
+    () => [
+      "culture",
+      "food",
+      "nature",
+      "adventure",
+      "relaxation",
+      "nightlife",
+      "shopping",
+      "history",
+      "art",
+      "photography",
+    ],
+    [],
+  );
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!member || !formData.destination.trim()) return;
+  useEffect(() => {
+    if (!modalOpen || !trip) return;
 
-    setIsSubmitting(true);
-    try {
-      const tripData = {
-        destination: formData.destination.trim(),
-        title: formData.title.trim() || null,
-        start_date: formData.startDate || null,
-        end_date: formData.endDate || null,
-        budget_level: mapBudgetLevelToDatabase(formData.budgetLevel),
-        interests: formData.interests.length > 0 ? formData.interests : null,
-        created_by: member.id,
-      };
-
-      const newTrip = await createTripMutation.mutateAsync(tripData);
-
-      // Calculate duration for AI context
-      let durationDays = null;
-      if (formData.startDate && formData.endDate) {
-        const start = new Date(formData.startDate);
-        const end = new Date(formData.endDate);
-        const diffTime = Math.abs(end.getTime() - start.getTime());
-        durationDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      }
-
-      // Store streaming input so TripView can pick it up and start SSE
-      const suggestionInput = {
-        tripId: newTrip.id,
-        destination: tripData.destination,
-        durationDays,
-        budgetLevel: formData.budgetLevel,
-        interests: formData.interests.length > 0 ? formData.interests : null,
-        createdBy: member.id,
-      };
-      localStorage.setItem("generating-suggestions", "true");
-      localStorage.setItem(
-        "pending-suggestion-input",
-        JSON.stringify(suggestionInput),
-      );
-
-      // Use the enhanced trip management to handle the new trip
-      handleTripCreated(newTrip);
-
-      handleClose();
-    } catch (error) {
-      console.error("Failed to create trip:", error);
-      // Error handling is managed by the mutation
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    setFormData({
+      destination: trip.destination || "",
+      title: trip.title || "",
+      startDate: trip.start_date ? trip.start_date.slice(0, 10) : "",
+      endDate: trip.end_date ? trip.end_date.slice(0, 10) : "",
+      budgetLevel: trip.budget_level
+        ? mapBudgetLevelFromDatabase(trip.budget_level)
+        : "medium",
+      interests: trip.interests || [],
+    });
+  }, [modalOpen, trip]);
 
   const handleClose = () => {
-    closeModal("createTrip");
-    setFormData({
-      destination: "",
-      title: "",
-      startDate: "",
-      endDate: "",
-      budgetLevel: "medium",
-      interests: [],
-    });
-    setIsSubmitting(false);
+    closeModal("tripSettings");
+    setIsSaving(false);
+    setIsDeleting(false);
   };
 
   const handleInterestToggle = (interest: string) => {
@@ -102,53 +92,98 @@ export function CreateTripModal() {
     }));
   };
 
-  const availableInterests = [
-    "culture",
-    "food",
-    "nature",
-    "adventure",
-    "relaxation",
-    "nightlife",
-    "shopping",
-    "history",
-    "art",
-    "photography",
-  ];
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!trip || !currentTripId || !formData.destination.trim()) return;
 
-  if (!isOpen("createTrip")) return null;
+    setIsSaving(true);
+    try {
+      await updateTripMutation.mutateAsync({
+        destination: formData.destination.trim(),
+        title: formData.title.trim() || null,
+        start_date: formData.startDate || null,
+        end_date: formData.endDate || null,
+        budget_level: mapBudgetLevelToDatabase(formData.budgetLevel),
+        interests: formData.interests.length > 0 ? formData.interests : null,
+      });
+
+      if (member?.id) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.userTrips(member.id),
+        });
+      }
+      handleClose();
+    } catch (error) {
+      console.error("Failed to update trip:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!trip || !currentTripId) return;
+    const shouldDelete = window.confirm(
+      "Delete this group? This will hide the trip for everyone.",
+    );
+    if (!shouldDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteTripMutation.mutateAsync();
+
+      if (member?.id) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.userTrips(member.id),
+        });
+      }
+
+      const nextTrip = activeTrips.find(
+        (candidate) => candidate.id !== currentTripId,
+      );
+      if (nextTrip) {
+        setCurrentTrip(nextTrip.id);
+      } else {
+        clearCurrentTrip();
+      }
+
+      handleClose();
+    } catch (error) {
+      console.error("Failed to delete trip:", error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  if (!modalOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-200"
         onClick={handleClose}
       />
 
-      {/* Modal */}
       <div className="relative bg-background border border-border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl transform transition-all duration-300 scale-100 opacity-100">
-        {/* Header */}
         <div className="border-b border-border px-6 py-5 flex items-center justify-between flex-shrink-0 bg-background">
           <div>
             <h2 className="text-xl font-semibold tracking-tight">
-              Create New Trip
+              Trip Settings
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Plan your next adventure
+              Update trip details or delete the group
             </p>
           </div>
           <button
             onClick={handleClose}
             className="p-2 hover:bg-muted rounded-lg transition-colors"
+            aria-label="Close settings"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Content */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
           <div className="p-6 space-y-6">
-            {/* Destination */}
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
@@ -158,19 +193,17 @@ export function CreateTripModal() {
                 type="text"
                 placeholder="Where are you going?"
                 value={formData.destination}
-                onChange={(e) =>
+                onChange={(event) =>
                   setFormData((prev) => ({
                     ...prev,
-                    destination: e.target.value,
+                    destination: event.target.value,
                   }))
                 }
                 className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
                 required
-                autoFocus
               />
             </div>
 
-            {/* Trip Title */}
             <div className="space-y-2">
               <label className="text-sm font-medium">
                 Trip Title (Optional)
@@ -179,14 +212,16 @@ export function CreateTripModal() {
                 type="text"
                 placeholder="Give your trip a name"
                 value={formData.title}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, title: e.target.value }))
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    title: event.target.value,
+                  }))
                 }
                 className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
               />
             </div>
 
-            {/* Dates */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-2">
@@ -196,10 +231,10 @@ export function CreateTripModal() {
                 <input
                   type="date"
                   value={formData.startDate}
-                  onChange={(e) =>
+                  onChange={(event) =>
                     setFormData((prev) => ({
                       ...prev,
-                      startDate: e.target.value,
+                      startDate: event.target.value,
                     }))
                   }
                   className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
@@ -210,10 +245,10 @@ export function CreateTripModal() {
                 <input
                   type="date"
                   value={formData.endDate}
-                  onChange={(e) =>
+                  onChange={(event) =>
                     setFormData((prev) => ({
                       ...prev,
-                      endDate: e.target.value,
+                      endDate: event.target.value,
                     }))
                   }
                   className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
@@ -221,7 +256,6 @@ export function CreateTripModal() {
               </div>
             </div>
 
-            {/* Budget Level */}
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />
@@ -265,7 +299,6 @@ export function CreateTripModal() {
               </div>
             </div>
 
-            {/* Interests */}
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
                 <Users className="h-4 w-4" />
@@ -288,13 +321,35 @@ export function CreateTripModal() {
                 ))}
               </div>
             </div>
+
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+              <div className="flex items-start gap-3">
+                <div className="rounded-full bg-destructive/10 p-2 text-destructive">
+                  <Trash2 className="h-4 w-4" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium text-sm">Delete group</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    This will hide the trip for everyone. You can’t undo this.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </Button>
+              </div>
+            </div>
           </div>
 
-          {/* Footer */}
           <div className="border-t border-border px-6 py-4 flex items-center justify-between flex-shrink-0 bg-background">
             <div className="text-sm text-muted-foreground">
               {formData.destination.trim()
-                ? "Ready to create your trip"
+                ? "Ready to save changes"
                 : "Enter a destination to continue"}
             </div>
             <div className="flex gap-3">
@@ -302,17 +357,19 @@ export function CreateTripModal() {
                 type="button"
                 variant="outline"
                 onClick={handleClose}
-                disabled={isSubmitting}
+                disabled={isSaving || isDeleting}
                 className="px-6"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                disabled={!formData.destination.trim() || isSubmitting}
+                disabled={
+                  !formData.destination.trim() || isSaving || isDeleting
+                }
                 className="px-6 font-semibold"
               >
-                {isSubmitting ? "Creating..." : "Create Trip"}
+                {isSaving ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </div>

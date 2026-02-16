@@ -1,12 +1,23 @@
 "use client";
 
-import { Card, CardContent, CardHeader } from "../ui/card";
+import { Card, CardContent } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { useModals } from "../../contexts/ModalContext";
-import { MapPin, Clock, DollarSign } from "lucide-react";
+import {
+  Clock,
+  Star,
+  Utensils,
+  Camera,
+  Mountain,
+  ShoppingBag,
+  Music,
+  Zap,
+  Bed,
+  MoreHorizontal,
+} from "lucide-react";
 import type { Database } from "@travel-app/shared-types";
 
-type Idea = Database['public']['Tables']['trip_reel_ideas']['Row'];
+type Idea = Database["public"]["Tables"]["trip_reel_ideas"]["Row"];
 
 interface IdeaCardProps {
   idea: Idea;
@@ -16,7 +27,15 @@ export function IdeaCard({ idea }: IdeaCardProps) {
   const { openModal } = useModals();
 
   const getStatusConfig = (status: string) => {
-    const configs: Record<string, { label: string; color: string; icon: string }> = {
+    const configs: Record<
+      string,
+      { label: string; color: string; icon: string }
+    > = {
+      ENRICHING: {
+        label: "Loading details...",
+        color: "bg-blue-100 text-blue-700",
+        icon: "✨",
+      },
       CREATED: {
         label: "Creating",
         color: "bg-slate-100 text-slate-700",
@@ -46,107 +65,124 @@ export function IdeaCard({ idea }: IdeaCardProps) {
     return configs[status] || configs.CREATED;
   };
 
+  const getCategoryConfig = (category: string) => {
+    const configs: Record<string, { icon: React.ReactNode }> = {
+      food: { icon: <Utensils className="h-3 w-3" /> },
+      sightseeing: { icon: <Camera className="h-3 w-3" /> },
+      nature: { icon: <Mountain className="h-3 w-3" /> },
+      shopping: { icon: <ShoppingBag className="h-3 w-3" /> },
+      nightlife: { icon: <Music className="h-3 w-3" /> },
+      activity: { icon: <Zap className="h-3 w-3" /> },
+      stay: { icon: <Bed className="h-3 w-3" /> },
+      other: { icon: <MoreHorizontal className="h-3 w-3" /> },
+    };
+    return configs[category.toLowerCase()] || configs.other;
+  };
+
   const statusConfig = getStatusConfig(idea.enrichment_status);
   const location = idea.location as any;
   const place = idea.place as any;
+  const categoryConfig = idea.category
+    ? getCategoryConfig(idea.category)
+    : null;
 
   return (
     <Card
-      className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:border-foreground/10 group"
+      className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:border-foreground/10 group overflow-hidden"
       onClick={() => openModal("ideaDetail", { ideaId: idea.id })}
     >
-      <CardHeader className="pb-3 px-4 pt-3.5">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2">
-            {idea.enrichment_status !== "DONE" && (
-              <>
-                <span className="text-sm">{statusConfig.icon}</span>
-                <Badge className={`${statusConfig.color} text-xs`}>
-                  {statusConfig.label}
-                </Badge>
-              </>
-            )}
-            {idea.category && (
-              <Badge variant="outline" className="text-xs">
-                {idea.category}
-              </Badge>
-            )}
+      {/* Image & Overlays */}
+      <div className="relative h-32 w-full bg-muted/20">
+        {idea.enrichment_status === "ENRICHING" ? (
+          <div
+            className="w-full h-full animate-pulse bg-muted rounded-none"
+            style={{ animationDuration: "1.5s" }}
+          />
+        ) : place?.photoUrl ? (
+          <img
+            src={place.photoUrl}
+            alt={location?.name || idea.title || "Place photo"}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-muted/30">
+            <span className="text-4xl opacity-20">📷</span>
           </div>
+        )}
+
+        {/* Top Overlay: Status & Category */}
+        <div className="absolute top-2 left-2 flex flex-wrap gap-1.5 max-w-[calc(100%-16px)]">
+          {idea.enrichment_status !== "DONE" && (
+            <Badge
+              className={`${statusConfig.color} border-0 shadow-sm backdrop-blur-sm bg-opacity-90 text-xs px-1.5 py-0.5 h-5`}
+            >
+              <span className="mr-1">{statusConfig.icon}</span>
+              {statusConfig.label}
+            </Badge>
+          )}
+          {idea.category && categoryConfig && (
+            <Badge
+              variant="secondary"
+              className="bg-background/90 backdrop-blur-sm shadow-sm text-xs px-1.5 py-0.5 h-5 border-0 flex items-center gap-1"
+            >
+              {categoryConfig.icon}
+              <span className="capitalize">{idea.category}</span>
+            </Badge>
+          )}
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="px-4 pb-4 space-y-3">
-        {/* Place Photo */}
-        {place?.photoUrl && (
-          <div className="rounded-md overflow-hidden shadow-sm bg-muted/20 -mx-4 -mt-1">
-            <img
-              src={place.photoUrl}
-              alt={location?.name || idea.title || "Place photo"}
-              className="w-full h-36 object-cover"
-              onError={(e) => {
-                // Hide image on error
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          </div>
-        )}
-
-        {/* Title */}
-        <h3 className="font-semibold text-base leading-snug line-clamp-2">
-          {idea.title || "Untitled idea"}
-        </h3>
-
-        {/* Location */}
-        {location?.name && (
-          <div className="flex items-start gap-2 text-sm">
-            <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-            <span className="text-muted-foreground line-clamp-1">
-              {location.name}
-            </span>
-          </div>
-        )}
-
-        {/* Summary */}
-        {idea.summary && (
-          <p className="text-sm text-muted-foreground line-clamp-2">
-            {idea.summary}
-          </p>
-        )}
-
-        {/* Tags */}
-        {idea.tags && idea.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {idea.tags.slice(0, 3).map((tag, idx) => (
-              <Badge key={idx} variant="secondary" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        {/* Metadata */}
-        <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1">
-          {idea.cost_bucket && (
-            <div className="flex items-center gap-1">
-              <DollarSign className="h-3 w-3" />
-              <span>{idea.cost_bucket}</span>
-            </div>
-          )}
-          {idea.duration_bucket && (
-            <div className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              <span>{idea.duration_bucket}</span>
-            </div>
-          )}
+      <CardContent className="p-3 space-y-1.5">
+        {/* Title & Rating */}
+        <div className="flex justify-between items-start gap-2">
+          <h3 className="font-semibold text-sm leading-tight line-clamp-1 text-foreground/90">
+            {idea.title || "Untitled idea"}
+          </h3>
           {place?.rating && (
-            <div className="flex items-center gap-1">
-              <span>⭐</span>
+            <div className="flex items-center gap-1 text-xs font-medium bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-100 shrink-0">
+              <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
               <span>{place.rating.toFixed(1)}</span>
             </div>
           )}
         </div>
+
+        {/* Metadata & Tags */}
+        {(idea.cost_bucket ||
+          idea.duration_bucket ||
+          (idea.tags && idea.tags.length > 0)) && (
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground/80 flex-wrap">
+            {idea.cost_bucket && <span>{idea.cost_bucket}</span>}
+            {idea.cost_bucket && idea.duration_bucket && (
+              <span className="text-muted-foreground/30">·</span>
+            )}
+            {idea.duration_bucket && (
+              <div className="flex items-center gap-1">
+                <Clock className="h-3 w-3 opacity-70" />
+                <span>{idea.duration_bucket}</span>
+              </div>
+            )}
+            {(idea.cost_bucket || idea.duration_bucket) &&
+              idea.tags &&
+              idea.tags.length > 0 && (
+                <span className="text-muted-foreground/30">·</span>
+              )}
+            {idea.tags &&
+              idea.tags.length > 0 &&
+              idea.tags.slice(0, 2).map((tag, idx) => (
+                <Badge
+                  key={idx}
+                  variant="outline"
+                  className="text-[10px] px-1.5 h-4 bg-muted/30 text-muted-foreground border-transparent group-hover:border-border transition-colors"
+                >
+                  {tag}
+                </Badge>
+              ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
-

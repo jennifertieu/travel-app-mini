@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Search, MapPin, Calendar } from "lucide-react";
 import { Database, TablesInsert } from "@travel-app/shared-types";
-import { useGenerateSuggestions } from "../hooks/useSuggestions";
+import { TripSuggestionInput } from "../hooks/useStreamingSuggestions";
 
 type TripInsert = TablesInsert<"trips">;
 
@@ -17,7 +17,7 @@ interface TripPlanningFormProps {
     unknown
   >;
   memberId: string;
-  onSuccess: (tripId: string) => void;
+  onSuccess: (tripId: string, suggestionInput: TripSuggestionInput) => void;
 }
 
 const BUDGET_OPTIONS = [
@@ -44,10 +44,9 @@ export function TripPlanningForm({
   memberId,
   onSuccess,
 }: TripPlanningFormProps) {
-  const generateSuggestions = useGenerateSuggestions();
   const [destination, setDestination] = useState("");
   const [selectedPlace, setSelectedPlace] = useState<PlaceSearchResult | null>(
-    null
+    null,
   );
   const [searchResults, setSearchResults] = useState<PlaceSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -55,7 +54,7 @@ export function TripPlanningForm({
 
   const [durationDays, setDurationDays] = useState<number | "">("");
   const [budgetLevel, setBudgetLevel] = useState<"$" | "$$" | "$$$" | null>(
-    null
+    null,
   );
   const [interests, setInterests] = useState<string[]>([]);
 
@@ -100,7 +99,7 @@ export function TripPlanningForm({
     setInterests((prev) =>
       prev.includes(interest)
         ? prev.filter((i) => i !== interest)
-        : [...prev, interest]
+        : [...prev, interest],
     );
   };
 
@@ -123,19 +122,18 @@ export function TripPlanningForm({
 
     try {
       const result = await createTripMutation.mutateAsync(tripData);
-      
-      // Show map view immediately
-      onSuccess(result.id);
-      
-      // Generate AI suggestions in the background
-      generateSuggestions.mutate({
+
+      const suggestionInput: TripSuggestionInput = {
         tripId: result.id,
         destination: selectedPlace?.displayName || destination.trim(),
-        durationDays: typeof durationDays === 'number' ? durationDays : null,
+        durationDays: typeof durationDays === "number" ? durationDays : null,
         budgetLevel: budgetLevel || null,
         interests: interests.length > 0 ? interests : null,
         createdBy: memberId,
-      });
+      };
+
+      // Show map view immediately and start streaming suggestions
+      onSuccess(result.id, suggestionInput);
     } catch (error) {
       console.error("Failed to create trip:", error);
       alert("Failed to create trip. Please try again.");
@@ -226,7 +224,7 @@ export function TripPlanningForm({
                   value={durationDays}
                   onChange={(e) =>
                     setDurationDays(
-                      e.target.value ? parseInt(e.target.value) : ""
+                      e.target.value ? parseInt(e.target.value) : "",
                     )
                   }
                   min="1"
@@ -237,7 +235,9 @@ export function TripPlanningForm({
 
             {/* Budget Selection */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">What is your budget?</label>
+              <label className="text-sm font-medium">
+                What is your budget?
+              </label>
               <div className="flex gap-3">
                 {BUDGET_OPTIONS.map((option) => (
                   <button

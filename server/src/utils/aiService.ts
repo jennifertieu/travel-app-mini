@@ -359,8 +359,14 @@ export async function generateActivitySuggestions(
   console.log("🎯 [AI Suggestions] Starting activity suggestion generation...");
   console.log("📍 [AI Suggestions] Destination:", input.destination);
   console.log("📅 [AI Suggestions] Duration:", input.durationDays, "days");
-  console.log("💰 [AI Suggestions] Budget:", input.budgetLevel || "not specified");
-  console.log("🎨 [AI Suggestions] Interests:", input.interests?.join(", ") || "general");
+  console.log(
+    "💰 [AI Suggestions] Budget:",
+    input.budgetLevel || "not specified"
+  );
+  console.log(
+    "🎨 [AI Suggestions] Interests:",
+    input.interests?.join(", ") || "general"
+  );
 
   if (!apiKey) {
     console.error("❌ [AI Suggestions] OPENAI_API_KEY is not configured");
@@ -392,7 +398,7 @@ export async function generateActivitySuggestions(
           },
         ],
         temperature: 0.7,
-        max_tokens: 2000,
+        max_tokens: 1200,
         response_format: { type: "json_object" },
       }),
     });
@@ -429,13 +435,15 @@ export async function generateActivitySuggestions(
     }
 
     const parsed = JSON.parse(content);
-    
+
     if (!parsed.suggestions || !Array.isArray(parsed.suggestions)) {
       console.error("❌ [AI Suggestions] Invalid response format");
       throw new Error("Invalid response format from OpenAI");
     }
 
-    console.log(`✨ [AI Suggestions] Parsed ${parsed.suggestions.length} suggestions`);
+    console.log(
+      `✨ [AI Suggestions] Parsed ${parsed.suggestions.length} suggestions`
+    );
 
     const validatedSuggestions: ActivitySuggestion[] = parsed.suggestions.map(
       (suggestion: any, index: number) => {
@@ -445,15 +453,21 @@ export async function generateActivitySuggestions(
           summary: suggestion.summary || "A great travel experience.",
           category: validateCategory(suggestion.category) || "other",
           costGuess: validateCostGuess(suggestion.costGuess) || "$$",
-          durationGuess: validateDurationGuess(suggestion.durationGuess) || "1-2h",
-          placeQuery: suggestion.placeQuery || `${suggestion.name} ${input.destination}`,
-          tags: Array.isArray(suggestion.tags) ? suggestion.tags.slice(0, 5) : [],
+          durationGuess:
+            validateDurationGuess(suggestion.durationGuess) || "1-2h",
+          placeQuery:
+            suggestion.placeQuery || `${suggestion.name} ${input.destination}`,
+          tags: Array.isArray(suggestion.tags)
+            ? suggestion.tags.slice(0, 5)
+            : [],
           iconType: validateIconType(suggestion.iconType) || "attraction",
         };
       }
     );
 
-    console.log("🎉 [AI Suggestions] Activity suggestions generated successfully!");
+    console.log(
+      "🎉 [AI Suggestions] Activity suggestions generated successfully!"
+    );
     return validatedSuggestions;
   } catch (error) {
     console.error("💥 [AI Suggestions] Error during generation:", error);
@@ -484,7 +498,7 @@ function buildSuggestionsPrompt(input: TripSuggestionsInput): string {
   const interestsText =
     interests && interests.length > 0 ? interests.join(", ") : "general travel";
 
-  return `Generate 10 diverse and specific activity suggestions for a trip to ${destination} for ${durationText}.
+  return `Generate 5 diverse and specific activity suggestions for a trip to ${destination} for ${durationText}.
 
 Traveler Preferences:
 - Budget: ${budgetText}
@@ -529,5 +543,5 @@ SUMMARY WRITING RULES:
 ✅ GOOD: "Traditional ramen shop famous for their tonkotsu broth. Order the original with extra noodles, open until 2am."
 ❌ BAD: "This unique dining experience offers an authentic atmosphere where visitors can enjoy..."
 
-Generate 10 activities now. Make them specific, actionable, and tailored to ${destination}.`;
+Generate 5 activities now. Make them specific, actionable, and tailored to ${destination}.`;
 }

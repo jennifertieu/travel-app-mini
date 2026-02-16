@@ -62,7 +62,7 @@ export function useCurrentTrip() {
     return urlParams.get("tripId");
   }, []);
 
-  // Update URL with trip ID
+  // Update URL with trip ID and notify other hook instances
   const updateUrlWithTripId = useCallback((tripId: string | null) => {
     if (typeof window === "undefined") return;
 
@@ -75,6 +75,11 @@ export function useCurrentTrip() {
 
     // Update URL without triggering a page reload
     window.history.replaceState({}, "", url.toString());
+
+    // Notify other useCurrentTrip instances about the change
+    window.dispatchEvent(
+      new CustomEvent("currentTripChanged", { detail: { tripId } }),
+    );
   }, []);
 
   // Initialize trip ID from URL first, then localStorage on mount
@@ -106,7 +111,7 @@ export function useCurrentTrip() {
     }
   }, [getTripIdFromUrl, updateUrlWithTripId]);
 
-  // Listen for URL changes (browser back/forward)
+  // Listen for URL changes (browser back/forward) and cross-instance trip changes
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -124,8 +129,20 @@ export function useCurrentTrip() {
       }
     };
 
+    const handleTripChanged = (e: Event) => {
+      const customEvent = e as CustomEvent<{ tripId: string | null }>;
+      const newTripId = customEvent.detail?.tripId ?? null;
+      if (newTripId !== currentTripId) {
+        setCurrentTripId(newTripId);
+      }
+    };
+
     window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
+    window.addEventListener("currentTripChanged", handleTripChanged);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("currentTripChanged", handleTripChanged);
+    };
   }, [currentTripId, getTripIdFromUrl, isLocalStorageAvailable]);
 
   /**
@@ -165,13 +182,19 @@ export function useCurrentTrip() {
             );
             await tripCacheManager.switchTrip(previousTripId, tripId);
 
-            // Remove generating suggestions flag when switching trips
+            // Only remove generating flag if switching away from a trip (not creating one)
+            // If pending-suggestion-input exists, a new trip was just created and needs generation
             if (isLocalStorageAvailable) {
               try {
-                localStorage.removeItem("generating-suggestions");
+                const hasPendingGeneration = localStorage.getItem(
+                  "pending-suggestion-input",
+                );
+                if (!hasPendingGeneration) {
+                  localStorage.removeItem("generating-suggestions");
+                }
               } catch (error) {
                 console.warn(
-                  "Failed to remove generating-suggestions flag:",
+                  "Failed to check generating-suggestions flag:",
                   error,
                 );
               }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Users,
   Crown,
@@ -7,9 +7,11 @@ import {
   Plus,
   AlertCircle,
   RefreshCw,
+  User,
 } from "lucide-react";
 import { useTripMembers } from "../../hooks/useTripMembers";
 import { generateInviteLink } from "../../lib/collaboration";
+import { useMember } from "../../contexts/MemberContext";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -36,11 +38,22 @@ export function TripMembersModal({
   onClose,
   tripId,
 }: TripMembersModalProps) {
+  const { member, updateMember } = useMember();
   const { data: members, isLoading, error, refetch } = useTripMembers(tripId);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [showNamePrompt, setShowNamePrompt] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const [isSavingName, setIsSavingName] = useState(false);
+
+  // Check if current user needs to set their name
+  useEffect(() => {
+    if (isOpen && member && !member.displayName) {
+      setShowNamePrompt(true);
+    }
+  }, [isOpen, member]);
 
   const handleGenerateLink = async () => {
     try {
@@ -88,7 +101,30 @@ export function TripMembersModal({
     setInviteLink(null);
     setCopied(false);
     setInviteError(null);
+    setShowNamePrompt(false);
+    setDisplayName("");
     onClose();
+  };
+
+  const handleSaveName = async () => {
+    if (!displayName.trim()) {
+      setInviteError("Please enter your name");
+      return;
+    }
+
+    try {
+      setIsSavingName(true);
+      setInviteError(null);
+      await updateMember({ displayName: displayName.trim() });
+      setShowNamePrompt(false);
+      // Refetch members to show updated name
+      refetch();
+    } catch (error) {
+      console.error("Failed to update name:", error);
+      setInviteError("Failed to update your name. Please try again.");
+    } finally {
+      setIsSavingName(false);
+    }
   };
 
   return (
@@ -105,6 +141,44 @@ export function TripMembersModal({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Name Prompt for Anonymous Users */}
+          {showNamePrompt && (
+            <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg space-y-3">
+              <div className="flex items-center gap-2">
+                <User className="h-5 w-5 text-primary" />
+                <h3 className="font-medium">Set Your Display Name</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                You're currently showing as "Anonymous User". Let others know
+                who you are!
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="flex-1"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSaveName();
+                    }
+                  }}
+                />
+                <Button
+                  onClick={handleSaveName}
+                  disabled={isSavingName || !displayName.trim()}
+                  size="sm"
+                >
+                  {isSavingName ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Save"
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Current Members */}
           <div>
             <Label className="text-sm font-medium">Current Members</Label>

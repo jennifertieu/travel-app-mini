@@ -14,7 +14,7 @@ import { InviteDetails, TripMember } from "../lib/collaboration";
 import { MapPin, Calendar, Users, Loader2, AlertCircle } from "lucide-react";
 
 export function JoinTripPage() {
-  const { member } = useMember();
+  const { member, updateMember } = useMember();
   const { setCurrentTrip } = useCurrentTrip();
 
   const [inviteDetails, setInviteDetails] = useState<InviteDetails | null>(

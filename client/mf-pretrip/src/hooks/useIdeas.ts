@@ -37,7 +37,7 @@ export function useIdeas(tripId: string | null) {
     enabled: !!tripId,
   });
 
-  // Setup realtime subscription
+  // Setup realtime subscription — directly update the cache for instant UI
   useEffect(() => {
     if (!tripId) return;
 
@@ -46,14 +46,56 @@ export function useIdeas(tripId: string | null) {
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "trip_reel_ideas",
           filter: `trip_id=eq.${tripId}`,
         },
         (payload) => {
-          console.log("💡 [Realtime] Ideas change:", payload);
-          queryClient.invalidateQueries({ queryKey: queryKeys.ideas(tripId) });
+          console.log("💡 [Realtime] Idea INSERT:", payload.new);
+          const newIdea = payload.new as Idea;
+          queryClient.setQueryData<Idea[]>(
+            queryKeys.ideas(tripId),
+            (old = []) => {
+              // Avoid duplicates (e.g. if we also did a mutation locally)
+              if (old.some((i) => i.id === newIdea.id)) return old;
+              return [newIdea, ...old];
+            },
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "trip_reel_ideas",
+          filter: `trip_id=eq.${tripId}`,
+        },
+        (payload) => {
+          console.log("💡 [Realtime] Idea UPDATE:", payload.new);
+          const updated = payload.new as Idea;
+          queryClient.setQueryData<Idea[]>(
+            queryKeys.ideas(tripId),
+            (old = []) => old.map((i) => (i.id === updated.id ? updated : i)),
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "trip_reel_ideas",
+          filter: `trip_id=eq.${tripId}`,
+        },
+        (payload) => {
+          console.log("💡 [Realtime] Idea DELETE:", payload.old);
+          const deletedId = (payload.old as { id: string }).id;
+          queryClient.setQueryData<Idea[]>(
+            queryKeys.ideas(tripId),
+            (old = []) => old.filter((i) => i.id !== deletedId),
+          );
         },
       )
       .subscribe();

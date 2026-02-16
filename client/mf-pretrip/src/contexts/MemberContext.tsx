@@ -1,14 +1,19 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { generateUUID } from '../lib/utils';
-import { supabase } from '../lib/supabase';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
+import { supabase } from "../lib/supabase";
 
-interface MemberProfile {
+export interface MemberProfile {
   id: string;
   displayName?: string;
   dietary: string[];
-  travelStyle: 'chill' | 'balanced' | 'packed';
+  travelStyle: "chill" | "balanced" | "packed";
   interests: string[];
-  walkingTolerance?: 'low' | 'medium' | 'high';
+  walkingTolerance?: "low" | "medium" | "high";
 }
 
 interface MemberContextValue {
@@ -18,9 +23,6 @@ interface MemberContextValue {
 }
 
 const MemberContext = createContext<MemberContextValue | undefined>(undefined);
-
-const STORAGE_KEY = 'travel-app-member-id';
-const PROFILE_STORAGE_KEY = 'travel-app-member-profile';
 
 export function MemberProvider({ children }: { children: ReactNode }) {
   const [member, setMember] = useState<MemberProfile | null>(null);
@@ -32,102 +34,80 @@ export function MemberProvider({ children }: { children: ReactNode }) {
 
   const initializeMember = async () => {
     try {
-      // Try to get existing member ID from localStorage
-      let memberId = localStorage.getItem(STORAGE_KEY);
-      
-      if (!memberId) {
-        // Generate new member ID
-        memberId = generateUUID();
-        localStorage.setItem(STORAGE_KEY, memberId);
-        
-        // Create member profile in Supabase
-        const { error } = await supabase
-          .from('member_profiles')
-          .insert({
-            id: memberId,
-            dietary: [],
-            travel_style: 'balanced',
-            interests: [],
-          });
-        
-        if (error) {
-          console.error('Error creating member profile:', error);
-        }
+      // Get the authenticated user from Supabase Auth
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        console.error("No authenticated user found:", authError);
+        setIsInitialized(true);
+        return;
       }
 
-      // Try to load profile from localStorage
-      const storedProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
-      if (storedProfile) {
-        try {
-          const profile = JSON.parse(storedProfile);
-          setMember(profile);
-          setIsInitialized(true);
-          return;
-        } catch (e) {
-          console.error('Error parsing stored profile:', e);
-        }
-      }
+      console.log("Loading profile for authenticated user:", user.id);
 
-      // Load profile from Supabase
+      // Load profile from Supabase using the auth user's ID
       const { data, error } = await supabase
-        .from('member_profiles')
-        .select('*')
-        .eq('id', memberId)
+        .from("member_profiles")
+        .select("*")
+        .eq("user_id", user.id)
         .single();
 
       if (error) {
-        console.warn('Profile not found in Supabase, creating it...', error);
-        
-        // Create the missing profile in Supabase
-        const { error: insertError } = await supabase
-          .from('member_profiles')
-          .upsert({
-            id: memberId,
+        console.warn("Profile not found, creating it...", error);
+
+        // Create profile with name from auth metadata
+        const displayName =
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          user.email?.split("@")[0] ||
+          "User";
+
+        const { data: newProfile, error: insertError } = await supabase
+          .from("member_profiles")
+          .insert({
+            id: user.id,
+            user_id: user.id,
+            display_name: displayName,
             dietary: [],
-            travel_style: 'balanced',
+            travel_style: "balanced",
             interests: [],
-          });
+          })
+          .select()
+          .single();
 
         if (insertError) {
-          console.error('Failed to create missing profile:', insertError);
+          console.error("Failed to create profile:", insertError);
+          setIsInitialized(true);
+          return;
         }
 
-        // Create default profile for state
-        const defaultProfile: MemberProfile = {
-          id: memberId,
-          dietary: [],
-          travelStyle: 'balanced',
-          interests: [],
+        const profile: MemberProfile = {
+          id: newProfile.id,
+          displayName: newProfile.display_name || undefined,
+          dietary: newProfile.dietary || [],
+          travelStyle: (newProfile.travel_style as any) || "balanced",
+          interests: newProfile.interests || [],
+          walkingTolerance: (newProfile.walking_tolerance as any) || undefined,
         };
-        setMember(defaultProfile);
-        localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(defaultProfile));
+        setMember(profile);
       } else {
         const profile: MemberProfile = {
           id: data.id,
           displayName: data.display_name || undefined,
           dietary: data.dietary || [],
-          travelStyle: (data.travel_style as any) || 'balanced',
+          travelStyle: (data.travel_style as any) || "balanced",
           interests: data.interests || [],
           walkingTolerance: (data.walking_tolerance as any) || undefined,
         };
         setMember(profile);
-        localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
       }
-      
+
       setIsInitialized(true);
     } catch (error) {
-      console.error('Error initializing member:', error);
-      // Create emergency fallback profile
-      const fallbackId = generateUUID();
-      const fallbackProfile: MemberProfile = {
-        id: fallbackId,
-        dietary: [],
-        travelStyle: 'balanced',
-        interests: [],
-      };
-      setMember(fallbackProfile);
-      localStorage.setItem(STORAGE_KEY, fallbackId);
-      localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(fallbackProfile));
+      console.error("Error initializing member:", error);
       setIsInitialized(true);
     }
   };
@@ -137,11 +117,10 @@ export function MemberProvider({ children }: { children: ReactNode }) {
 
     const updatedMember = { ...member, ...updates };
     setMember(updatedMember);
-    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(updatedMember));
 
     // Update in Supabase
     const { error } = await supabase
-      .from('member_profiles')
+      .from("member_profiles")
       .update({
         display_name: updatedMember.displayName,
         dietary: updatedMember.dietary,
@@ -149,15 +128,21 @@ export function MemberProvider({ children }: { children: ReactNode }) {
         interests: updatedMember.interests,
         walking_tolerance: updatedMember.walkingTolerance,
       })
-      .eq('id', member.id);
+      .eq("id", member.id);
 
     if (error) {
-      console.error('Error updating member profile:', error);
+      console.error("Error updating member profile:", error);
     }
   };
 
-  if (!member) {
+  // Show loading state while initializing
+  if (!isInitialized) {
     return <div>Loading...</div>;
+  }
+
+  // If no member after initialization, user is not authenticated
+  if (!member) {
+    return <div>Please log in to continue</div>;
   }
 
   return (
@@ -170,8 +155,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
 export function useMember() {
   const context = useContext(MemberContext);
   if (context === undefined) {
-    throw new Error('useMember must be used within a MemberProvider');
+    throw new Error("useMember must be used within a MemberProvider");
   }
   return context;
 }
-
