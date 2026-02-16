@@ -1,12 +1,15 @@
 "use client";
 
 import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
 import { useModals } from "../../contexts/ModalContext";
-import { Settings, MapPin, Plus } from "lucide-react";
+import { Settings, MapPin, Plus, Vote } from "lucide-react";
 import { TripSelector } from "../TripSelector";
 import { TripMembersAvatars } from "../TripMembersAvatars";
 import { useUserTrips } from "../../hooks/useUserTrips";
 import { useMember } from "../../contexts/MemberContext";
+import { useIdeas } from "../../hooks/useIdeas";
+import { useMyReactions } from "../../hooks/useMyReactions";
 import { Database } from "@travel-app/shared-types";
 
 type Trip = Database["public"]["Tables"]["trips"]["Row"];
@@ -60,6 +63,13 @@ export function TripHeader({ trip, onTripSelect }: TripHeaderProps) {
   const showDestinationChip =
     Boolean(trip.destination) && trip.destination !== displayTitle;
 
+  const { data: ideas = [] } = useIdeas(trip.id);
+  const ratedIdeas = ideas.filter((i) => i.enrichment_status === "DONE");
+  const ideaIds = ratedIdeas.map((i) => i.id);
+  const { data: myReactions = {} } = useMyReactions(member?.id ?? null, ideaIds);
+  const unratedCount = ideaIds.filter((id) => !myReactions[id]).length;
+  const showRateButton = ratedIdeas.length > 0;
+
   return (
     <header className="relative z-[1001] border-b bg-background/80 px-4 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:px-6">
       <div className="flex items-center justify-between gap-4">
@@ -100,6 +110,22 @@ export function TripHeader({ trip, onTripSelect }: TripHeaderProps) {
           >
             <Settings className="h-4 w-4" />
           </Button>
+          {showRateButton && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openModal("ratingMode")}
+              className="h-9 gap-1.5 px-3"
+            >
+              <Vote className="h-4 w-4" />
+              <span className="hidden sm:inline">Rate</span>
+              {unratedCount > 0 && (
+                <Badge variant="secondary" className="h-5 min-w-5 px-1 text-xs">
+                  {unratedCount}
+                </Badge>
+              )}
+            </Button>
+          )}
         </div>
       </div>
     </header>
