@@ -19,6 +19,7 @@ import {
 // Ideas are always sourced from useIdeas (backed by Supabase realtime).
 // The SSE streaming hook is only used for progress UI during generation.
 import { GeneratingOverlay } from "../components/GeneratingOverlay";
+import { TripViewSkeleton } from "../components/skeletons/TripViewSkeleton";
 
 export function TripView() {
   const { member } = useMember();
@@ -44,6 +45,7 @@ export function TripView() {
     handleTripCreated,
     isLoading: tripLoading,
     error: tripError,
+    isTripIdInitialized,
   } = useCurrentTrip();
 
   const { data: ideas = [], isLoading: ideasLoading } = useIdeas(tripId);
@@ -132,7 +134,12 @@ export function TripView() {
     [handleTripCreated, startStreaming],
   );
 
-  // Show trip planning form if no trip
+  // Show skeleton while initializing (reading tripId from URL/localStorage) or loading trip
+  if (!isTripIdInitialized || tripLoading) {
+    return <TripViewSkeleton onTripSelect={setCurrentTrip} />;
+  }
+
+  // Show trip planning form only after we've confirmed there's no trip
   if (!trip && tripId === null && member) {
     return (
       <TripPlanningForm
@@ -140,21 +147,6 @@ export function TripView() {
         memberId={member.id}
         onSuccess={handleTripCreatedWrapper}
       />
-    );
-  }
-
-  // Loading state - show after we know there's a tripId
-  if (tripLoading) {
-    return (
-      <div className="h-full flex flex-col bg-background">
-        <TripHeader trip={null} onTripSelect={setCurrentTrip} />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto"></div>
-            <p className="text-muted-foreground">Loading trip...</p>
-          </div>
-        </div>
-      </div>
     );
   }
 

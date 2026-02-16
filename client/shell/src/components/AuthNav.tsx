@@ -15,6 +15,7 @@ export const AuthNav = () => {
   };
 
   if (loading) {
+    return null;
     return (
       <div
         style={{ marginLeft: "auto", color: "#9ca3af", fontSize: "0.8125rem" }}

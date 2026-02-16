@@ -137,7 +137,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
 
   // Show loading state while initializing
   if (!isInitialized) {
-    return <div>Loading...</div>;
+    return null;
   }
 
   // If no member after initialization, user is not authenticated

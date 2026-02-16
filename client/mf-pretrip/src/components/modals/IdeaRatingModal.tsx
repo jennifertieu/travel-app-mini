@@ -4,7 +4,14 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import { Dialog, DialogContent } from "../ui/dialog";
-import { X, Flame, ThumbsUp, Minus, SkipForward, ChevronLeft } from "lucide-react";
+import {
+  X,
+  Flame,
+  ThumbsUp,
+  Minus,
+  SkipForward,
+  ChevronLeft,
+} from "lucide-react";
 import { TikTokEmbed, YouTubeEmbed } from "react-social-media-embed";
 import { useModals } from "../../contexts/ModalContext";
 import { useMember } from "../../contexts/MemberContext";
@@ -12,12 +19,28 @@ import { useSetReaction } from "../../hooks/useReactions";
 import { useMyReactions } from "../../hooks/useMyReactions";
 import { useQueryClient } from "@tanstack/react-query";
 import { ReviewsSection } from "../cards/ReviewsSection";
+import { IdeaCardSkeleton } from "../cards/IdeaCardSkeleton";
 
 const REACTION_SIGNALS = [
-  { signal: "fire" as const, label: "Must do!", icon: Flame, color: "text-orange-500" },
-  { signal: "down" as const, label: "Interested", icon: ThumbsUp, color: "text-blue-500" },
+  {
+    signal: "fire" as const,
+    label: "Must do!",
+    icon: Flame,
+    color: "text-orange-500",
+  },
+  {
+    signal: "down" as const,
+    label: "Interested",
+    icon: ThumbsUp,
+    color: "text-blue-500",
+  },
   { signal: "meh" as const, label: "Meh", icon: Minus, color: "text-gray-500" },
-  { signal: "skip" as const, label: "Skip", icon: SkipForward, color: "text-muted-foreground" },
+  {
+    signal: "skip" as const,
+    label: "Skip",
+    icon: SkipForward,
+    color: "text-muted-foreground",
+  },
 ];
 
 function Skeleton({ className }: { className?: string }) {
@@ -107,7 +130,8 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
         const indexAtRating = currentIndex;
         const queueLength = orderedIds.length;
         const unratedCount = unratedIds.length;
-        const isLastInQueue = queueLength > 0 && indexAtRating >= queueLength - 1;
+        const isLastInQueue =
+          queueLength > 0 && indexAtRating >= queueLength - 1;
         const isLastUnrated = unratedCount === 1; // only 1 unrated left = we just rated it
 
         if (isLastInQueue || isLastUnrated) {
@@ -134,7 +158,7 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
       queryClient,
       ideaIds,
       handleClose,
-    ]
+    ],
   );
 
   const handlePrevious = () => {
@@ -151,7 +175,11 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen("ratingMode") || !currentIdea || setReactionMutation.isPending)
+      if (
+        !isOpen("ratingMode") ||
+        !currentIdea ||
+        setReactionMutation.isPending
+      )
         return;
       if (e.key === "1") handleReaction("fire");
       else if (e.key === "2") handleReaction("down");
@@ -160,12 +188,7 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    isOpen,
-    currentIdea?.id,
-    setReactionMutation.isPending,
-    handleReaction,
-  ]);
+  }, [isOpen, currentIdea?.id, setReactionMutation.isPending, handleReaction]);
 
   if (!isOpen("ratingMode")) return null;
 
@@ -217,8 +240,8 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
             <div className="text-5xl mb-4">🎉</div>
             <h2 className="text-2xl font-semibold mb-2">All caught up!</h2>
             <p className="text-muted-foreground mb-8 text-center max-w-md">
-              You&apos;ve rated all {totalCount} ideas. Your votes help the group
-              decide what to include in the itinerary.
+              You&apos;ve rated all {totalCount} ideas. Your votes help the
+              group decide what to include in the itinerary.
             </p>
             <div className="flex flex-wrap gap-4 justify-center mb-8">
               {REACTION_SIGNALS.map(({ signal, label, icon: Icon }) => (
@@ -248,7 +271,7 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
           </div>
         ) : !currentIdea ? (
           <div className="flex-1 flex items-center justify-center p-12">
-            <p className="text-muted-foreground">Loading...</p>
+            <IdeaCardSkeleton />
           </div>
         ) : (
           <>
@@ -383,23 +406,25 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
             {hasEnrichment && (
               <div className="border-t border-border px-6 py-5 flex-shrink-0">
                 <div className="flex flex-wrap gap-3 justify-center mb-3">
-                  {REACTION_SIGNALS.map(({ signal, label, icon: Icon, color }) => (
-                    <Button
-                      key={signal}
-                      variant={
-                        myReactions[currentIdea.id]?.signal === signal
-                          ? "default"
-                          : "outline"
-                      }
-                      size="lg"
-                      onClick={() => handleReaction(signal)}
-                      disabled={setReactionMutation.isPending}
-                      className="min-w-[120px]"
-                    >
-                      <Icon className={`h-5 w-5 mr-2 ${color}`} />
-                      {label}
-                    </Button>
-                  ))}
+                  {REACTION_SIGNALS.map(
+                    ({ signal, label, icon: Icon, color }) => (
+                      <Button
+                        key={signal}
+                        variant={
+                          myReactions[currentIdea.id]?.signal === signal
+                            ? "default"
+                            : "outline"
+                        }
+                        size="lg"
+                        onClick={() => handleReaction(signal)}
+                        disabled={setReactionMutation.isPending}
+                        className="min-w-[120px]"
+                      >
+                        <Icon className={`h-5 w-5 mr-2 ${color}`} />
+                        {label}
+                      </Button>
+                    ),
+                  )}
                 </div>
                 <div className="flex justify-center">
                   {showComment ? (

@@ -17,6 +17,7 @@ const CURRENT_TRIP_KEY = "current-trip-id";
  */
 export function useCurrentTrip() {
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
+  const [isTripIdInitialized, setIsTripIdInitialized] = useState(false);
   const [isLocalStorageAvailable, setIsLocalStorageAvailable] = useState(true);
   const [loadingState, setLoadingState] = useState<TripLoadingState | null>(
     null,
@@ -108,6 +109,8 @@ export function useCurrentTrip() {
         error,
       );
       setIsLocalStorageAvailable(false);
+    } finally {
+      setIsTripIdInitialized(true);
     }
   }, [getTripIdFromUrl, updateUrlWithTripId]);
 
@@ -292,6 +295,7 @@ export function useCurrentTrip() {
     isLoading,
     error,
     isLocalStorageAvailable,
+    isTripIdInitialized,
     // Enhanced properties
     loadingState,
     isSwitching: loadingState?.isSwitching || false,

@@ -28,9 +28,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
           fontSize: "0.875rem",
           color: "#9ca3af",
         }}
-      >
-        Loading...
-      </div>
+      ></div>
     );
   }
 
