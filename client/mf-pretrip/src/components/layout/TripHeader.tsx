@@ -3,13 +3,14 @@
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { useModals } from "../../contexts/ModalContext";
-import { Settings, MapPin, Plus, Vote } from "lucide-react";
+import { Settings, MapPin, Plus, Vote, Sparkles, Loader2, Calendar } from "lucide-react";
 import { TripSelector } from "../TripSelector";
 import { TripMembersAvatars } from "../TripMembersAvatars";
 import { useUserTrips } from "../../hooks/useUserTrips";
 import { useMember } from "../../contexts/MemberContext";
 import { useIdeas } from "../../hooks/useIdeas";
 import { useMyReactions } from "../../hooks/useMyReactions";
+import { useStartItineraryBuild } from "../../hooks/useStartItineraryBuild";
 import { Database } from "@travel-app/shared-types";
 
 type Trip = Database["public"]["Tables"]["trips"]["Row"];
@@ -63,12 +64,15 @@ export function TripHeader({ trip, onTripSelect }: TripHeaderProps) {
   const showDestinationChip =
     Boolean(trip.destination) && trip.destination !== displayTitle;
 
+  const { startBuild, isStarting } = useStartItineraryBuild();
+
   const { data: ideas = [] } = useIdeas(trip.id);
   const ratedIdeas = ideas.filter((i) => i.enrichment_status === "DONE");
   const ideaIds = ratedIdeas.map((i) => i.id);
   const { data: myReactions = {} } = useMyReactions(member?.id ?? null, ideaIds);
   const unratedCount = ideaIds.filter((id) => !myReactions[id]).length;
   const showRateButton = ratedIdeas.length > 0;
+  const hasDates = Boolean(trip.start_date && trip.end_date);
 
   return (
     <header className="relative z-[1001] border-b bg-background/80 px-4 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:px-6">
@@ -90,13 +94,22 @@ export function TripHeader({ trip, onTripSelect }: TripHeaderProps) {
                 <span className="truncate">{trip.destination}</span>
               </div>
             )}
-            {trip.start_date && trip.end_date && (
-              <div className="inline-flex items-center rounded-full border border-border/60 bg-background px-2 py-1">
+            {hasDates ? (
+              <div className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background px-2 py-1">
+                <Calendar className="h-3.5 w-3.5" />
                 <span>
-                  {new Date(trip.start_date).toLocaleDateString()} —{" "}
-                  {new Date(trip.end_date).toLocaleDateString()}
+                  {new Date(trip.start_date!).toLocaleDateString()} —{" "}
+                  {new Date(trip.end_date!).toLocaleDateString()}
                 </span>
               </div>
+            ) : (
+              <button
+                onClick={() => openModal("tripSettings")}
+                className="inline-flex items-center gap-1 rounded-full border border-dashed border-amber-500/40 bg-amber-500/5 px-2 py-1 text-amber-500 hover:bg-amber-500/10 hover:border-amber-500/60 transition-colors cursor-pointer"
+              >
+                <Calendar className="h-3.5 w-3.5" />
+                <span>Add dates</span>
+              </button>
             )}
           </div>
         </div>
@@ -126,6 +139,26 @@ export function TripHeader({ trip, onTripSelect }: TripHeaderProps) {
               )}
             </Button>
           )}
+          <Button
+            size="sm"
+            onClick={() => startBuild(trip.id)}
+            disabled={!hasDates || isStarting}
+            title={
+              !hasDates
+                ? "Add start and end dates to your trip before building the itinerary"
+                : "Build AI itinerary from your ideas"
+            }
+            className="h-9 gap-1.5 px-3"
+          >
+            {isStarting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            <span className="hidden sm:inline">
+              {isStarting ? "Building..." : "Build Trip"}
+            </span>
+          </Button>
         </div>
       </div>
     </header>
