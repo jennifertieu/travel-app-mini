@@ -69,6 +69,17 @@
   }
 }
 
+/* Skeleton shimmer gradient — theme-aware for dark mode */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--background)) 50%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 200% 100%;
+}
+
 /* Glassmorphic "is drawing..." label on map */
 .rt-drawing-label > div {
   background: rgba(255, 255, 255, 0.35) !important;
