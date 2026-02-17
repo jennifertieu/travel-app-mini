@@ -19,8 +19,13 @@ const SHORTCUT_GROUPS = [
     shortcuts: [
       { keys: ["R"], description: "Rectangle tool" },
       { keys: ["P"], description: "Polygon tool" },
-      { keys: ["Esc"], description: "Cancel drawing / exit draw mode" },
+      { keys: ["V"], description: "Pan mode (exit drawing)" },
+      { keys: ["Esc"], description: "Cancel current drawing" },
     ],
+  },
+  {
+    title: "Navigation",
+    shortcuts: [{ keys: ["C"], description: "Recenter map to trip" }],
   },
   {
     title: "General",

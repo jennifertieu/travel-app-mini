@@ -967,6 +967,26 @@ export const MapView = forwardRef<
       if (e.key === "?") {
         setShowShortcuts(true);
       }
+
+      // V key → exit draw mode (pan mode)
+      if (e.key === "v" || e.key === "V") {
+        if (isDrawMode) {
+          setIsDrawMode(false);
+        }
+      }
+
+      // C key → recenter map to trip
+      if (e.key === "c" || e.key === "C") {
+        if (map) {
+          if (tripId) {
+            try {
+              localStorage.removeItem(`map-view-${tripId}`);
+            } catch {}
+          }
+          restoredFromStorageRef.current = false;
+          map.setView(center, DEFAULT_ZOOM);
+        }
+      }
     };
 
     const updatePreviewPolygon = (points: L.LatLng[]) => {
@@ -1164,6 +1184,17 @@ export const MapView = forwardRef<
         onColorChange={setSelectedColor}
         drawingColors={DRAWING_COLORS}
         onShortcutsOpen={() => setShowShortcuts(true)}
+        onRecenter={() => {
+          if (!map) return;
+          // Reset to the trip's original center, clearing any saved pan/zoom
+          if (tripId) {
+            try {
+              localStorage.removeItem(`map-view-${tripId}`);
+            } catch {}
+          }
+          restoredFromStorageRef.current = false;
+          map.setView(center, DEFAULT_ZOOM);
+        }}
       />
 
       {/* Annotation Modal */}

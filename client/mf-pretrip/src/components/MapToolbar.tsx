@@ -1,7 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { Square, Pentagon, Pencil, Keyboard } from "lucide-react";
+import {
+  Square,
+  Pentagon,
+  Pencil,
+  Keyboard,
+  LocateFixed,
+  Hand,
+} from "lucide-react";
 import { motion, type Variants, type Transition } from "motion/react";
 import { cn } from "../lib/utils";
 import type { MemberProfile } from "../contexts/MemberContext";
@@ -55,6 +62,7 @@ export interface MapToolbarProps {
   onColorChange: (color: string) => void;
   drawingColors: DrawingColor[];
   onShortcutsOpen: () => void;
+  onRecenter: () => void;
 }
 
 // ── Tool definitions ─────────────────────────────────────────────────────
@@ -75,6 +83,7 @@ export function MapToolbar({
   onColorChange,
   drawingColors,
   onShortcutsOpen,
+  onRecenter,
 }: MapToolbarProps) {
   return (
     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000]">
@@ -130,6 +139,30 @@ export function MapToolbar({
 
         {/* ── Drawing Tools Section ────────────────────────────── */}
         <div className="flex items-center gap-1">
+          {/* Pan / Select tool */}
+          <motion.button
+            {...TOOL_BUTTON_MOTION}
+            onClick={() => onDrawModeToggle(false)}
+            className={cn(
+              "relative flex items-center justify-center h-9 rounded-full overflow-hidden cursor-pointer transition-colors",
+              !isDrawMode
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-muted",
+            )}
+            title="Pan (V)"
+          >
+            <div className="flex items-center px-2.5">
+              <Hand className="h-4 w-4 flex-shrink-0" />
+              <motion.span
+                variants={LABEL_VARIANTS}
+                transition={LABEL_TRANSITION}
+                className="text-xs font-medium whitespace-nowrap overflow-hidden"
+              >
+                Grab
+              </motion.span>
+            </div>
+          </motion.button>
+
           {TOOLS.map((tool) => {
             const Icon = tool.icon;
             const isActive = isDrawMode && drawTool === tool.id;
@@ -205,8 +238,16 @@ export function MapToolbar({
           </div>
         </motion.div>
 
-        {/* ── Keyboard Shortcuts Button ────────────────────────── */}
+        {/* ── Recenter & Keyboard Shortcuts ─────────────────────── */}
         <div className="w-px h-5 bg-border/60 mx-1" />
+        <button
+          onClick={onRecenter}
+          className="flex items-center justify-center h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          title="Recenter map"
+          aria-label="Recenter map"
+        >
+          <LocateFixed className="h-3.5 w-3.5" />
+        </button>
         <button
           onClick={onShortcutsOpen}
           className="flex items-center justify-center h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"

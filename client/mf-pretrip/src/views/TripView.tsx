@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useIdeas } from "../hooks/useIdeas";
 import { TripHeader } from "../components/layout/TripHeader";
 import { IdeaSidebar } from "../components/layout/IdeaSidebar";
@@ -27,6 +28,7 @@ export function TripView() {
   const [highlightedAnnotationId, setHighlightedAnnotationId] = useState<
     string | null
   >(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const justCreatedTripRef = useRef(false);
   const createTripMutation = useCreateTrip();
   const mapViewRef = useRef<{ setDrawMode: (enabled: boolean) => void }>(null);
@@ -258,20 +260,44 @@ export function TripView() {
         </div>
       </div>
 
-      {/* Sidebar - full height */}
-      <div className="w-80 flex-shrink-0 overflow-hidden">
-        <IdeaSidebar
-          ideas={ideas}
-          annotations={localAnnotations}
-          isLoading={ideasLoading}
-          isGenerating={isGenerating || isStreaming}
-          tripId={tripId}
-          onAnnotationClick={handleAnnotationClick}
-          onAnnotationDelete={handleAnnotationDelete}
-          onDrawModeToggle={handleDrawModeToggle}
-          totalExpected={5}
-        />
-      </div>
+      {/* Sidebar area */}
+      {sidebarCollapsed ? (
+        /* Collapsed rail — always visible */
+        <div className="flex-shrink-0 w-10 border-l bg-muted/40 flex flex-col items-center pt-4 gap-3">
+          <button
+            onClick={() => setSidebarCollapsed(false)}
+            className="p-1.5 rounded-md hover:bg-muted transition-colors"
+            aria-label="Open sidebar"
+          >
+            <PanelRightOpen className="h-4 w-4 text-muted-foreground" />
+          </button>
+          <span className="text-[10px] text-muted-foreground [writing-mode:vertical-lr] select-none">
+            Ideas
+          </span>
+        </div>
+      ) : (
+        /* Expanded sidebar */
+        <div className="flex-shrink-0 w-80 relative">
+          <button
+            onClick={() => setSidebarCollapsed(true)}
+            className="absolute -left-3 top-20 z-10 bg-background border rounded-full p-1 shadow-sm hover:bg-muted transition-colors"
+            aria-label="Close sidebar"
+          >
+            <PanelRightClose className="h-4 w-4 text-muted-foreground" />
+          </button>
+          <IdeaSidebar
+            ideas={ideas}
+            annotations={localAnnotations}
+            isLoading={ideasLoading}
+            isGenerating={isGenerating || isStreaming}
+            tripId={tripId}
+            onAnnotationClick={handleAnnotationClick}
+            onAnnotationDelete={handleAnnotationDelete}
+            onDrawModeToggle={handleDrawModeToggle}
+            totalExpected={5}
+          />
+        </div>
+      )}
     </div>
   );
 }

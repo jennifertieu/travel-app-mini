@@ -87,6 +87,14 @@ export function useCurrentTrip() {
   useEffect(() => {
     try {
       if (typeof window !== "undefined") {
+        // Debug flag: set localStorage "force-zero-state" to "true" to always show the start screen
+        const forceZero = localStorage.getItem("force-zero-state");
+        if (forceZero === "true") {
+          console.log("🧪 force-zero-state is set — skipping trip restore");
+          setIsTripIdInitialized(true);
+          return;
+        }
+
         // Check URL first
         const urlTripId = getTripIdFromUrl();
         if (urlTripId) {
