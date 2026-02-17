@@ -63,14 +63,15 @@ function extractTikTokVideoId(url: string): string | null {
     const urlObj = new URL(normalizedUrl);
 
     // Format: /video/123456789
-    const videoMatch = urlObj.pathname.match(/\/video\/(\d+)/);
+    const pathname = urlObj.pathname ?? "";
+    const videoMatch = pathname.match(/\/video\/(\d+)/);
     if (videoMatch) {
       return videoMatch[1];
     }
 
     // Short URL format: vm.tiktok.com/ZMRxxxxxx/
     // Extract the short code from the path
-    const shortMatch = urlObj.pathname.match(/^\/([A-Za-z0-9]+)\/?$/);
+    const shortMatch = pathname.match(/^\/([A-Za-z0-9]+)\/?$/);
     if (
       shortMatch &&
       (urlObj.hostname.includes("vm.tiktok.com") ||
@@ -95,15 +96,16 @@ function extractYouTubeVideoId(url: string): string | null {
   try {
     const normalizedUrl = normalizeUrl(url);
     const urlObj = new URL(normalizedUrl);
+    const pathname = urlObj.pathname ?? "";
 
     // Format: /shorts/dQw4w9WgXcQ
-    const shortsMatch = urlObj.pathname.match(/\/shorts\/([A-Za-z0-9_-]+)/);
+    const shortsMatch = pathname.match(/\/shorts\/([A-Za-z0-9_-]+)/);
     if (shortsMatch) {
       return shortsMatch[1];
     }
 
     // Format: youtu.be/dQw4w9WgXcQ
-    const shortMatch = urlObj.pathname.match(/^\/([A-Za-z0-9_-]+)/);
+    const shortMatch = pathname.match(/^\/([A-Za-z0-9_-]+)/);
     if (shortMatch && urlObj.hostname.includes("youtu.be")) {
       return shortMatch[1];
     }
@@ -163,9 +165,10 @@ function extractTikTokCreator(url: string): string | null {
   try {
     const normalizedUrl = normalizeUrl(url);
     const urlObj = new URL(normalizedUrl);
+    const pathname = urlObj.pathname ?? "";
 
     // Format: /@username
-    const creatorMatch = urlObj.pathname.match(/@([^/]+)/);
+    const creatorMatch = pathname.match(/@([^/]+)/);
     if (creatorMatch) {
       return creatorMatch[1];
     }

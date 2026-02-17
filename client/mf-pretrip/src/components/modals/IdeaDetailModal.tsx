@@ -116,17 +116,23 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
             <div className="flex flex-col gap-5">
               {/* Video Container */}
               <div className="w-full aspect-[9/16] bg-muted rounded-2xl overflow-hidden relative shadow-lg">
-                {initialIdea.source_platform === "tiktok" ? (
-                  <div className="w-full h-full flex items-center justify-center overflow-hidden">
-                    <TikTokEmbed url={initialIdea.source_url} width={420} />
-                  </div>
+                {initialIdea.source_url ? (
+                  initialIdea.source_platform === "tiktok" ? (
+                    <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                      <TikTokEmbed url={initialIdea.source_url} width={420} />
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                      <YouTubeEmbed
+                        url={initialIdea.source_url}
+                        width={420}
+                        height={600}
+                      />
+                    </div>
+                  )
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center overflow-hidden">
-                    <YouTubeEmbed
-                      url={initialIdea.source_url}
-                      width={420}
-                      height={600}
-                    />
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                    No video URL
                   </div>
                 )}
               </div>

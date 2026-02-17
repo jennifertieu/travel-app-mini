@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { X, Sparkles, MessageSquare } from "lucide-react";
+import { X, Sparkles, MessageSquare, Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { AnnotationCoordinates } from "../../hooks/useRealtimeTrip";
 
@@ -18,7 +18,19 @@ interface AnnotationModalProps {
   position: { x: number; y: number } | null;
   areaSize?: number | null;
   locationName?: string | null;
+  isSearching?: boolean;
+  searchProgress?: { current: number; total: number; message: string } | null;
+  searchError?: string | null;
 }
+
+const searchCategories = [
+  { label: "Restaurants", icon: "🍽️" },
+  { label: "Hotels", icon: "🏨" },
+  { label: "Nightlife", icon: "🌙" },
+  { label: "Coffee Shops", icon: "☕" },
+  { label: "Attractions", icon: "🎯" },
+  { label: "Shopping", icon: "🛍️" },
+];
 
 export function AnnotationModal({
   isOpen,
@@ -28,6 +40,9 @@ export function AnnotationModal({
   position,
   areaSize,
   locationName,
+  isSearching = false,
+  searchProgress = null,
+  searchError = null,
 }: AnnotationModalProps) {
   const [activeTab, setActiveTab] = useState<"note" | "search">("note");
   const [name, setName] = useState("");
@@ -176,26 +191,26 @@ export function AnnotationModal({
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-2.5">
-            {/* Name field - shown in both tabs */}
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                Name (optional)
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={
-                  locationName
-                    ? `${locationName} Area`
-                    : "E.g., Downtown Hotels"
-                }
-                className="w-full px-2.5 py-1.5 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring/20 text-sm"
-              />
-            </div>
-
             {activeTab === "note" ? (
               <>
+                {/* Name field - only shown on Add Note tab */}
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Name (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={
+                      locationName
+                        ? `${locationName} Area`
+                        : "E.g., Downtown Hotels"
+                    }
+                    className="w-full px-2.5 py-1.5 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring/20 text-sm"
+                  />
+                </div>
+
                 {/* Note field */}
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-muted-foreground">
@@ -222,7 +237,7 @@ export function AnnotationModal({
                         type="button"
                         onClick={() =>
                           setSelectedColor((prev) =>
-                            prev === c.hex ? null : c.hex
+                            prev === c.hex ? null : c.hex,
                           )
                         }
                         className={`flex items-center gap-1 px-2 py-1 rounded-md border-2 transition-all text-xs ${
@@ -247,28 +262,74 @@ export function AnnotationModal({
             ) : (
               <>
                 {/* AI Search info */}
-                <div className="p-2 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900 rounded-md text-xs text-blue-800 dark:text-blue-300">
-                  <p className="font-medium mb-1">Contextual AI Search</p>
-                  <p className="text-blue-600/80 dark:text-blue-400/80 text-[11px] leading-tight">
-                    AI will search for ideas within the area you drew on the
-                    map.
-                  </p>
-                </div>
+                {!isSearching && !searchError && (
+                  <div className="p-2 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900 rounded-md text-xs text-blue-800 dark:text-blue-300">
+                    <p className="font-medium mb-1">Contextual AI Search</p>
+                    <p className="text-blue-600/80 dark:text-blue-400/80 text-[11px] leading-tight">
+                      AI will search for ideas within the area you drew on the
+                      map.
+                    </p>
+                  </div>
+                )}
 
-                {/* Search query field */}
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    What are you looking for?
-                  </label>
-                  <input
-                    type="text"
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder="E.g., Sushi restaurants, Jazz clubs..."
-                    className="w-full px-2.5 py-1.5 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring/20 text-sm"
-                    autoFocus
-                  />
-                </div>
+                {/* Streaming progress */}
+                {isSearching && (
+                  <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900 rounded-md text-xs text-blue-800 dark:text-blue-300">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" />
+                      <span className="font-medium">
+                        {searchProgress
+                          ? `Finding places... ${searchProgress.current}/${searchProgress.total}`
+                          : "Starting search..."}
+                      </span>
+                    </div>
+                    {searchProgress?.message && (
+                      <p className="mt-1.5 text-blue-600/80 dark:text-blue-400/80 text-[11px] leading-tight ml-6">
+                        {searchProgress.message}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Error message */}
+                {searchError && !isSearching && (
+                  <div className="p-2 bg-red-50/50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-md text-xs text-red-700 dark:text-red-300">
+                    <p className="font-medium mb-0.5">Search failed</p>
+                    <p className="text-red-600/80 dark:text-red-400/80 text-[11px] leading-tight">
+                      {searchError}
+                    </p>
+                  </div>
+                )}
+
+                {/* Category chips */}
+                {!isSearching && !searchError && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      What are you looking for?
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {searchCategories.map((category) => (
+                        <button
+                          key={category.label}
+                          type="button"
+                          disabled={isSearching}
+                          onClick={() =>
+                            onSave({
+                              name: null,
+                              label: category.label,
+                              intent: "search_area",
+                              color: null,
+                            })
+                          }
+                          className="flex items-center gap-1.5 px-2.5 py-2 border border-border rounded-lg text-xs font-medium hover:bg-muted/80 hover:border-muted-foreground/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <span className="text-sm">{category.icon}</span>
+                          <span>{category.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </>
             )}
 
@@ -283,14 +344,16 @@ export function AnnotationModal({
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={!note.trim()}
-                size="sm"
-                className="h-7 text-xs px-3"
-              >
-                {activeTab === "note" ? "Save Note" : "Search Area"}
-              </Button>
+              {activeTab === "note" && (
+                <Button
+                  type="submit"
+                  disabled={!note.trim()}
+                  size="sm"
+                  className="h-7 text-xs px-3"
+                >
+                  Save Note
+                </Button>
+              )}
             </div>
           </form>
         </div>

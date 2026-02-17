@@ -49,15 +49,26 @@ export function TripView() {
   } = useCurrentTrip();
 
   const { data: ideas = [], isLoading: ideasLoading } = useIdeas(tripId);
-  const { annotations, onlineUsers } = useRealtimeTrip(tripId, member);
+  const { annotations: realtimeAnnotations, onlineUsers } = useRealtimeTrip(
+    tripId,
+    member,
+  );
+
+  // Local state for optimistic updates
+  const [localAnnotations, setLocalAnnotations] = useState<Annotation[]>([]);
+
+  // Sync realtime annotations to local state
+  useEffect(() => {
+    setLocalAnnotations(realtimeAnnotations);
+  }, [realtimeAnnotations]);
 
   // Debug logging
   useEffect(() => {
     console.log(`🎯 TripView: tripId changed to ${tripId}`);
     console.log(`🎯 TripView: trip object:`, trip);
     console.log(`🎯 TripView: ideas count:`, ideas.length);
-    console.log(`🎯 TripView: annotations count:`, annotations.length);
-  }, [tripId, trip, ideas.length, annotations.length]);
+    console.log(`🎯 TripView: annotations count:`, localAnnotations.length);
+  }, [tripId, trip, ideas.length, localAnnotations.length]);
 
   // Keep a stable ref to startStreaming so useEffects don't re-fire on every render
   const startStreamingRef = useRef(startStreaming);
@@ -194,16 +205,24 @@ export function TripView() {
   };
 
   const handleAnnotationDelete = async (annotationId: string) => {
-    const { error } = await (supabase as any)
-      .from("trip_annotations")
+    console.log("🗑️ Deleting annotation:", annotationId);
+
+    // Optimistic update - remove immediately from UI
+    setLocalAnnotations((prev) => prev.filter((a) => a.id !== annotationId));
+
+    const { error } = await supabase
+      .from("trip_annotations" as any)
       .delete()
       .eq("id", annotationId);
 
     if (error) {
-      console.error("Failed to delete annotation:", error);
+      console.error("❌ Failed to delete annotation:", error);
+      // Revert optimistic update on error
+      setLocalAnnotations(realtimeAnnotations);
       alert("Failed to delete annotation. Please try again.");
+    } else {
+      console.log("✅ Annotation deleted successfully");
     }
-    // Realtime will automatically update the annotations state
   };
 
   const handleDrawModeToggle = (enabled: boolean) => {
@@ -233,7 +252,6 @@ export function TripView() {
               center={mapCenter}
               tripId={tripId}
               highlightedAnnotationId={highlightedAnnotationId}
-              onlineUsers={onlineUsers}
               ref={mapViewRef}
             />
           )}
@@ -244,7 +262,7 @@ export function TripView() {
       <div className="w-80 flex-shrink-0 overflow-hidden">
         <IdeaSidebar
           ideas={ideas}
-          annotations={annotations}
+          annotations={localAnnotations}
           isLoading={ideasLoading}
           isGenerating={isGenerating || isStreaming}
           tripId={tripId}

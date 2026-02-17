@@ -20,7 +20,7 @@ interface AIEnrichmentOutput {
   tags: string[];
   placeQuery: string;
   category?: IdeaCategory;
-  costGuess?: "$" | "$$" | "$$$";
+  costGuess?: "$" | "$" | "$$";
   durationGuess?: "30m" | "1-2h" | "half-day";
   iconType?: string;
 }
@@ -36,11 +36,17 @@ export interface ActivitySuggestion {
   name: string;
   summary: string;
   category: IdeaCategory;
-  costGuess: "$" | "$$" | "$$$";
+  costGuess: "$" | "$" | "$$";
   durationGuess: "30m" | "1-2h" | "half-day";
   placeQuery: string;
   tags: string[];
   iconType: string;
+}
+
+export interface AreaSearchInput {
+  query: string;
+  bounds: { north: number; south: number; east: number; west: number };
+  locationName: string;
 }
 
 /**
@@ -48,7 +54,7 @@ export interface ActivitySuggestion {
  * Extracts summary, tags, place query, and estimates from video metadata
  */
 export async function generateAIEnrichment(
-  input: AIEnrichmentInput
+  input: AIEnrichmentInput,
 ): Promise<AIEnrichmentOutput> {
   const apiKey = process.env.OPENAI_API_KEY;
 
@@ -56,7 +62,7 @@ export async function generateAIEnrichment(
   console.log("🔑 [AI Service] API Key present:", !!apiKey);
   console.log(
     "🔑 [AI Service] API Key prefix:",
-    apiKey ? `${apiKey.substring(0, 10)}...` : "none"
+    apiKey ? `${apiKey.substring(0, 10)}...` : "none",
   );
 
   if (!apiKey) {
@@ -98,7 +104,7 @@ export async function generateAIEnrichment(
     console.log(
       "📡 [AI Service] Response status:",
       response.status,
-      response.statusText
+      response.statusText,
     );
 
     if (!response.ok) {
@@ -111,7 +117,7 @@ export async function generateAIEnrichment(
       throw new Error(
         `OpenAI API error: ${response.status} ${
           response.statusText
-        } - ${JSON.stringify(errorData)}`
+        } - ${JSON.stringify(errorData)}`,
       );
     }
 
@@ -175,7 +181,7 @@ function buildEnrichmentPrompt(input: AIEnrichmentInput): string {
   } = input;
 
   const dateRange = `${new Date(
-    tripDates.start
+    tripDates.start,
   ).toLocaleDateString()} to ${new Date(tripDates.end).toLocaleDateString()}`;
   const dietary =
     userProfile.dietary.length > 0 ? userProfile.dietary.join(", ") : "none";
@@ -203,7 +209,7 @@ Extract the following information in JSON format:
   "tags": ["array", "of", "3-5", "relevant", "tags", "matching", "traveler interests"],
   "placeQuery": "The MOST SPECIFIC place/business name with location (e.g., 'Ichiran Ramen Shibuya Tokyo' or 'Eiffel Tower Champ de Mars Paris')",
   "category": "ONE of: food, sightseeing, nature, shopping, nightlife, activity, stay, other",
-  "costGuess": "$ or $$ or $$$ (estimated cost per person)",
+  "costGuess": "$ or $ or $$ (estimated cost per person)",
   "durationGuess": "30m or 1-2h or half-day (estimated time needed)",
   "iconType": "single word category from: cafe, restaurant, bar, museum, park, beach, temple, market, hotel, shop, landmark, attraction, nature, food, activity, or other"
 }
@@ -247,8 +253,8 @@ EXAMPLES:
 
 Cost Guidelines:
 - $ = under $15/person (street food, casual)
-- $$ = $15-50/person (casual dining, attractions)
-- $$$ = over $50/person (fine dining, premium experiences)
+- $ = $15-50/person (casual dining, attractions)
+- $$ = over $50/person (fine dining, premium experiences)
 
 Duration Guidelines based on travel style:
 - 30m = quick stops, photo ops, street food
@@ -281,8 +287,8 @@ function validateCategory(value: any): IdeaCategory | undefined {
 /**
  * Validate cost guess format
  */
-function validateCostGuess(value: any): "$" | "$$" | "$$$" | undefined {
-  if (value === "$" || value === "$$" || value === "$$$") {
+function validateCostGuess(value: any): "$" | "$" | "$$" | undefined {
+  if (value === "$" || value === "$" || value === "$$") {
     return value;
   }
   return undefined;
@@ -292,7 +298,7 @@ function validateCostGuess(value: any): "$" | "$$" | "$$$" | undefined {
  * Validate duration guess format
  */
 function validateDurationGuess(
-  value: any
+  value: any,
 ): "30m" | "1-2h" | "half-day" | undefined {
   if (value === "30m" || value === "1-2h" || value === "half-day") {
     return value;
@@ -315,7 +321,7 @@ function validateIconType(value: any): string | undefined {
  */
 export async function withRateLimit<T>(
   fn: () => Promise<T>,
-  maxRetries = 3
+  maxRetries = 3,
 ): Promise<T> {
   let lastError: Error | null = null;
 
@@ -337,7 +343,7 @@ export async function withRateLimit<T>(
       }
 
       console.error(
-        `❌ [Rate Limit] Non-retryable error on attempt ${attempt + 1}`
+        `❌ [Rate Limit] Non-retryable error on attempt ${attempt + 1}`,
       );
       throw error;
     }
@@ -352,7 +358,7 @@ export async function withRateLimit<T>(
  * Returns 10 diverse activity recommendations based on destination, budget, and interests
  */
 export async function generateActivitySuggestions(
-  input: TripSuggestionsInput
+  input: TripSuggestionsInput,
 ): Promise<ActivitySuggestion[]> {
   const apiKey = process.env.OPENAI_API_KEY;
 
@@ -361,11 +367,11 @@ export async function generateActivitySuggestions(
   console.log("📅 [AI Suggestions] Duration:", input.durationDays, "days");
   console.log(
     "💰 [AI Suggestions] Budget:",
-    input.budgetLevel || "not specified"
+    input.budgetLevel || "not specified",
   );
   console.log(
     "🎨 [AI Suggestions] Interests:",
-    input.interests?.join(", ") || "general"
+    input.interests?.join(", ") || "general",
   );
 
   if (!apiKey) {
@@ -406,7 +412,7 @@ export async function generateActivitySuggestions(
     console.log(
       "📡 [AI Suggestions] Response status:",
       response.status,
-      response.statusText
+      response.statusText,
     );
 
     if (!response.ok) {
@@ -419,7 +425,7 @@ export async function generateActivitySuggestions(
       throw new Error(
         `OpenAI API error: ${response.status} ${
           response.statusText
-        } - ${JSON.stringify(errorData)}`
+        } - ${JSON.stringify(errorData)}`,
       );
     }
 
@@ -442,7 +448,7 @@ export async function generateActivitySuggestions(
     }
 
     console.log(
-      `✨ [AI Suggestions] Parsed ${parsed.suggestions.length} suggestions`
+      `✨ [AI Suggestions] Parsed ${parsed.suggestions.length} suggestions`,
     );
 
     const validatedSuggestions: ActivitySuggestion[] = parsed.suggestions.map(
@@ -452,7 +458,7 @@ export async function generateActivitySuggestions(
           name: suggestion.name || `Activity ${index + 1}`,
           summary: suggestion.summary || "A great travel experience.",
           category: validateCategory(suggestion.category) || "other",
-          costGuess: validateCostGuess(suggestion.costGuess) || "$$",
+          costGuess: validateCostGuess(suggestion.costGuess) || "$",
           durationGuess:
             validateDurationGuess(suggestion.durationGuess) || "1-2h",
           placeQuery:
@@ -462,11 +468,11 @@ export async function generateActivitySuggestions(
             : [],
           iconType: validateIconType(suggestion.iconType) || "attraction",
         };
-      }
+      },
     );
 
     console.log(
-      "🎉 [AI Suggestions] Activity suggestions generated successfully!"
+      "🎉 [AI Suggestions] Activity suggestions generated successfully!",
     );
     return validatedSuggestions;
   } catch (error) {
@@ -491,9 +497,9 @@ function buildSuggestionsPrompt(input: TripSuggestionsInput): string {
   const budgetText = budgetLevel
     ? budgetLevel === "$"
       ? "budget-friendly (under $15/person)"
-      : budgetLevel === "$$"
-      ? "moderate ($15-50/person)"
-      : "premium/luxury (over $50/person)"
+      : budgetLevel === "$"
+        ? "moderate ($15-50/person)"
+        : "premium/luxury (over $50/person)"
     : "various price ranges";
   const interestsText =
     interests && interests.length > 0 ? interests.join(", ") : "general travel";
@@ -520,7 +526,7 @@ Return EXACTLY this JSON format:
       "name": "Specific place or activity name",
       "summary": "2-3 sentences. What it is, why it's worth visiting, practical details like best time/what to order/key features. NO marketing fluff.",
       "category": "food|sightseeing|nature|shopping|nightlife|activity|stay|other",
-      "costGuess": "$|$$|$$$",
+      "costGuess": "$|$|$$",
       "durationGuess": "30m|1-2h|half-day",
       "placeQuery": "Specific search query for Google Places (e.g., 'Pike Place Market Seattle' or 'Ramen Ichiran Shibuya Tokyo')",
       "tags": ["tag1", "tag2", "tag3"],
@@ -544,4 +550,175 @@ SUMMARY WRITING RULES:
 ❌ BAD: "This unique dining experience offers an authentic atmosphere where visitors can enjoy..."
 
 Generate 5 activities now. Make them specific, actionable, and tailored to ${destination}.`;
+}
+
+/**
+ * Generate AI place suggestions for an area search query within a bounding box.
+ * Returns exactly 3 specific place suggestions matching the query in the given area.
+ */
+export async function generateAreaSearchSuggestions(
+  input: AreaSearchInput,
+): Promise<ActivitySuggestion[]> {
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  console.log(
+    "🔍 [Area Search AI] Starting area search suggestion generation...",
+  );
+  console.log("📍 [Area Search AI] Location:", input.locationName);
+  console.log("🔎 [Area Search AI] Query:", input.query);
+  console.log("📐 [Area Search AI] Bounds:", JSON.stringify(input.bounds));
+
+  if (!apiKey) {
+    console.error("❌ [Area Search AI] OPENAI_API_KEY is not configured");
+    throw new Error("OPENAI_API_KEY is not configured");
+  }
+
+  const prompt = buildAreaSearchPrompt(input);
+
+  try {
+    console.log("🌐 [Area Search AI] Sending request to OpenAI API...");
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an expert travel planning assistant specializing in finding specific places within geographic areas. You have deep knowledge of restaurants, attractions, shops, and experiences worldwide. Always suggest real, specific places that actually exist in the requested area. Provide structured responses in JSON format.",
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 800,
+        response_format: { type: "json_object" },
+      }),
+    });
+
+    console.log(
+      "📡 [Area Search AI] Response status:",
+      response.status,
+      response.statusText,
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("❌ [Area Search AI] OpenAI API error:", {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData,
+      });
+      throw new Error(
+        `OpenAI API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`,
+      );
+    }
+
+    const data = await response.json();
+    console.log("✅ [Area Search AI] Response received from OpenAI");
+    console.log("📊 [Area Search AI] Usage:", data.usage);
+
+    const content = data.choices?.[0]?.message?.content;
+
+    if (!content) {
+      console.error("❌ [Area Search AI] No content in OpenAI response");
+      throw new Error("No content in OpenAI response");
+    }
+
+    const parsed = JSON.parse(content);
+
+    if (!parsed.suggestions || !Array.isArray(parsed.suggestions)) {
+      console.error("❌ [Area Search AI] Invalid response format");
+      throw new Error("Invalid response format from OpenAI");
+    }
+
+    console.log(
+      `✨ [Area Search AI] Parsed ${parsed.suggestions.length} suggestions`,
+    );
+
+    const validatedSuggestions: ActivitySuggestion[] = parsed.suggestions
+      .slice(0, 3)
+      .map((suggestion: any, index: number) => {
+        console.log(`   ${index + 1}. ${suggestion.name || "Unnamed"}`);
+        return {
+          name: suggestion.name || `Place ${index + 1}`,
+          summary: suggestion.summary || "A place worth visiting.",
+          category: validateCategory(suggestion.category) || "other",
+          costGuess: validateCostGuess(suggestion.costGuess) || "$",
+          durationGuess:
+            validateDurationGuess(suggestion.durationGuess) || "1-2h",
+          placeQuery:
+            suggestion.placeQuery || `${suggestion.name} ${input.locationName}`,
+          tags: Array.isArray(suggestion.tags)
+            ? suggestion.tags.slice(0, 5)
+            : [],
+          iconType: validateIconType(suggestion.iconType) || "attraction",
+        };
+      });
+
+    console.log(
+      "🎉 [Area Search AI] Area search suggestions generated successfully!",
+    );
+    return validatedSuggestions;
+  } catch (error) {
+    console.error("💥 [Area Search AI] Error during generation:", error);
+    throw error;
+  }
+}
+
+/**
+ * Build a prompt for area search suggestions within a bounding box
+ */
+function buildAreaSearchPrompt(input: AreaSearchInput): string {
+  const { query, bounds, locationName } = input;
+
+  return `Find exactly 3 specific, real places matching "${query}" within this geographic area:
+
+Location: ${locationName}
+Bounding Box:
+- North: ${bounds.north}
+- South: ${bounds.south}
+- East: ${bounds.east}
+- West: ${bounds.west}
+
+CRITICAL REQUIREMENTS:
+1. Suggest exactly 3 REAL, SPECIFIC places that match "${query}" in or near ${locationName}
+2. All suggestions must be within or very close to the bounding box coordinates above
+3. Use actual business/place names, not generic descriptions
+4. Each suggestion should be a distinct place (no duplicates)
+5. Prioritize well-known, highly-rated places
+
+Return EXACTLY this JSON format:
+{
+  "suggestions": [
+    {
+      "name": "Specific place name",
+      "summary": "1-2 sentences. What it is and why it's worth visiting. Be specific and practical.",
+      "category": "food|sightseeing|nature|shopping|nightlife|activity|stay|other",
+      "costGuess": "$|$$|$$$",
+      "durationGuess": "30m|1-2h|half-day",
+      "placeQuery": "Exact place name + city for Google Places search (e.g., 'Ichiran Ramen Shibuya Tokyo')",
+      "tags": ["${query}", "area_search", "tag3"],
+      "iconType": "restaurant|cafe|bar|museum|park|beach|temple|market|hotel|shop|landmark|attraction|nature|food|activity|other"
+    }
+  ]
+}
+
+CATEGORY RULES:
+- food: restaurants, cafes, street food, bakeries, food markets
+- sightseeing: museums, temples, landmarks, historical sites, viewpoints
+- nature: parks, beaches, hiking trails, gardens, waterfalls
+- shopping: markets, malls, shops, boutiques
+- nightlife: bars, clubs, night markets, evening entertainment
+- activity: tours, experiences, classes, sports, entertainment
+- stay: hotels, hostels, unique accommodations
+- other: anything that doesn't fit above
+
+Generate exactly 3 suggestions now.`;
 }

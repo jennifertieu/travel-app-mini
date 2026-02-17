@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Square, Pentagon, Pencil } from "lucide-react";
+import { Square, Pentagon, Pencil, Keyboard } from "lucide-react";
 import { motion, type Variants, type Transition } from "motion/react";
 import { cn } from "../lib/utils";
 import type { MemberProfile } from "../contexts/MemberContext";
@@ -54,13 +54,14 @@ export interface MapToolbarProps {
   selectedColor: string;
   onColorChange: (color: string) => void;
   drawingColors: DrawingColor[];
+  onShortcutsOpen: () => void;
 }
 
 // ── Tool definitions ─────────────────────────────────────────────────────
 const TOOLS = [
-  { id: "rect" as const, label: "Rectangle", icon: Square },
-  { id: "polygon" as const, label: "Polygon", icon: Pentagon },
-  { id: "path" as const, label: "Freeform", icon: Pencil },
+  { id: "rect" as const, label: "Rectangle", icon: Square, shortcut: "R" },
+  { id: "polygon" as const, label: "Polygon", icon: Pentagon, shortcut: "P" },
+  { id: "path" as const, label: "Freeform", icon: Pencil, shortcut: null },
 ];
 
 // ── Component ────────────────────────────────────────────────────────────
@@ -73,6 +74,7 @@ export function MapToolbar({
   selectedColor,
   onColorChange,
   drawingColors,
+  onShortcutsOpen,
 }: MapToolbarProps) {
   return (
     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000]">
@@ -94,10 +96,8 @@ export function MapToolbar({
               <div className="flex -space-x-2">
                 {onlineUsers.slice(0, 3).map((user) => {
                   const displayName =
-                    user.displayName?.trim() ||
-                    `User ${user.id.slice(0, 4)}`;
-                  const initial =
-                    displayName[0]?.toUpperCase() || "?";
+                    user.displayName?.trim() || `User ${user.id.slice(0, 4)}`;
+                  const initial = displayName[0]?.toUpperCase() || "?";
                   return (
                     <div
                       key={user.id}
@@ -153,7 +153,11 @@ export function MapToolbar({
                     ? "bg-primary text-primary-foreground"
                     : "text-foreground hover:bg-muted",
                 )}
-                title={tool.label}
+                title={
+                  tool.shortcut
+                    ? `${tool.label} (${tool.shortcut})`
+                    : tool.label
+                }
               >
                 <div className="flex items-center px-2.5">
                   <Icon className="h-4 w-4 flex-shrink-0" />
@@ -200,6 +204,17 @@ export function MapToolbar({
             ))}
           </div>
         </motion.div>
+
+        {/* ── Keyboard Shortcuts Button ────────────────────────── */}
+        <div className="w-px h-5 bg-border/60 mx-1" />
+        <button
+          onClick={onShortcutsOpen}
+          className="flex items-center justify-center h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          title="Keyboard shortcuts (?)"
+          aria-label="Show keyboard shortcuts"
+        >
+          <Keyboard className="h-3.5 w-3.5" />
+        </button>
       </motion.div>
     </div>
   );

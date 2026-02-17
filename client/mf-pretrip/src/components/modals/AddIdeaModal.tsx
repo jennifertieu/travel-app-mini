@@ -31,14 +31,15 @@ function detectPlatform(url: string): "tiktok" | "youtube" | null {
   try {
     const normalizedUrl = normalizeUrl(url);
     const urlObj = new URL(normalizedUrl);
-    const hostname = urlObj.hostname.toLowerCase();
+    const hostname = urlObj.hostname?.toLowerCase() ?? "";
+    const pathname = urlObj.pathname ?? "";
     if (hostname.includes("tiktok.com") || hostname.includes("vm.tiktok.com")) {
       return "tiktok";
     }
     if (hostname.includes("youtube.com") || hostname.includes("youtu.be")) {
       if (
         normalizedUrl.includes("/shorts/") ||
-        urlObj.pathname.includes("/shorts/") ||
+        pathname.includes("/shorts/") ||
         hostname.includes("youtu.be")
       ) {
         return "youtube";
@@ -138,15 +139,16 @@ export function AddIdeaModal() {
   const extractVideoId = (url: string): string => {
     try {
       const urlObj = new URL(url);
+      const pathname = urlObj.pathname ?? "";
       if (platform === "tiktok") {
-        const match = urlObj.pathname.match(/\/video\/(\d+)/);
+        const match = pathname.match(/\/video\/(\d+)/);
         if (match) return match[1];
-        const shortMatch = urlObj.pathname.match(/^\/([A-Za-z0-9]+)\/?$/);
+        const shortMatch = pathname.match(/^\/([A-Za-z0-9]+)\/?$/);
         if (shortMatch) return shortMatch[1];
       } else if (platform === "youtube") {
-        const match = urlObj.pathname.match(/\/shorts\/([A-Za-z0-9_-]+)/);
+        const match = pathname.match(/\/shorts\/([A-Za-z0-9_-]+)/);
         if (match) return match[1];
-        const shortMatch = urlObj.pathname.match(/^\/([A-Za-z0-9_-]+)/);
+        const shortMatch = pathname.match(/^\/([A-Za-z0-9_-]+)/);
         if (shortMatch && urlObj.hostname.includes("youtu.be"))
           return shortMatch[1];
       }
@@ -503,12 +505,12 @@ export function AddIdeaModal() {
                       </div>
                     </div>
                   )}
-                  {showEmbed && platform === "tiktok" && (
+                  {showEmbed && url && platform === "tiktok" && (
                     <div className="w-full h-full flex items-center justify-center overflow-hidden">
                       <TikTokEmbed url={url} width={420} />
                     </div>
                   )}
-                  {showEmbed && platform === "youtube" && (
+                  {showEmbed && url && platform === "youtube" && (
                     <div className="w-full h-full flex items-center justify-center overflow-hidden">
                       <YouTubeEmbed url={url} width={420} height={600} />
                     </div>

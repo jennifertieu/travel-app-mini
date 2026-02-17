@@ -28,17 +28,18 @@ import {
   useRealtimeTrip,
 } from "../../hooks/useRealtimeTrip";
 import { AnnotationModal } from "../modals/AnnotationModal";
+import { KeyboardShortcutsModal } from "../modals/KeyboardShortcutsModal";
 import { MapToolbar } from "../MapToolbar";
 import { useMember } from "../../contexts/MemberContext";
 import { supabase } from "../../lib/supabase";
-import { useBoxSearch } from "../../hooks/useBoxSearch";
+import { useAreaSearch } from "../../hooks/useAreaSearch";
 
 type Idea = Database["public"]["Tables"]["trip_reel_ideas"]["Row"];
 
 // ── Annotation label helper ─────────────────────────────────────
 const COLOR_ICON_MAP: Record<string, string> = {
   "#3B82F6": "\u{1F3E8}", // Blue - Hotels
-  "#EF4444": "\u2B50",    // Red - Priority
+  "#EF4444": "\u2B50", // Red - Priority
   "#10B981": "\u{1F333}", // Green - Nature
   "#F59E0B": "\u{1F37D}\uFE0F", // Yellow - Food
   "#8B5CF6": "\u{1F389}", // Purple - Fun
@@ -56,7 +57,12 @@ function escapeAnnotationHtml(value: string) {
 const NEUTRAL_ANNOTATION_COLOR = "#6B7280"; // Gray for uncategorized
 
 function createAnnotationIcon(
-  ann: { color?: string | null; label?: string | null; intent?: string | null; name?: string | null },
+  ann: {
+    color?: string | null;
+    label?: string | null;
+    intent?: string | null;
+    name?: string | null;
+  },
   isHighlighted: boolean,
 ): L.DivIcon {
   const color = ann.color ?? NEUTRAL_ANNOTATION_COLOR;
@@ -117,7 +123,6 @@ export const MapView = forwardRef<
     drawingPreviews,
     polygonPreviews,
     pathPreviews,
-    pathDecorations,
     broadcastDrawingStart,
     broadcastDrawingUpdate,
     broadcastDrawingEnd,
@@ -127,9 +132,13 @@ export const MapView = forwardRef<
     broadcastPathDrawingStart,
     broadcastPathDrawingUpdate,
     broadcastPathDrawingEnd,
-    addLocalPathDecoration,
   } = useRealtimeTrip(tripId, member);
-  const { searchAndAddIdeas } = useBoxSearch();
+  const {
+    isSearching,
+    progress,
+    error: searchError,
+    startSearch,
+  } = useAreaSearch();
 
   // Filter out current user from online users
   const otherOnlineUsers = onlineUsers.filter((user) => {
@@ -188,6 +197,7 @@ export const MapView = forwardRef<
   }, [onlineUsers, otherOnlineUsers, member]);
   const [map, setMap] = useState<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const restoredFromStorageRef = useRef(false);
   const markersRef = useRef<L.Marker[]>([]);
   const rectanglesRef = useRef<L.Rectangle[]>([]);
   const polygonsRef = useRef<L.Polygon[]>([]);
@@ -203,8 +213,16 @@ export const MapView = forwardRef<
   const isPathDrawingRef = useRef(false);
   const lastPathPointRef = useRef<L.LatLng | null>(null);
 
+  // Area search overlay refs
+  const searchOverlayRef = useRef<L.Rectangle | L.Polygon | null>(null);
+  const searchLabelRef = useRef<L.Marker | null>(null);
+  const [searchingBounds, setSearchingBounds] =
+    useState<AnnotationCoordinates | null>(null);
+  const [showSearchToast, setShowSearchToast] = useState(false);
+
   // Drawing State
   const [isDrawMode, setIsDrawMode] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [drawTool, setDrawTool] = useState<"polygon" | "rect" | "path">(
     "polygon",
   );
@@ -237,7 +255,7 @@ export const MapView = forwardRef<
   ): { x: number; y: number } => {
     let centerLatLng: L.LatLng;
 
-    if (coordinates.type === "polygon") {
+    if (coordinates.type === "polygon" || coordinates.type === "path") {
       const points = coordinates.points;
       const avgLat = points.reduce((sum, p) => sum + p.lat, 0) / points.length;
       const avgLng = points.reduce((sum, p) => sum + p.lng, 0) / points.length;
@@ -302,13 +320,127 @@ export const MapView = forwardRef<
     setLocalPreview(null);
   }, [localPreview]);
 
+  // Clean up search overlay when area search completes
+  const wasSearchingRef = useRef(false);
+  useEffect(() => {
+    if (wasSearchingRef.current && !isSearching) {
+      // Search finished — remove pulsing overlay
+      if (searchOverlayRef.current) {
+        searchOverlayRef.current.remove();
+        searchOverlayRef.current = null;
+      }
+      if (searchLabelRef.current) {
+        searchLabelRef.current.remove();
+        searchLabelRef.current = null;
+      }
+      setSearchingBounds(null);
+
+      // Show success toast if no error
+      if (!searchError) {
+        setShowSearchToast(true);
+        setTimeout(() => setShowSearchToast(false), 2500);
+      }
+    }
+    wasSearchingRef.current = isSearching;
+  }, [isSearching, searchError]);
+
+  // Render pulsing search overlay on the drawn area while searching
+  useEffect(() => {
+    if (!map || !searchingBounds || !isSearching) return;
+
+    // Remove any previous overlay
+    searchOverlayRef.current?.remove();
+    searchLabelRef.current?.remove();
+
+    let centerLat: number;
+    let centerLng: number;
+
+    if (searchingBounds.type === "polygon") {
+      const points = (searchingBounds as any).points || [];
+      const latLngs = points.map((p: any) => [p.lat, p.lng] as L.LatLngTuple);
+      if (latLngs.length < 3) return;
+      centerLat =
+        points.reduce((s: number, p: any) => s + p.lat, 0) / points.length;
+      centerLng =
+        points.reduce((s: number, p: any) => s + p.lng, 0) / points.length;
+
+      searchOverlayRef.current = L.polygon(latLngs, {
+        color: "#3B82F6",
+        weight: 2,
+        fillOpacity: 0.15,
+        className: "area-search-pulsing",
+        interactive: false,
+      }).addTo(map);
+    } else {
+      const coords = searchingBounds as any;
+      centerLat = (coords.north + coords.south) / 2;
+      centerLng = (coords.east + coords.west) / 2;
+
+      searchOverlayRef.current = L.rectangle(
+        [
+          [coords.north, coords.west],
+          [coords.south, coords.east],
+        ],
+        {
+          color: "#3B82F6",
+          weight: 2,
+          fillOpacity: 0.15,
+          className: "area-search-pulsing",
+          interactive: false,
+        },
+      ).addTo(map);
+    }
+
+    // Animated text label at center
+    const messages = [
+      "Searching area...",
+      "Finding places...",
+      "Discovering spots...",
+    ];
+    const progressText = progress
+      ? `Finding places... ${progress.current}/${progress.total}`
+      : messages[Math.floor(Math.random() * messages.length)];
+
+    searchLabelRef.current = L.marker([centerLat, centerLng], {
+      icon: L.divIcon({
+        className: "area-search-label-wrapper",
+        html: `<div class="area-search-label"><span class="search-text">${progressText}</span></div>`,
+        iconSize: [240, 40],
+        iconAnchor: [120, 20],
+      }),
+      interactive: false,
+    }).addTo(map);
+
+    return () => {
+      // Don't remove here — managed by the cleanup effect above
+    };
+  }, [map, searchingBounds, isSearching, progress]);
+
   // Initialize Map
   useEffect(() => {
     if (!mapContainerRef.current || map) return;
 
+    const savedViewKey = tripId ? `map-view-${tripId}` : null;
+    let initialCenter = center;
+    let initialZoom = DEFAULT_ZOOM;
+
+    if (savedViewKey) {
+      try {
+        const saved = localStorage.getItem(savedViewKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          initialCenter = parsed.center;
+          initialZoom = parsed.zoom;
+          restoredFromStorageRef.current = true;
+        }
+      } catch {
+        // Ignore parse/storage errors
+      }
+    }
+
     const mapInstance = L.map(mapContainerRef.current).setView(
-      center,
-      DEFAULT_ZOOM,
+      initialCenter,
+      initialZoom,
     );
 
     L.tileLayer(TILE_LAYER_CONFIG.url, {
@@ -325,9 +457,35 @@ export const MapView = forwardRef<
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Persist map view to localStorage on pan/zoom
+  useEffect(() => {
+    if (!map || !tripId) return;
+    const key = `map-view-${tripId}`;
+
+    const handleMoveEnd = () => {
+      const c = map.getCenter();
+      try {
+        localStorage.setItem(
+          key,
+          JSON.stringify({
+            center: [c.lat, c.lng],
+            zoom: map.getZoom(),
+          }),
+        );
+      } catch {
+        // Ignore storage errors
+      }
+    };
+
+    map.on("moveend", handleMoveEnd);
+    return () => {
+      map.off("moveend", handleMoveEnd);
+    };
+  }, [map, tripId]);
+
   // Update Map Center
   useEffect(() => {
-    if (map) {
+    if (map && !restoredFromStorageRef.current) {
       map.setView(center, map.getZoom());
     }
   }, [map, center]);
@@ -393,6 +551,8 @@ export const MapView = forwardRef<
     rectanglesRef.current = [];
     polygonsRef.current.forEach((poly) => poly.remove());
     polygonsRef.current = [];
+    pathDecorationsRef.current.forEach((pl) => pl.remove());
+    pathDecorationsRef.current = [];
     annotationLabelsRef.current.forEach((marker) => marker.remove());
     annotationLabelsRef.current = [];
 
@@ -430,7 +590,7 @@ export const MapView = forwardRef<
 
           const labelMarker = L.marker([avgLat, avgLng], {
             icon: createAnnotationIcon(ann as any, isHighlighted),
-            interactive: false,
+            interactive: true,
           });
           labelMarker.addTo(map);
           annotationLabelsRef.current.push(labelMarker);
@@ -439,6 +599,45 @@ export const MapView = forwardRef<
         // Pan to highlighted annotation
         if (isHighlighted) {
           const bounds = polygon.getBounds();
+          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+        }
+        return;
+      }
+
+      if (coords.type === "path" && Array.isArray(coords.points)) {
+        const latLngs = coords.points
+          .filter((point: any) => point && typeof point.lat === "number")
+          .map((point: any) => [point.lat, point.lng] as L.LatLngTuple);
+
+        if (latLngs.length < 2) return;
+
+        const polyline = L.polyline(latLngs, {
+          color: annColor,
+          weight: isHighlighted ? 3 : 2.5,
+          opacity: isHighlighted ? 0.9 : 0.7,
+          dashArray: isHighlighted ? undefined : "6, 4",
+          className: isHighlighted ? "annotation-highlighted" : "",
+        });
+
+        polyline.addTo(map);
+        pathDecorationsRef.current.push(polyline);
+
+        // Add frosted-glass label at path midpoint
+        if (ann.label || (ann as any).name) {
+          const midIdx = Math.floor(latLngs.length / 2);
+          const midPoint = latLngs[midIdx];
+
+          const labelMarker = L.marker(midPoint, {
+            icon: createAnnotationIcon(ann as any, isHighlighted),
+            interactive: true,
+          });
+          labelMarker.addTo(map);
+          annotationLabelsRef.current.push(labelMarker);
+        }
+
+        // Pan to highlighted annotation
+        if (isHighlighted) {
+          const bounds = polyline.getBounds();
           map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
         }
         return;
@@ -473,7 +672,7 @@ export const MapView = forwardRef<
 
           const labelMarker = L.marker([centerLat, centerLng], {
             icon: createAnnotationIcon(ann as any, isHighlighted),
-            interactive: false,
+            interactive: true,
           });
           labelMarker.addTo(map);
           annotationLabelsRef.current.push(labelMarker);
@@ -486,35 +685,6 @@ export const MapView = forwardRef<
       }
     });
   }, [map, annotations, highlightedAnnotationId]);
-
-  // Handle Path Decorations (non-persistent)
-  useEffect(() => {
-    if (!map) return;
-
-    pathDecorationsRef.current.forEach((line) => line.remove());
-    pathDecorationsRef.current = [];
-
-    pathDecorations.forEach((decoration) => {
-      const latLngs = decoration.points
-        .filter((point) => point && typeof point.lat === "number")
-        .map((point) => [point.lat, point.lng] as L.LatLngTuple);
-
-      if (latLngs.length < 2) return;
-
-      const pathLine = L.polyline(latLngs, {
-        color: decoration.color || "#3B82F6",
-        weight: 2,
-        opacity: 0.8,
-      });
-
-      pathLine.addTo(map);
-      pathDecorationsRef.current.push(pathLine);
-    });
-    return () => {
-      pathDecorationsRef.current.forEach((line) => line.remove());
-      pathDecorationsRef.current = [];
-    };
-  }, [map, pathDecorations]);
 
   // Handle Drawing Logic
   useEffect(() => {
@@ -674,7 +844,19 @@ export const MapView = forwardRef<
           lng: point.lng,
         }));
 
-        addLocalPathDecoration(pathPoints, selectedColor);
+        // Paths are cosmetic — save directly without opening the modal
+        if (tripId && member) {
+          await supabase.from("trip_annotations" as any).insert({
+            trip_id: tripId,
+            created_by: member.id,
+            coordinates: { type: "path", points: pathPoints },
+            color: selectedColor,
+            intent: "annotation",
+            label: null,
+            name: null,
+          });
+        }
+
         resetDrawing();
         broadcastPathDrawingEnd(false);
         return;
@@ -738,6 +920,10 @@ export const MapView = forwardRef<
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore shortcuts when typing in an input/textarea
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
       if (e.key === "Escape" && isDrawMode) {
         if (drawTool === "rect" && drawStartRef.current) {
           // Cancel rectangle drawing
@@ -754,6 +940,32 @@ export const MapView = forwardRef<
           resetDrawing();
           broadcastPolygonDrawingEnd(true); // cancelled
         }
+      }
+
+      // R key → activate rectangle tool
+      if (e.key === "r" || e.key === "R") {
+        if (isDrawMode && drawTool === "rect") {
+          // Already active — toggle off
+          setIsDrawMode(false);
+        } else {
+          setDrawTool("rect");
+          if (!isDrawMode) setIsDrawMode(true);
+        }
+      }
+
+      // P key → activate polygon tool
+      if (e.key === "p" || e.key === "P") {
+        if (isDrawMode && drawTool === "polygon") {
+          setIsDrawMode(false);
+        } else {
+          setDrawTool("polygon");
+          if (!isDrawMode) setIsDrawMode(true);
+        }
+      }
+
+      // ? key → open keyboard shortcuts modal
+      if (e.key === "?") {
+        setShowShortcuts(true);
       }
     };
 
@@ -923,7 +1135,6 @@ export const MapView = forwardRef<
     broadcastPathDrawingStart,
     broadcastPathDrawingUpdate,
     broadcastPathDrawingEnd,
-    addLocalPathDecoration,
   ]);
 
   return (
@@ -934,12 +1145,7 @@ export const MapView = forwardRef<
       <MapCursorOverlay map={map} cursors={cursors} />
 
       {/* Drawing Previews Layer */}
-      <MapDrawingOverlay
-        map={map}
-        drawingPreviews={drawingPreviews}
-        polygonPreviews={polygonPreviews}
-        pathPreviews={pathPreviews}
-      />
+      <MapDrawingOverlay map={map} drawingPreviews={drawingPreviews} />
 
       {/* Map Toolbar */}
       <MapToolbar
@@ -957,6 +1163,7 @@ export const MapView = forwardRef<
         selectedColor={selectedColor}
         onColorChange={setSelectedColor}
         drawingColors={DRAWING_COLORS}
+        onShortcutsOpen={() => setShowShortcuts(true)}
       />
 
       {/* Annotation Modal */}
@@ -966,6 +1173,9 @@ export const MapView = forwardRef<
         position={panelPosition}
         areaSize={areaSize}
         locationName={locationName}
+        isSearching={false}
+        searchProgress={null}
+        searchError={null}
         onClose={clearPendingAnnotation}
         onSave={async (data) => {
           if (!pendingAnnotation || !tripId || !member) return;
@@ -994,7 +1204,14 @@ export const MapView = forwardRef<
                 searchBounds = pendingAnnotation as any;
               }
 
-              await searchAndAddIdeas(tripId, data.label, searchBounds);
+              // Store the search area for the pulsing overlay, then close modal immediately
+              setSearchingBounds(pendingAnnotation);
+              clearPendingAnnotation();
+              setIsDrawMode(false);
+
+              // Fire-and-forget: startSearch manages its own state via useAreaSearch
+              startSearch(tripId, data.label, searchBounds);
+              return;
             } else {
               // Save annotation to database
               const { error } = await supabase
@@ -1024,6 +1241,17 @@ export const MapView = forwardRef<
         }}
       />
 
+      {/* Keyboard Shortcuts Modal */}
+      <KeyboardShortcutsModal
+        isOpen={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+      />
+
+      {/* Search success toast */}
+      {showSearchToast && (
+        <div className="area-search-toast">✨ Places added to your map</div>
+      )}
+
       {/* No ideas overlay (only if empty and not in draw mode) */}
       {ideas.length === 0 && !isDrawMode && annotations.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none z-[300]">
@@ -1038,4 +1266,3 @@ export const MapView = forwardRef<
     </div>
   );
 });
-

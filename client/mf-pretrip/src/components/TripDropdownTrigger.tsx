@@ -27,7 +27,7 @@ export const TripDropdownTrigger = React.forwardRef<
       onClick={onClick}
       onKeyDown={onKeyDown}
       className={cn(
-        "inline-flex items-center justify-between w-full px-3 py-2 text-left bg-background border border-input rounded-md shadow-sm hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-colors",
+        "inline-flex items-center justify-between w-full px-2 py-1 text-left bg-transparent rounded-lg hover:bg-accent/50 hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-colors",
         isOpen && "ring-2 ring-ring ring-offset-2",
         className,
       )}
@@ -39,7 +39,7 @@ export const TripDropdownTrigger = React.forwardRef<
           : "Select a trip"
       }
     >
-      <span className="block truncate text-sm font-medium">{displayText}</span>
+      <span className="block truncate text-base font-semibold">{displayText}</span>
       <ChevronDown
         className={cn(
           "ml-2 h-4 w-4 transition-transform duration-200",

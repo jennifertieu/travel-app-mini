@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import { Dialog, DialogContent } from "../ui/dialog";
@@ -65,7 +65,6 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
 
   const unratedIds = ideaIds.filter((id) => !myReactions[id]);
   const ratedIds = ideaIds.filter((id) => myReactions[id]);
-  const orderedIds = [...unratedIds, ...ratedIds];
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showComment, setShowComment] = useState(false);
@@ -77,6 +76,35 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
     meh: 0,
     skip: 0,
   });
+
+  // Freeze navigation order when modal opens so that rating an item
+  // doesn't shift the array (unrated→rated reorder) and skip items.
+  const [navOrder, setNavOrder] = useState<string[]>([]);
+  const navInitRef = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen("ratingMode")) {
+      navInitRef.current = false;
+      setNavOrder([]);
+      return;
+    }
+
+    if (navInitRef.current) return;
+
+    const unrated = ideaIds.filter((id) => !myReactions[id]);
+    const rated = ideaIds.filter((id) => myReactions[id]);
+    const order = [...unrated, ...rated];
+
+    if (order.length > 0) {
+      navInitRef.current = true;
+      setNavOrder(order);
+      setCurrentIndex(0);
+      setShowComment(false);
+      setCommentValue("");
+    }
+  });
+
+  const orderedIds = navOrder.length > 0 ? navOrder : [...unratedIds, ...ratedIds];
 
   const currentIdeaId = orderedIds[currentIndex] ?? null;
   const currentIdea = ratedIdeas.find((i) => i.id === currentIdeaId);
@@ -90,14 +118,9 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
     setCurrentIndex(0);
     setShowComment(false);
     setCommentValue("");
+    navInitRef.current = false;
+    setNavOrder([]);
   }, [closeModal]);
-
-  useEffect(() => {
-    if (!isOpen("ratingMode")) return;
-    setCurrentIndex(0);
-    setShowComment(false);
-    setCommentValue("");
-  }, [isOpen("ratingMode")]);
 
   useEffect(() => {
     const counts = { fire: 0, down: 0, meh: 0, skip: 0 };
@@ -126,16 +149,18 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
         setCommentValue("");
         setShowComment(false);
 
-        // Close when: (1) we're at the last position in queue, OR (2) we just rated the last unrated idea
-        const indexAtRating = currentIndex;
         const queueLength = orderedIds.length;
-        const unratedCount = unratedIds.length;
         const isLastInQueue =
-          queueLength > 0 && indexAtRating >= queueLength - 1;
-        const isLastUnrated = unratedCount === 1; // only 1 unrated left = we just rated it
+          queueLength > 0 && currentIndex >= queueLength - 1;
+        const isLastUnrated = unratedIds.length === 1;
 
         if (isLastInQueue || isLastUnrated) {
-          handleClose();
+          // Show the completion screen instead of closing abruptly
+          setIsTransitioning(true);
+          setTimeout(() => {
+            setCurrentIndex(queueLength);
+            setIsTransitioning(false);
+          }, 200);
         } else {
           setIsTransitioning(true);
           setTimeout(() => {
@@ -157,7 +182,6 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
       setReactionMutation,
       queryClient,
       ideaIds,
-      handleClose,
     ],
   );
 
@@ -285,17 +309,23 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
                 {/* Left - Video */}
                 <div className="flex flex-col gap-5">
                   <div className="w-full aspect-[9/16] bg-muted rounded-2xl overflow-hidden relative shadow-lg">
-                    {currentIdea.source_platform === "tiktok" ? (
-                      <div className="w-full h-full flex items-center justify-center overflow-hidden">
-                        <TikTokEmbed url={currentIdea.source_url} width={420} />
-                      </div>
+                    {currentIdea.source_url ? (
+                      currentIdea.source_platform === "tiktok" ? (
+                        <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                          <TikTokEmbed url={currentIdea.source_url} width={420} />
+                        </div>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                          <YouTubeEmbed
+                            url={currentIdea.source_url}
+                            width={420}
+                            height={600}
+                          />
+                        </div>
+                      )
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center overflow-hidden">
-                        <YouTubeEmbed
-                          url={currentIdea.source_url}
-                          width={420}
-                          height={600}
-                        />
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                        No video URL
                       </div>
                     )}
                   </div>

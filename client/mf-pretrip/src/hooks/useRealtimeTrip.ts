@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { MemberProfile } from "../contexts/MemberContext";
 import { Database } from "@travel-app/shared-types";
@@ -193,7 +193,6 @@ export function useRealtimeTrip(
   const [pathPreviews, setPathPreviews] = useState<
     Record<string, PathDrawingPreview>
   >({});
-  const [pathDecorations, setPathDecorations] = useState<PathDecoration[]>([]);
 
   // Ref to access current user in callbacks without re-triggering effects
   const userRef = useRef(currentUser);
@@ -463,22 +462,6 @@ export function useRealtimeTrip(
       .on("broadcast", { event: "path-drawing-end" }, ({ payload }) => {
         if (payload.userId !== currentUser.id) {
           setPathPreviews((prev) => {
-            const existing = prev[payload.userId];
-            if (!existing) return prev;
-            if (!payload.cancelled) {
-              setPathDecorations((decorations) => [
-                ...decorations,
-                {
-                  id: `${payload.userId}-${payload.timestamp}`,
-                  userId: payload.userId,
-                  user: existing.user,
-                  points: existing.points,
-                  color: existing.color,
-                  timestamp: payload.timestamp,
-                },
-              ]);
-            }
-
             const newPreviews = { ...prev };
             delete newPreviews[payload.userId];
             return newPreviews;
@@ -735,25 +718,6 @@ export function useRealtimeTrip(
     }
   }).current;
 
-  const addLocalPathDecoration = useCallback(
-    (points: { lat: number; lng: number }[], color: string) => {
-      if (!userRef.current) return;
-      const timestamp = Date.now();
-      setPathDecorations((prev) => [
-        ...prev,
-        {
-          id: `${userRef.current?.id}-${timestamp}`,
-          userId: userRef.current.id,
-          user: userRef.current,
-          points,
-          color,
-          timestamp,
-        },
-      ]);
-    },
-    [],
-  );
-
   // Cleanup old cursors (if no update for 10s)
   useEffect(() => {
     const interval = setInterval(() => {
@@ -827,7 +791,6 @@ export function useRealtimeTrip(
     drawingPreviews,
     polygonPreviews,
     pathPreviews,
-    pathDecorations,
     broadcastCursor,
     broadcastDrawingStart,
     broadcastDrawingUpdate,
@@ -838,6 +801,5 @@ export function useRealtimeTrip(
     broadcastPathDrawingStart,
     broadcastPathDrawingUpdate,
     broadcastPathDrawingEnd,
-    addLocalPathDecoration,
   };
 }
