@@ -65,6 +65,225 @@
   }
   body {
     @apply bg-background text-foreground;
+    filter: drop-shadow(0 0 0px var(--annotation-color, #3B82F6));
   }
 }
 
+/* Skeleton shimmer gradient — theme-aware for dark mode */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--background)) 50%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* Glassmorphic "is drawing..." label on map */
+.rt-drawing-label > div {
+  background: rgba(255, 255, 255, 0.35) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  border-left: 3px solid var(--drawing-color, #3B82F6) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+    0 4px 16px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Map Annotation Labels - Hidden by default, show on hover */
+.map-annotation-icon {
+  pointer-events: auto !important;
+  z-index: 400 !important;
+}
+
+.map-annotation-card {
+  position: relative;
+  background: white;
+  border-radius: 8px;
+  padding: 8px 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-left: 3px solid var(--annotation-color, #3B82F6);
+  min-width: 120px;
+  max-width: 200px;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+
+/* Show label on hover */
+.map-annotation-icon:hover .map-annotation-card {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+/* Always show highlighted annotations */
+.map-annotation-card.highlighted {
+  opacity: 1 !important;
+  transform: scale(1) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  border-left-width: 4px;
+}
+
+.ann-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ann-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.ann-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.ann-note {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.4;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 4px;
+}
+
+/* Dark mode support */
+.dark .map-annotation-card {
+  background: #1f2937;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.dark .ann-title {
+  color: #f9fafb;
+}
+
+.dark .ann-note {
+  color: #9ca3af;
+  border-top-color: #374151;
+}
+
+/* Area search pulse animation on drawn shape */
+@keyframes area-search-pulse {
+  0%, 100% { opacity: 0.12; }
+  50% { opacity: 0.28; }
+}
+
+.area-search-pulsing {
+  animation: area-search-pulse 1.8s ease-in-out infinite;
+}
+
+/* Wrapper for area search label - centers the label at the marker point */
+.area-search-label-wrapper {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Animated search label on map */
+.area-search-label {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: label-fade-in 0.3s ease-out;
+  position: relative;
+  overflow: hidden;
+  min-width: 180px;
+  text-align: center;
+}
+
+.area-search-label::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.6) 50%,
+    transparent 100%
+  );
+  animation: shimmer-sweep 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.area-search-label .search-text {
+  display: inline-block;
+}
+
+@keyframes shimmer-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes label-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Success toast on map */
+.area-search-toast {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #059669;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  z-index: 1000;
+  animation: toast-slide-in-out 2.5s ease-in-out forwards;
+  pointer-events: none;
+}
+
+@keyframes toast-slide-in-out {
+  0% { opacity: 0; transform: translateX(-100%); }
+  15% { opacity: 1; transform: translateX(0); }
+  75% { opacity: 1; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(-8px); }
+}
+
+.dark .area-search-label {
+  background: rgba(31, 41, 55, 0.9);
+  color: #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dark .area-search-label::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    transparent 100%
+  );
+}
+
+.dark .area-search-toast {
+  background: rgba(31, 41, 55, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #34d399;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}

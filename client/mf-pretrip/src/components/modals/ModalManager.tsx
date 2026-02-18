@@ -2,9 +2,11 @@
 
 import { AddIdeaModal } from "./AddIdeaModal";
 import { IdeaDetailModal } from "./IdeaDetailModal";
+import { IdeaRatingModal } from "./IdeaRatingModal";
 import { CreateTripModal } from "./CreateTripModal";
 import { InviteLinkModal } from "./InviteLinkModal";
 import { TripMembersModal } from "./TripMembersModal";
+import { TripSettingsModal } from "./TripSettingsModal";
 import { useModals } from "../../contexts/ModalContext";
 import { useIdeas } from "../../hooks/useIdeas";
 import { useCurrentTrip } from "../../hooks/useCurrentTrip";
@@ -30,8 +32,13 @@ export function ModalManager() {
       <AddIdeaModal />
       <CreateTripModal />
       <InviteLinkModal />
+      <TripSettingsModal />
       {/* Show modal immediately, even if idea is still loading */}
       {isOpen("ideaDetail") && <IdeaDetailModal idea={selectedIdea} />}
+      {/* Idea Rating Modal - rate all ideas in sequence */}
+      {isOpen("ratingMode") && (
+        <IdeaRatingModal ideas={ideas} tripId={currentTripId} />
+      )}
       {/* Trip Members Modal */}
       {isOpen("tripMembers") && tripMembersData?.tripId && (
         <TripMembersModal

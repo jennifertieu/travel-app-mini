@@ -75,3 +75,22 @@ export function useUpdateTrip(tripId: string) {
     },
   });
 }
+
+/**
+ * Hard delete an existing trip
+ */
+export function useDeleteTrip(tripId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("trips").delete().eq("id", tripId);
+
+      if (error) throw error;
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.trip(tripId) });
+    },
+  });
+}

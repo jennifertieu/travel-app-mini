@@ -10,6 +10,8 @@
     "preview": "rsbuild preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.95.3",
+    "@travel-app/shared-types": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

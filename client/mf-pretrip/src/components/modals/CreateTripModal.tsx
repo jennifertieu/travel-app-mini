@@ -44,6 +44,30 @@ export function CreateTripModal() {
 
       const newTrip = await createTripMutation.mutateAsync(tripData);
 
+      // Calculate duration for AI context
+      let durationDays = null;
+      if (formData.startDate && formData.endDate) {
+        const start = new Date(formData.startDate);
+        const end = new Date(formData.endDate);
+        const diffTime = Math.abs(end.getTime() - start.getTime());
+        durationDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      }
+
+      // Store streaming input so TripView can pick it up and start SSE
+      const suggestionInput = {
+        tripId: newTrip.id,
+        destination: tripData.destination,
+        durationDays,
+        budgetLevel: formData.budgetLevel,
+        interests: formData.interests.length > 0 ? formData.interests : null,
+        createdBy: member.id,
+      };
+      localStorage.setItem("generating-suggestions", "true");
+      localStorage.setItem(
+        "pending-suggestion-input",
+        JSON.stringify(suggestionInput),
+      );
+
       // Use the enhanced trip management to handle the new trip
       handleTripCreated(newTrip);
 

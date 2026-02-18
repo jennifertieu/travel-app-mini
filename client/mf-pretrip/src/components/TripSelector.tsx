@@ -24,6 +24,14 @@ export const TripSelector = React.forwardRef<HTMLDivElement, TripSelectorProps>(
     const triggerRef = useRef<HTMLButtonElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const { openModal } = useModals();
+    const activeTrips = trips.filter(
+      (trip) =>
+        (trip as Trip & { deleted_at?: string | null }).deleted_at == null,
+    );
+    const currentTripDeletedAt = (
+      currentTrip as (Trip & { deleted_at?: string | null }) | null
+    )?.deleted_at;
+    const resolvedCurrentTrip = currentTripDeletedAt ? null : currentTrip;
 
     const handleToggle = useCallback(() => {
       setIsOpen((prev) => !prev);
@@ -70,14 +78,14 @@ export const TripSelector = React.forwardRef<HTMLDivElement, TripSelectorProps>(
               setFocusedIndex(-1); // Focus on "Create New Trip"
             } else if (event.key === "ArrowDown") {
               // Move to first trip if available, otherwise stay on create option
-              setFocusedIndex(trips.length > 0 ? 0 : -1);
+              setFocusedIndex(activeTrips.length > 0 ? 0 : -1);
             }
             break;
           case "ArrowUp":
             event.preventDefault();
             if (!isOpen) {
               setIsOpen(true);
-              setFocusedIndex(trips.length - 1); // Focus on last trip
+              setFocusedIndex(activeTrips.length - 1); // Focus on last trip
             }
             break;
           case "Escape":
@@ -88,7 +96,7 @@ export const TripSelector = React.forwardRef<HTMLDivElement, TripSelectorProps>(
             break;
         }
       },
-      [isOpen, trips.length, handleClose],
+      [isOpen, activeTrips.length, handleClose],
     );
 
     // Global keyboard navigation when dropdown is open
@@ -115,15 +123,15 @@ export const TripSelector = React.forwardRef<HTMLDivElement, TripSelectorProps>(
             event.preventDefault();
             setFocusedIndex((prev) => {
               if (prev === null) return -1; // Start with "Create New Trip"
-              if (prev === -1) return trips.length > 0 ? 0 : -1; // Move to first trip
-              return prev < trips.length - 1 ? prev + 1 : -1; // Wrap to "Create New Trip"
+              if (prev === -1) return activeTrips.length > 0 ? 0 : -1; // Move to first trip
+              return prev < activeTrips.length - 1 ? prev + 1 : -1; // Wrap to "Create New Trip"
             });
             break;
           case "ArrowUp":
             event.preventDefault();
             setFocusedIndex((prev) => {
-              if (prev === null) return trips.length - 1; // Start with last trip
-              if (prev === -1) return trips.length - 1; // Move to last trip
+              if (prev === null) return activeTrips.length - 1; // Start with last trip
+              if (prev === -1) return activeTrips.length - 1; // Move to last trip
               if (prev === 0) return -1; // Move to "Create New Trip"
               return prev - 1; // Move up
             });
@@ -134,15 +142,20 @@ export const TripSelector = React.forwardRef<HTMLDivElement, TripSelectorProps>(
             break;
           case "End":
             event.preventDefault();
-            setFocusedIndex(trips.length > 0 ? trips.length - 1 : -1); // Focus last trip or "Create New Trip"
+            setFocusedIndex(
+              activeTrips.length > 0 ? activeTrips.length - 1 : -1,
+            ); // Focus last trip or "Create New Trip"
             break;
           case "Enter":
           case " ":
             event.preventDefault();
             if (focusedIndex === -1) {
               handleCreateTrip();
-            } else if (focusedIndex !== null && focusedIndex < trips.length) {
-              handleTripSelect(trips[focusedIndex].id);
+            } else if (
+              focusedIndex !== null &&
+              focusedIndex < activeTrips.length
+            ) {
+              handleTripSelect(activeTrips[focusedIndex].id);
             }
             break;
           case "Escape":
@@ -185,7 +198,7 @@ export const TripSelector = React.forwardRef<HTMLDivElement, TripSelectorProps>(
     }, [
       isOpen,
       focusedIndex,
-      trips,
+      activeTrips,
       handleTripSelect,
       handleCreateTrip,
       handleClose,
@@ -209,7 +222,7 @@ export const TripSelector = React.forwardRef<HTMLDivElement, TripSelectorProps>(
       <div ref={ref} className={cn("relative", className)}>
         <TripDropdownTrigger
           ref={triggerRef}
-          currentTrip={currentTrip}
+          currentTrip={resolvedCurrentTrip}
           isOpen={isOpen}
           onClick={handleToggle}
           onKeyDown={handleTriggerKeyDown}
@@ -217,8 +230,8 @@ export const TripSelector = React.forwardRef<HTMLDivElement, TripSelectorProps>(
 
         <TripDropdownContent
           ref={contentRef}
-          trips={trips}
-          currentTripId={currentTrip?.id || null}
+          trips={activeTrips}
+          currentTripId={resolvedCurrentTrip?.id || null}
           isLoading={isLoading}
           error={error}
           isOpen={isOpen}
@@ -229,11 +242,11 @@ export const TripSelector = React.forwardRef<HTMLDivElement, TripSelectorProps>(
           onFocusChange={handleFocusChange}
         >
           {/* Render trip items */}
-          {trips.map((trip, index) => (
+          {activeTrips.map((trip, index) => (
             <TripItem
               key={trip.id}
               trip={trip}
-              isSelected={trip.id === currentTrip?.id}
+              isSelected={trip.id === resolvedCurrentTrip?.id}
               isFocused={focusedIndex === index}
               onClick={() => handleTripSelect(trip.id)}
               onKeyDown={(event) => handleItemKeyDown(event, trip.id)}

@@ -6,24 +6,22 @@ import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Badge } from "../ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
-import { X, MapPin, Star, DollarSign, Clock, Zap } from "lucide-react";
+import { X } from "lucide-react";
 import { TikTokEmbed, YouTubeEmbed } from "react-social-media-embed";
 import { useModals } from "../../contexts/ModalContext";
 import { useUpdateIdea } from "../../hooks/useIdeas";
+import { ReviewsSection } from "../cards/ReviewsSection";
 
 interface IdeaDetailModalProps {
   idea: any;
 }
 
 const COST_OPTIONS = ["$", "$$", "$$$"] as const;
-const DURATION_OPTIONS = ["30m", "1-2h", "half-day"] as const;
 const TIME_OF_DAY_OPTIONS = ["morning", "afternoon", "evening"] as const;
 
 // Skeleton Component
 function Skeleton({ className }: { className?: string }) {
-  return (
-    <div className={`animate-pulse bg-muted rounded ${className}`}></div>
-  );
+  return <div className={`animate-pulse bg-muted rounded ${className}`}></div>;
 }
 
 export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
@@ -32,11 +30,17 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
 
   // Local form state
   const [formData, setFormData] = useState<any>(initialIdea || {});
+  const [thumbnailErrors, setThumbnailErrors] = useState<
+    Record<number, boolean>
+  >({});
+  const [mainImageError, setMainImageError] = useState(false);
 
   // Sync form data when idea changes
   useEffect(() => {
     if (initialIdea) {
       setFormData(initialIdea);
+      setThumbnailErrors({});
+      setMainImageError(false);
     }
   }, [initialIdea]);
 
@@ -80,7 +84,10 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
 
   return (
     <Dialog open={isOpen("ideaDetail")} onOpenChange={handleClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+      <DialogContent
+        hideClose
+        className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col !p-0 gap-0"
+      >
         {/* Header */}
         <div className="border-b border-border px-6 py-5 flex items-center justify-between flex-shrink-0">
           <div className="flex-1">
@@ -88,8 +95,10 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
               {formData.title || "Idea Details"}
             </h2>
             <p className="text-xs text-muted-foreground mt-1.5 font-medium">
-              {initialIdea.source_platform === "tiktok" ? "TikTok" : "YouTube Shorts"} •{" "}
-              {initialIdea.enrichment_status}
+              {initialIdea.source_platform === "tiktok"
+                ? "TikTok"
+                : "YouTube Shorts"}{" "}
+              • {initialIdea.enrichment_status}
             </p>
           </div>
           <button
@@ -107,17 +116,23 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
             <div className="flex flex-col gap-5">
               {/* Video Container */}
               <div className="w-full aspect-[9/16] bg-muted rounded-2xl overflow-hidden relative shadow-lg">
-                {initialIdea.source_platform === "tiktok" ? (
-                  <div className="w-full h-full flex items-center justify-center overflow-hidden">
-                    <TikTokEmbed url={initialIdea.source_url} width={420} />
-                  </div>
+                {initialIdea.source_url ? (
+                  initialIdea.source_platform === "tiktok" ? (
+                    <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                      <TikTokEmbed url={initialIdea.source_url} width={420} />
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                      <YouTubeEmbed
+                        url={initialIdea.source_url}
+                        width={420}
+                        height={600}
+                      />
+                    </div>
+                  )
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center overflow-hidden">
-                    <YouTubeEmbed
-                      url={initialIdea.source_url}
-                      width={420}
-                      height={600}
-                    />
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                    No video URL
                   </div>
                 )}
               </div>
@@ -134,6 +149,40 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
                   className="w-full px-3 py-2 border border-border rounded-lg text-xs bg-muted/50 font-mono"
                 />
               </div>
+
+              {/* Tags */}
+              {hasEnrichment && (
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
+                    Tags
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.tags?.map((tag: string) => (
+                      <Badge key={tag} variant="secondary" className="gap-1">
+                        {tag}
+                        <button
+                          onClick={() => handleRemoveTag(tag)}
+                          className="ml-1 hover:opacity-70"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <Input
+                      placeholder="Add tag"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleAddTag(e.currentTarget.value);
+                          e.currentTarget.value = "";
+                        }
+                      }}
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right Column - Details (Show skeletons if not enriched) */}
@@ -170,192 +219,179 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
                   </div>
 
                   {/* Place Photo */}
-                  {formData.place?.photoUrl && (
-                  <div className="space-y-2">
-                    <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                      Photos
-                    </div>
-                    <div className="rounded-xl overflow-hidden border border-border">
-                      <img
-                        src={formData.place.photoUrl}
-                        alt={formData.location?.name || formData.title || "Place photo"}
-                        className="w-full h-64 object-cover"
-                      />
-                    </div>
+                  {formData.place?.photoUrl && !mainImageError && (
+                    <div className="space-y-2">
+                      <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                        Photos
+                      </div>
+                      <div className="rounded-xl overflow-hidden border border-border">
+                        <img
+                          src={formData.place.photoUrl}
+                          alt={
+                            formData.location?.name ||
+                            formData.title ||
+                            "Place photo"
+                          }
+                          className="w-full h-64 object-cover"
+                          onError={() => setMainImageError(true)}
+                        />
+                      </div>
+                      {formData.place.photos &&
+                        formData.place.photos.length > 1 && (
+                          <div className="grid grid-cols-4 gap-2">
+                            {formData.place.photos
+                              .slice(1, 5)
+                              .map((photoUrl: string, idx: number) => {
+                                if (thumbnailErrors[idx]) return null;
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="rounded-lg overflow-hidden border border-border"
+                                  >
+                                    <img
+                                      src={photoUrl}
+                                      alt={`Photo ${idx + 2}`}
+                                      className="w-full h-20 object-cover"
+                                      onError={() =>
+                                        setThumbnailErrors((prev) => ({
+                                          ...prev,
+                                          [idx]: true,
+                                        }))
+                                      }
+                                    />
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        )}
                     </div>
                   )}
 
                   {/* Place Details Grid */}
                   <div>
-                  <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
-                    Place Details
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Location */}
-                    {formData.location && (
-                      <div className="p-4 border border-border rounded-xl bg-card">
+                    <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
+                      Place Details
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Location */}
+                      <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-all">
                         <div className="flex items-center gap-2 mb-3">
-                          <MapPin className="h-5 w-5 text-foreground" />
+                          <span className="text-xl">📍</span>
                           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                             Location
                           </div>
                         </div>
                         <div>
-                          <Input
-                            value={formData.location.name || ""}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                location: {
-                                  ...formData.location,
-                                  name: e.target.value,
-                                },
-                              })
-                            }
-                            placeholder="Location name"
-                            className="text-base font-bold border-none p-0 h-auto bg-transparent focus-visible:ring-0"
-                          />
-                          {formData.location.address && (
-                            <p className="text-sm text-muted-foreground mt-2">
-                              {formData.location.address}
-                            </p>
-                          )}
+                          <p className="text-sm font-semibold text-foreground">
+                            {formData.place?.address ||
+                              formData.location?.name ||
+                              "Unknown location"}
+                          </p>
                         </div>
                       </div>
-                    )}
 
-                    {/* Rating */}
-                    {formData.place?.rating && (
-                      <div className="p-4 border border-border rounded-xl bg-card">
+                      {/* Rating */}
+                      <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-all">
                         <div className="flex items-center gap-2 mb-3">
-                          <Star className="h-5 w-5 text-foreground fill-foreground" />
+                          <span className="text-xl">⭐</span>
                           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                             Rating
                           </div>
                         </div>
                         <div>
                           <div className="text-base font-bold text-foreground">
-                            {formData.place.rating} / 5.0
+                            {formData.place?.rating
+                              ? `${formData.place.rating} / 5.0`
+                              : "No rating"}
                           </div>
                           <span className="inline-block mt-2 px-2.5 py-1 bg-muted rounded-lg text-xs font-semibold text-muted-foreground">
-                            {formData.place.reviewCount?.toLocaleString() || 0} reviews
+                            {formData.place?.reviewCount?.toLocaleString() || 0}{" "}
+                            reviews
                           </span>
                         </div>
                       </div>
-                    )}
 
-                    {/* Cost */}
-                    <div className="p-4 border border-border rounded-xl bg-card">
-                      <div className="flex items-center gap-2 mb-3">
-                        <DollarSign className="h-5 w-5 text-foreground" />
-                        <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                          Cost
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {COST_OPTIONS.map((cost) => (
-                          <Button
-                            key={cost}
-                            size="sm"
-                            variant={formData.cost_bucket === cost ? "default" : "outline"}
-                            onClick={() =>
-                              setFormData({ ...formData, cost_bucket: cost })
-                            }
-                            className="text-base font-bold"
-                          >
-                            {cost}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Duration */}
-                    <div className="p-4 border border-border rounded-xl bg-card">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Clock className="h-5 w-5 text-foreground" />
-                        <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                          Duration
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {DURATION_OPTIONS.map((duration) => (
-                          <Button
-                            key={duration}
-                            size="sm"
-                            variant={
-                              formData.duration_bucket === duration ? "default" : "outline"
-                            }
-                            onClick={() =>
-                              setFormData({ ...formData, duration_bucket: duration })
-                            }
-                            className="text-sm font-semibold"
-                          >
-                            {duration}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Time of Day */}
-                    {formData.time_of_day && (
-                      <div className="p-4 border border-border rounded-xl bg-card col-span-2">
+                      {/* Cost */}
+                      <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-all">
                         <div className="flex items-center gap-2 mb-3">
-                          <Zap className="h-5 w-5 text-foreground" />
+                          <span className="text-xl">💰</span>
+                          <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                            Cost
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          {COST_OPTIONS.map((cost) => (
+                            <Button
+                              key={cost}
+                              size="sm"
+                              variant={
+                                formData.cost_bucket === cost
+                                  ? "default"
+                                  : "outline"
+                              }
+                              onClick={() =>
+                                setFormData({ ...formData, cost_bucket: cost })
+                              }
+                              className={`text-sm font-bold h-7 px-2.5 ${
+                                formData.cost_bucket === cost
+                                  ? ""
+                                  : "text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              {cost}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Best Time */}
+                      <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-all">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-xl">🕐</span>
                           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                             Best Time
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           {TIME_OF_DAY_OPTIONS.map((time) => (
                             <Button
                               key={time}
                               size="sm"
-                              variant={formData.time_of_day === time ? "default" : "outline"}
-                              onClick={() =>
-                                setFormData({ ...formData, time_of_day: time })
+                              variant={
+                                formData.time_of_day === time
+                                  ? "default"
+                                  : "outline"
                               }
-                              className="text-sm font-semibold capitalize"
+                              onClick={() =>
+                                setFormData({
+                                  ...formData,
+                                  time_of_day: time,
+                                })
+                              }
+                              className={`text-xs font-bold h-7 px-2.5 capitalize ${
+                                formData.time_of_day === time
+                                  ? ""
+                                  : "text-muted-foreground hover:text-foreground"
+                              }`}
                             >
                               {time}
                             </Button>
                           ))}
                         </div>
                       </div>
-                    )}
                     </div>
                   </div>
 
-                  {/* Tags */}
-                  {formData.tags && formData.tags.length > 0 && (
-                  <div>
-                    <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
-                      Tags
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {formData.tags.map((tag: string) => (
-                        <Badge key={tag} variant="secondary" className="gap-1">
-                          {tag}
-                          <button
-                            onClick={() => handleRemoveTag(tag)}
-                            className="ml-1 hover:opacity-70"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex gap-2 mt-3">
-                      <Input
-                        placeholder="Add tag"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            handleAddTag(e.currentTarget.value);
-                            e.currentTarget.value = "";
-                          }
-                        }}
-                        className="text-sm"
-                        />
+                  {/* Google Reviews */}
+                  {formData.place?.reviews && (
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
+                        Google Reviews
                       </div>
+                      <ReviewsSection
+                        reviews={formData.place.reviews}
+                        isLoading={false}
+                      />
                     </div>
                   )}
                 </>
@@ -386,4 +422,3 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
     </Dialog>
   );
 }
-

@@ -33,7 +33,7 @@ const DuringtripApp = lazy(() =>
 
 // Loading fallback component
 const LoadingFallback = ({ name }: { name: string }) => (
-  <div style={{ padding: "2rem", textAlign: "center" }}>Loading {name}...</div>
+  <div style={{ padding: "2rem", textAlign: "center" }}></div>
 );
 
 // Root layout with navigation
