@@ -140,12 +140,13 @@ export function AddIdeaModal() {
     try {
       const urlObj = new URL(url);
       const pathname = urlObj.pathname ?? "";
-      if (platform === "tiktok") {
+      const p = detectPlatform(url);
+      if (p === "tiktok") {
         const match = pathname.match(/\/video\/(\d+)/);
         if (match) return match[1];
         const shortMatch = pathname.match(/^\/([A-Za-z0-9]+)\/?$/);
         if (shortMatch) return shortMatch[1];
-      } else if (platform === "youtube") {
+      } else if (p === "youtube") {
         const match = pathname.match(/\/shorts\/([A-Za-z0-9_-]+)/);
         if (match) return match[1];
         const shortMatch = pathname.match(/^\/([A-Za-z0-9_-]+)/);
@@ -167,6 +168,9 @@ export function AddIdeaModal() {
       videoUrl,
     );
 
+    // Detect platform from the actual URL being processed (not stale state)
+    const detectedPlatform = detectPlatform(videoUrl);
+
     // Create the idea immediately
     const newIdeaId = uuidv4();
     const videoId = extractVideoId(videoUrl);
@@ -175,11 +179,11 @@ export function AddIdeaModal() {
       trip_id: currentTripId,
       created_by: member.id,
       source_url: videoUrl,
-      source_platform: platform || "youtube",
+      source_platform: detectedPlatform || "youtube",
       source_video_id: videoId,
       comment: comment.trim() || null,
       enrichment_status: "CREATED",
-      title: `${platform === "tiktok" ? "TikTok" : "YouTube"} video`,
+      title: `${detectedPlatform === "tiktok" ? "TikTok" : "YouTube"} video`,
       summary: null,
     };
 
