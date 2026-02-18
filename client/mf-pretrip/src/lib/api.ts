@@ -7,9 +7,9 @@
 
 // Backend API base URL
 // Development: http://localhost:5001
-// Production: Set VITE_BACKEND_URL to your deployed backend URL
+// Production: Set PUBLIC_BACKEND_URL to your deployed backend URL
 export const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL || "http://localhost:5001";
+  import.meta.env.PUBLIC_BACKEND_URL || "http://localhost:5001";
 
 /**
  * Create a full API URL from a path
