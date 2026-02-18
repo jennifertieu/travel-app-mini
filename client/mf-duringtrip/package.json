@@ -1,6 +1,7 @@
 {
-  "name": "travel-app-duringtrip",
+  "name": "mf_duringtrip",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "description": "Travel App During Trip Micro Frontend",
   "main": "dist/index.js",

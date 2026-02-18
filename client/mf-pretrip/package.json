@@ -1,6 +1,7 @@
 {
-  "name": "travel-app-pretrip",
+  "name": "mf_pretrip",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "description": "Travel App Pre-Trip Micro Frontend",
   "main": "dist/index.js",

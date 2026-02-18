@@ -2,11 +2,11 @@
   "name": "travel-app-client",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"pnpm --filter=travel-app-pretrip dev\" \"pnpm --filter=travel-app-itinerary dev\" \"pnpm --filter=travel-app-duringtrip dev\" \"pnpm --filter=travel-app-shell dev\"",
-    "dev:shell": "pnpm --filter=travel-app-shell dev",
-    "dev:pretrip": "pnpm --filter=travel-app-pretrip dev",
-    "dev:itinerary": "pnpm --filter=travel-app-itinerary dev",
-    "dev:duringtrip": "pnpm --filter=travel-app-duringtrip dev",
+    "dev": "concurrently \"pnpm --filter=mf_pretrip dev\" \"pnpm --filter=mf_itinerary dev\" \"pnpm --filter=mf_duringtrip dev\" \"pnpm --filter=shell dev\"",
+    "dev:shell": "pnpm --filter=shell dev",
+    "dev:pretrip": "pnpm --filter=mf_pretrip dev",
+    "dev:itinerary": "pnpm --filter=mf_itinerary dev",
+    "dev:duringtrip": "pnpm --filter=mf_duringtrip dev",
     "dev:browser": "pnpm dev & wait-on http://localhost:2000 && ./scripts/launch-chrome-beta.sh",
     "dev:browser:fresh": "pnpm dev & wait-on http://localhost:2000 && ./scripts/launch-chrome-beta.sh --fresh",
     "dev:shell:browser": "pnpm dev:shell & wait-on http://localhost:2000 && ./scripts/launch-chrome-beta.sh http://localhost:2000",
@@ -17,9 +17,9 @@
     "dev:itinerary:browser:fresh": "pnpm dev:itinerary & wait-on http://localhost:3002 && ./scripts/launch-chrome-beta.sh --fresh http://localhost:3002",
     "dev:duringtrip:browser": "pnpm dev:duringtrip & wait-on http://localhost:3003 && ./scripts/launch-chrome-beta.sh http://localhost:3003",
     "dev:duringtrip:browser:fresh": "pnpm dev:duringtrip & wait-on http://localhost:3003 && ./scripts/launch-chrome-beta.sh --fresh http://localhost:3003",
-    "build": "pnpm --filter=travel-app-pretrip build && pnpm --filter=travel-app-itinerary build && pnpm --filter=travel-app-duringtrip build && pnpm --filter=travel-app-shell build",
+    "build": "pnpm --filter=mf_pretrip build && pnpm --filter=mf_itinerary build && pnpm --filter=mf_duringtrip build && pnpm --filter=shell build",
     "build:zephyr": "USE_ZEPHYR=true pnpm build",
-    "preview": "pnpm --filter=travel-app-shell preview",
+    "preview": "pnpm --filter=shell preview",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write \"**/*.{ts,tsx}\""
   },
@@ -32,12 +32,10 @@
     "eslint-plugin-react": "^7.34.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "prettier": "^3.2.5",
-    "wait-on": "^9.0.3"
+    "wait-on": "^9.0.3",
+    "zephyr-rsbuild-plugin": "^0.1.10"
   },
   "engines": {
     "node": ">=18.0.0"
-  },
-  "dependencies": {
-    "zephyr-rspack-plugin": "^0.1.10"
   }
 }

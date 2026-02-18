@@ -1,6 +1,7 @@
 {
-  "name": "travel-app-itinerary",
+  "name": "mf_itinerary",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "description": "Travel App Itinerary Micro Frontend",
   "main": "dist/index.js",

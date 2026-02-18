@@ -1,7 +1,9 @@
 import { defineConfig } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
 import { pluginModuleFederation } from "@module-federation/rsbuild-plugin";
-import { withZephyr } from "zephyr-rspack-plugin";
+import { withZephyr } from "zephyr-rsbuild-plugin";
+
+const useZephyr = process.env.USE_ZEPHYR === "true";
 
 export default defineConfig({
   plugins: [
@@ -27,6 +29,7 @@ export default defineConfig({
         },
       },
     }),
+    ...(useZephyr ? [withZephyr()] : []),
   ],
   server: {
     port: 3002,
@@ -36,17 +39,5 @@ export default defineConfig({
   },
   output: {
     assetPrefix: "auto",
-  },
-  tools: {
-    rspack: async (
-      config,
-      { addRules, prependPlugins, appendPlugins, mergeConfig },
-    ) => {
-      if (process.env.USE_ZEPHYR === "true") {
-        const zephyrConfig = await withZephyr()(config);
-        return zephyrConfig;
-      }
-      return config;
-    },
   },
 });

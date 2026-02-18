@@ -1,6 +1,12 @@
 {
-  "name": "travel-app-shell",
+  "name": "shell",
   "version": "1.0.0",
+  "type": "module",
+  "zephyr:dependencies": {
+    "pretrip_main": "mf_pretrip@*",
+    "itinerary_main": "mf_itinerary@*",
+    "duringtrip_main": "mf_duringtrip@*"
+  },
   "private": true,
   "description": "Travel App Shell - Main host application",
   "main": "dist/index.js",
