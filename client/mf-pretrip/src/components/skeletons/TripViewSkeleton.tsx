@@ -14,9 +14,13 @@ function Skeleton({ className }: { className?: string }) {
 
 export interface TripViewSkeletonProps {
   onTripSelect: (tripId: string) => void;
+  isGenerating?: boolean;
 }
 
-export function TripViewSkeleton({ onTripSelect }: TripViewSkeletonProps) {
+export function TripViewSkeleton({
+  onTripSelect,
+  isGenerating = false,
+}: TripViewSkeletonProps) {
   return (
     <div className="h-full flex bg-background">
       {/* Left: Header + Map */}
@@ -24,8 +28,15 @@ export function TripViewSkeleton({ onTripSelect }: TripViewSkeletonProps) {
         <TripHeader trip={null} onTripSelect={onTripSelect} />
 
         {/* Map area skeleton */}
-        <div className="flex-1">
+        <div className="flex-1 relative">
           <Skeleton className="w-full h-full min-h-0 rounded-none" />
+          {isGenerating && (
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+              <p className="text-base font-medium text-muted-foreground">
+                Curating activities for you...
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

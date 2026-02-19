@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { MemberProfile } from "../contexts/MemberContext";
 import { Database } from "@travel-app/shared-types";
@@ -481,7 +481,11 @@ export function useRealtimeTrip(
         (payload) => {
           if (payload.eventType === "INSERT") {
             const newAnnotation = payload.new as Annotation;
-            setAnnotations((prev) => [...prev, newAnnotation]);
+            setAnnotations((prev) =>
+              prev.some((a) => a.id === newAnnotation.id)
+                ? prev
+                : [...prev, newAnnotation],
+            );
 
             // Remove matching preview after short delay to allow smooth transition
             setTimeout(() => {
@@ -784,10 +788,17 @@ export function useRealtimeTrip(
     return () => clearInterval(interval);
   }, []);
 
+  const addAnnotationOptimistic = useCallback((annotation: Annotation) => {
+    setAnnotations((prev) =>
+      prev.some((a) => a.id === annotation.id) ? prev : [...prev, annotation],
+    );
+  }, []);
+
   return {
     onlineUsers,
     cursors,
     annotations,
+    addAnnotationOptimistic,
     drawingPreviews,
     polygonPreviews,
     pathPreviews,

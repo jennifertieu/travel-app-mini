@@ -193,9 +193,10 @@ export function useCurrentTrip() {
             );
             await tripCacheManager.switchTrip(previousTripId, tripId);
 
-            // Only remove generating flag if switching away from a trip (not creating one)
+            // Only remove generating flag when switching away from a trip (not creating one)
+            // When previousTripId is null, we're creating a new trip - don't clear the flag
             // If pending-suggestion-input exists, a new trip was just created and needs generation
-            if (isLocalStorageAvailable) {
+            if (isLocalStorageAvailable && previousTripId) {
               try {
                 const hasPendingGeneration = localStorage.getItem(
                   "pending-suggestion-input",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useIdeas } from "../hooks/useIdeas";
 import { TripHeader } from "../components/layout/TripHeader";
@@ -16,6 +17,8 @@ import {
   useStreamingSuggestions,
   type TripSuggestionInput,
 } from "../hooks/useStreamingSuggestions";
+import { useModals } from "../contexts/ModalContext";
+import { queryKeys } from "../lib/queryKeys";
 
 // Ideas are always sourced from useIdeas (backed by Supabase realtime).
 // The SSE streaming hook is only used for progress UI during generation.
@@ -23,6 +26,7 @@ import { GeneratingOverlay } from "../components/GeneratingOverlay";
 import { TripViewSkeleton } from "../components/skeletons/TripViewSkeleton";
 
 export function TripView() {
+  const queryClient = useQueryClient();
   const { member } = useMember();
   const [isGenerating, setIsGenerating] = useState(false);
   const [highlightedAnnotationId, setHighlightedAnnotationId] = useState<
@@ -38,6 +42,12 @@ export function TripView() {
     progress: streamingProgress,
     startStreaming,
   } = useStreamingSuggestions();
+
+  const { openModal } = useModals();
+
+  const handleOpenAddIdea = useCallback(() => {
+    openModal("addIdea", { startStreaming, isStreaming });
+  }, [openModal, startStreaming, isStreaming]);
 
   // Use the enhanced current trip management
   const {
@@ -130,6 +140,13 @@ export function TripView() {
     }
   }, [ideas.length, isGenerating, isStreaming, isStreamingComplete]);
 
+  // Invalidate ideas query when streaming completes to catch any ideas missed by realtime
+  useEffect(() => {
+    if (isStreamingComplete && tripId) {
+      queryClient.invalidateQueries({ queryKey: queryKeys.ideas(tripId) });
+    }
+  }, [isStreamingComplete, tripId, queryClient]);
+
   const handleTripCreatedWrapper = useCallback(
     (newTripId: string, suggestionInput: TripSuggestionInput) => {
       justCreatedTripRef.current = true;
@@ -149,7 +166,12 @@ export function TripView() {
 
   // Show skeleton while initializing (reading tripId from URL/localStorage) or loading trip
   if (!isTripIdInitialized || tripLoading) {
-    return <TripViewSkeleton onTripSelect={setCurrentTrip} />;
+    return (
+      <TripViewSkeleton
+        onTripSelect={setCurrentTrip}
+        isGenerating={isGenerating || isStreaming}
+      />
+    );
   }
 
   // Show trip planning form only after we've confirmed there's no trip
@@ -238,24 +260,28 @@ export function TripView() {
         {/* Header */}
         <TripHeader trip={trip || null} onTripSelect={setCurrentTrip} />
 
-        {/* Map */}
-        <div className="flex-1">
-          {showGeneratingEmpty ? (
-            <GeneratingOverlay
-              destination={trip?.destination ?? null}
-              interests={trip?.interests ?? null}
-              budgetLevel={trip?.budget_level ?? null}
-              durationDays={trip?.duration_days ?? null}
-              progress={streamingProgress}
-            />
-          ) : (
-            <MapView
-              ideas={ideas}
-              center={mapCenter}
-              tripId={tripId}
-              highlightedAnnotationId={highlightedAnnotationId}
-              ref={mapViewRef}
-            />
+        {/* Map — always mounted so ideas appear instantly when they arrive */}
+        <div className="flex-1 relative">
+          <MapView
+            ideas={ideas}
+            center={mapCenter}
+            tripId={tripId}
+            highlightedAnnotationId={highlightedAnnotationId}
+            onAnnotationSaved={(ann) =>
+              setLocalAnnotations((prev) => [...prev, ann])
+            }
+            ref={mapViewRef}
+          />
+          {showGeneratingEmpty && (
+            <div className="absolute inset-0 z-10 pointer-events-none">
+              <GeneratingOverlay
+                destination={trip?.destination ?? null}
+                interests={trip?.interests ?? null}
+                budgetLevel={trip?.budget_level ?? null}
+                durationDays={trip?.duration_days ?? null}
+                progress={streamingProgress}
+              />
+            </div>
           )}
         </div>
       </div>
@@ -294,6 +320,7 @@ export function TripView() {
             onAnnotationClick={handleAnnotationClick}
             onAnnotationDelete={handleAnnotationDelete}
             onDrawModeToggle={handleDrawModeToggle}
+            onOpenAddIdea={handleOpenAddIdea}
             totalExpected={5}
           />
         </div>

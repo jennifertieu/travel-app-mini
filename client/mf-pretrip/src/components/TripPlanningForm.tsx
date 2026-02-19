@@ -180,8 +180,10 @@ export function TripPlanningForm({
                     className="pl-10 pr-10 h-12 text-base border rounded-md"
                   />
                   {isSearching && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-muted-foreground"></div>
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.3s]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.15s]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" />
                     </div>
                   )}
                 </div>

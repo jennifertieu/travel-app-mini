@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
-import { User, LogOut, Settings, ChevronDown } from "lucide-react";
+import { User, LogOut, Settings, ChevronDown, Trash2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { ProfileUpdateModal } from "./ProfileUpdateModal";
+import { supabase } from "../lib/supabase";
 
 export const ProfileMenu = () => {
   const { user, profile, signOut } = useAuth();
@@ -31,6 +32,82 @@ export const ProfileMenu = () => {
     } catch (error) {
       console.error("Sign out failed:", error);
       alert("Failed to sign out. Please try again.");
+    }
+  };
+
+  const handleNukeTrips = async () => {
+    if (!user) return;
+    if (!confirm("💣 Nuke ALL your trips and data? This cannot be undone."))
+      return;
+    setIsOpen(false);
+
+    try {
+      // Get member profile id
+      const { data: profile } = await supabase
+        .from("member_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!profile) return;
+
+      // Get all trip ids created by this user
+      const { data: trips } = await supabase
+        .from("trips")
+        .select("id")
+        .eq("created_by", profile.id);
+
+      const tripIds = (trips ?? []).map((t) => t.id);
+
+      if (tripIds.length > 0) {
+        // Get idea ids for cascade
+        const { data: ideas } = await supabase
+          .from("trip_reel_ideas")
+          .select("id")
+          .in("trip_id", tripIds);
+
+        const ideaIds = (ideas ?? []).map((i) => i.id);
+
+        if (ideaIds.length > 0) {
+          await supabase
+            .from("trip_reel_idea_reactions")
+            .delete()
+            .in("idea_id", ideaIds);
+          await supabase
+            .from("trip_reel_idea_comments")
+            .delete()
+            .in("idea_id", ideaIds);
+        }
+
+        await supabase
+          .from("trip_reel_shortlist_items")
+          .delete()
+          .in("trip_id", tripIds);
+        await supabase.from("trip_reel_ideas").delete().in("trip_id", tripIds);
+        await supabase.from("trip_annotations").delete().in("trip_id", tripIds);
+        await supabase
+          .from("trip_collaborators")
+          .delete()
+          .in("trip_id", tripIds);
+        await supabase.from("trip_members").delete().in("trip_id", tripIds);
+        await supabase.from("trip_itineraries").delete().in("trip_id", tripIds);
+        await supabase.from("trips").delete().in("id", tripIds);
+      }
+
+      // Clear all trip-related localStorage
+      localStorage.removeItem("current-trip-id");
+      localStorage.removeItem("generating-suggestions");
+      localStorage.removeItem("pending-suggestion-input");
+      localStorage.removeItem("building-itinerary");
+      // Clear any map-view keys
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith("map-view-"))
+        .forEach((k) => localStorage.removeItem(k));
+
+      window.location.href = "/pretrip";
+    } catch (err) {
+      console.error("Nuke failed:", err);
+      alert("Something went wrong. Check console.");
     }
   };
 
@@ -181,6 +258,34 @@ export const ProfileMenu = () => {
               >
                 <Settings size={16} />
                 Update Travel Profile
+              </button>
+
+              <button
+                onClick={handleNukeTrips}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                  padding: "0.75rem",
+                  backgroundColor: "transparent",
+                  border: "none",
+                  borderRadius: "0.375rem",
+                  cursor: "pointer",
+                  fontSize: "0.875rem",
+                  color: "#dc2626",
+                  textAlign: "left",
+                  transition: "background-color 0.15s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#fef2f2";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
+              >
+                <Trash2 size={16} />
+                Nuke User Trips
               </button>
 
               <button

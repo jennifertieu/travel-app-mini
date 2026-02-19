@@ -105,18 +105,26 @@ export interface MapViewProps {
   center?: [number, number];
   tripId: string | null;
   highlightedAnnotationId?: string | null;
+  onAnnotationSaved?: (annotation: Annotation) => void;
 }
 
 export const MapView = forwardRef<
   { setDrawMode: (enabled: boolean) => void },
   MapViewProps
 >(function MapView(
-  { ideas, center = DEFAULT_MAP_CENTER, tripId, highlightedAnnotationId },
+  {
+    ideas,
+    center = DEFAULT_MAP_CENTER,
+    tripId,
+    highlightedAnnotationId,
+    onAnnotationSaved,
+  },
   ref,
 ) {
   const { member } = useMember();
   const {
     annotations,
+    addAnnotationOptimistic,
     cursors,
     broadcastCursor,
     onlineUsers,
@@ -456,6 +464,17 @@ export const MapView = forwardRef<
       setMap(null);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Invalidate map size when container resizes (e.g. sidebar collapse/expand)
+  useEffect(() => {
+    if (!map || !mapContainerRef.current) return;
+    const container = mapContainerRef.current;
+    const ro = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [map]);
 
   // Persist map view to localStorage on pan/zoom
   useEffect(() => {
@@ -846,15 +865,23 @@ export const MapView = forwardRef<
 
         // Paths are cosmetic — save directly without opening the modal
         if (tripId && member) {
-          await supabase.from("trip_annotations" as any).insert({
-            trip_id: tripId,
-            created_by: member.id,
-            coordinates: { type: "path", points: pathPoints },
-            color: selectedColor,
-            intent: "annotation",
-            label: null,
-            name: null,
-          });
+          const { data, error } = await supabase
+            .from("trip_annotations" as any)
+            .insert({
+              trip_id: tripId,
+              created_by: member.id,
+              coordinates: { type: "path", points: pathPoints },
+              color: selectedColor,
+              intent: "annotation",
+              label: null,
+              name: null,
+            })
+            .select()
+            .single();
+          if (!error && data) {
+            addAnnotationOptimistic(data as Annotation);
+            onAnnotationSaved?.(data as Annotation);
+          }
         }
 
         resetDrawing();
@@ -1245,7 +1272,7 @@ export const MapView = forwardRef<
               return;
             } else {
               // Save annotation to database
-              const { error } = await supabase
+              const { data: inserted, error } = await supabase
                 .from("trip_annotations" as any)
                 .insert({
                   trip_id: tripId,
@@ -1255,11 +1282,16 @@ export const MapView = forwardRef<
                   label: data.label,
                   intent: data.intent,
                   color: data.color,
-                });
+                })
+                .select()
+                .single();
 
               if (error) {
                 console.error("Failed to save annotation:", error);
                 alert("Failed to save annotation. Please try again.");
+              } else if (inserted) {
+                addAnnotationOptimistic(inserted as Annotation);
+                onAnnotationSaved?.(inserted as Annotation);
               }
             }
           } catch (error) {
@@ -1283,17 +1315,6 @@ export const MapView = forwardRef<
         <div className="area-search-toast">✨ Places added to your map</div>
       )}
 
-      {/* No ideas overlay (only if empty and not in draw mode) */}
-      {ideas.length === 0 && !isDrawMode && annotations.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none z-[300]">
-          <div className="text-center">
-            <div className="text-4xl mb-2">🗺️</div>
-            <p className="text-sm text-muted-foreground">
-              Add ideas or draw on the map
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 });

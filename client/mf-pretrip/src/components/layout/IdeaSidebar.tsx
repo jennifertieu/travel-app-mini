@@ -24,6 +24,7 @@ export interface IdeaSidebarProps {
   onAnnotationClick?: (annotation: Annotation) => void;
   onAnnotationDelete?: (annotationId: string) => void;
   onDrawModeToggle?: (enabled: boolean) => void;
+  onOpenAddIdea?: () => void;
 }
 
 export function IdeaSidebar({
@@ -35,6 +36,7 @@ export function IdeaSidebar({
   onAnnotationClick,
   onAnnotationDelete,
   onDrawModeToggle,
+  onOpenAddIdea,
 }: IdeaSidebarProps) {
   const { openModal } = useModals();
   const [activeTab, setActiveTab] = useState<"ideas" | "annotations">("ideas");
@@ -48,7 +50,7 @@ export function IdeaSidebar({
 
   const handleAddClick = () => {
     if (activeTab === "ideas") {
-      openModal("addIdea");
+      onOpenAddIdea ? onOpenAddIdea() : openModal("addIdea");
     } else {
       onDrawModeToggle?.(true);
     }

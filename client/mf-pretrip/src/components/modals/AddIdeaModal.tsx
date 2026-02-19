@@ -56,7 +56,7 @@ function isValidSocialMediaUrl(url: string): boolean {
 }
 
 export function AddIdeaModal() {
-  const { isOpen, closeModal } = useModals();
+  const { isOpen, closeModal, getModalData } = useModals();
   const { member } = useMember();
   const addIdeaMutation = useAddIdea();
   const updateIdeaMutation = useUpdateIdea();
@@ -71,6 +71,8 @@ export function AddIdeaModal() {
   } = useEnrichment();
 
   const { currentTrip, currentTripId } = useCurrentTrip();
+
+  const { startStreaming, isStreaming } = getModalData("addIdea") ?? {};
 
   const [url, setUrl] = useState("");
   const [comment, setComment] = useState("");
@@ -126,6 +128,24 @@ export function AddIdeaModal() {
         setStep("processing");
         setEnrichmentState((prev) => ({ ...prev, status: "CREATED" }));
         startEnrichmentPipeline(normalizedUrl);
+
+        // Fire parallel AI suggestions if not already streaming
+        if (
+          startStreaming &&
+          !isStreaming &&
+          currentTrip &&
+          currentTripId &&
+          member
+        ) {
+          startStreaming({
+            tripId: currentTripId,
+            destination: currentTrip.destination,
+            durationDays: currentTrip.duration_days ?? null,
+            budgetLevel: currentTrip.budget_level ?? null,
+            interests: currentTrip.interests ?? null,
+            createdBy: member.id,
+          });
+        }
       }, 100);
     }
   };

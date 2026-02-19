@@ -150,12 +150,14 @@ export function GeneratingOverlay({
   }, [progress?.message]);
 
   return (
-    <div className="h-full w-full bg-muted flex items-center justify-center">
+    <div className="h-full w-full pointer-events-none flex items-end justify-center pb-[15%]">
       <div
         key={animKey}
-        className="animate-in fade-in slide-in-from-bottom-3 duration-700 text-center"
+        className="animate-in fade-in slide-in-from-bottom-3 duration-700 text-center bg-white/70 backdrop-blur-sm rounded-full px-5 py-2 shadow-sm"
       >
-        <p className="text-lg font-medium text-shimmer">{displayedMessage}</p>
+        <p className="text-sm font-medium text-muted-foreground">
+          {displayedMessage}
+        </p>
       </div>
     </div>
   );
