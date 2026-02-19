@@ -185,7 +185,21 @@ export function TripView() {
     );
   }
 
-  // Error state - show if trip loading failed
+  // Trip not found (deleted or inaccessible) - useCurrentTrip clears stale ID; show selector meanwhile
+  if (tripId && !trip && !tripLoading && !tripError) {
+    return (
+      <div className="h-full flex flex-col bg-background">
+        <TripHeader trip={null} onTripSelect={setCurrentTrip} />
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground text-sm">
+            This trip is no longer available. Select a trip above.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state - show if trip loading failed (network/DB error)
   if (tripError && tripId) {
     return (
       <div className="h-full flex flex-col bg-background">

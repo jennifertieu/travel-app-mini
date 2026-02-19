@@ -42,8 +42,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         return null;
       }
 
+      const avatarUrl =
+        userData.user_metadata?.avatar_url ||
+        userData.user_metadata?.picture ||
+        null;
+
       if (existingProfile) {
         console.log("Profile found:", existingProfile);
+        // Sync avatar from Google in case it changed
+        if (avatarUrl && existingProfile.avatar_url !== avatarUrl) {
+          const { data: updatedProfile } = await supabase
+            .from("member_profiles")
+            .update({ avatar_url: avatarUrl })
+            .eq("user_id", userId)
+            .select()
+            .single();
+          const merged = updatedProfile ?? existingProfile;
+          setProfile(merged);
+          return merged;
+        }
         setProfile(existingProfile);
         return existingProfile;
       }
@@ -63,6 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           id: userId, // Use auth user_id as profile id
           user_id: userId,
           display_name: displayName,
+          avatar_url: avatarUrl,
           dietary: [],
           interests: [],
           travel_style: null,

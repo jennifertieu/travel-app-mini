@@ -11,6 +11,7 @@ export interface MemberProfile {
   interests: string[] | null;
   travel_style: string | null;
   walking_tolerance: string | null;
+  avatar_url: string | null;
   created_at: string;
   updated_at: string;
 }

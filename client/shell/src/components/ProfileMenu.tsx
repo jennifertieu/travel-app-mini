@@ -158,22 +158,35 @@ export const ProfileMenu = () => {
           }}
         >
           {/* Avatar */}
-          <div
-            style={{
-              width: "32px",
-              height: "32px",
-              borderRadius: "50%",
-              backgroundColor: "#3b82f6",
-              color: "white",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "0.75rem",
-              fontWeight: "600",
-            }}
-          >
-            {initials}
-          </div>
+          {profile?.avatar_url ? (
+            <img
+              src={profile.avatar_url}
+              alt={displayName}
+              style={{
+                width: "32px",
+                height: "32px",
+                borderRadius: "50%",
+                objectFit: "cover",
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: "32px",
+                height: "32px",
+                borderRadius: "50%",
+                backgroundColor: "#3b82f6",
+                color: "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "0.75rem",
+                fontWeight: "600",
+              }}
+            >
+              {initials}
+            </div>
+          )}
 
           {/* Name and Chevron */}
           <span

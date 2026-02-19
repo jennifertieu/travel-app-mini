@@ -83,6 +83,38 @@ export function useCurrentTrip() {
     );
   }, []);
 
+  // Clear stale trip ID when trip doesn't exist (deleted, or user lost access)
+  // Prevents "Failed to load trip" when localStorage/URL references a removed trip
+  // Must run after updateUrlWithTripId is defined
+  useEffect(() => {
+    if (
+      currentTripId &&
+      !isLoading &&
+      !error &&
+      currentTrip === null
+    ) {
+      console.warn(
+        `Trip ${currentTripId} not found (deleted or inaccessible) — clearing stale reference`,
+      );
+      setCurrentTripId(null);
+      updateUrlWithTripId(null);
+      if (isLocalStorageAvailable) {
+        try {
+          localStorage.removeItem(CURRENT_TRIP_KEY);
+        } catch (e) {
+          /* ignore */
+        }
+      }
+    }
+  }, [
+    currentTripId,
+    currentTrip,
+    isLoading,
+    error,
+    isLocalStorageAvailable,
+    updateUrlWithTripId,
+  ]);
+
   // Initialize trip ID from URL first, then localStorage on mount
   useEffect(() => {
     try {

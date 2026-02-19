@@ -20,7 +20,7 @@ export function useTrip(tripId: string | null) {
         .from("trips")
         .select("*")
         .eq("id", tripId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;
