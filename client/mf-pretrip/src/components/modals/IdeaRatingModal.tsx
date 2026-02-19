@@ -11,6 +11,7 @@ import {
   Minus,
   SkipForward,
   ChevronLeft,
+  ImageIcon,
 } from "lucide-react";
 import { TikTokEmbed, YouTubeEmbed } from "react-social-media-embed";
 import { useModals } from "../../contexts/ModalContext";
@@ -20,6 +21,19 @@ import { useMyReactions } from "../../hooks/useMyReactions";
 import { useQueryClient } from "@tanstack/react-query";
 import { ReviewsSection } from "../cards/ReviewsSection";
 import { IdeaCardSkeleton } from "../cards/IdeaCardSkeleton";
+
+/** Only true when we have a real embeddable video URL (not ai-suggestion-*, ai-area-search-*, etc.) */
+function hasEmbeddableVideo(idea: {
+  source_url?: string | null;
+  source_platform?: string;
+}): boolean {
+  const url = idea.source_url;
+  if (!url || typeof url !== "string") return false;
+  if (idea.source_platform === "tiktok") return url.includes("tiktok.com");
+  if (idea.source_platform === "youtube")
+    return url.includes("youtube.com") || url.includes("youtu.be");
+  return false;
+}
 
 const REACTION_SIGNALS = [
   {
@@ -83,12 +97,6 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
   const navInitRef = useRef(false);
 
   useEffect(() => {
-    if (!isOpen("ratingMode")) {
-      navInitRef.current = false;
-      setNavOrder([]);
-      return;
-    }
-
     if (navInitRef.current) return;
 
     const unrated = ideaIds.filter((id) => !myReactions[id]);
@@ -102,7 +110,7 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
       setShowComment(false);
       setCommentValue("");
     }
-  });
+  }, []);
 
   const orderedIds = navOrder.length > 0 ? navOrder : [...unratedIds, ...ratedIds];
 
@@ -143,7 +151,7 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
         });
 
         queryClient.invalidateQueries({
-          queryKey: ["myReactions", member.id, ideaIds.sort().join(",")],
+          queryKey: ["myReactions", member.id, [...ideaIds].sort().join(",")],
         });
 
         setCommentValue("");
@@ -309,25 +317,37 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
                 {/* Left - Video */}
                 <div className="flex flex-col gap-5">
                   <div className="w-full aspect-[9/16] bg-muted rounded-2xl overflow-hidden relative shadow-lg">
-                    {currentIdea.source_url ? (
+                    {hasEmbeddableVideo(currentIdea) ? (
                       currentIdea.source_platform === "tiktok" ? (
                         <div className="w-full h-full flex items-center justify-center overflow-hidden">
-                          <TikTokEmbed url={currentIdea.source_url} width={420} />
+                          <TikTokEmbed url={currentIdea.source_url!} width={420} />
                         </div>
                       ) : (
                         <div className="w-full h-full flex items-center justify-center overflow-hidden">
                           <YouTubeEmbed
-                            url={currentIdea.source_url}
+                            url={currentIdea.source_url!}
                             width={420}
                             height={600}
                           />
                         </div>
                       )
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
-                        No video URL
-                      </div>
-                    )}
+                    ) : (() => {
+                      const fallbackPhoto =
+                        currentIdea.place?.photoUrl ||
+                        currentIdea.place?.photos?.[0];
+                      return fallbackPhoto ? (
+                        <img
+                          src={fallbackPhoto}
+                          alt={currentIdea.title || "Place photo"}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground text-sm gap-2">
+                          <ImageIcon className="h-10 w-10" />
+                          <span>No media available</span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -349,9 +369,11 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
                           {currentIdea.title || "Idea Details"}
                         </h2>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {currentIdea.source_platform === "tiktok"
-                            ? "TikTok"
-                            : "YouTube Shorts"}
+                          {hasEmbeddableVideo(currentIdea)
+                            ? currentIdea.source_platform === "tiktok"
+                              ? "TikTok"
+                              : "YouTube Shorts"
+                            : "Google Places"}
                         </p>
                       </div>
 

@@ -6,7 +6,7 @@ import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Badge } from "../ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
-import { X } from "lucide-react";
+import { X, ImageIcon } from "lucide-react";
 import { TikTokEmbed, YouTubeEmbed } from "react-social-media-embed";
 import { useModals } from "../../contexts/ModalContext";
 import { useUpdateIdea } from "../../hooks/useIdeas";
@@ -18,6 +18,19 @@ interface IdeaDetailModalProps {
 
 const COST_OPTIONS = ["$", "$$", "$$$"] as const;
 const TIME_OF_DAY_OPTIONS = ["morning", "afternoon", "evening"] as const;
+
+/** Only true when we have a real embeddable video URL (not ai-suggestion-*, ai-area-search-*, etc.) */
+function hasEmbeddableVideo(idea: {
+  source_url?: string | null;
+  source_platform?: string;
+}): boolean {
+  const url = idea.source_url;
+  if (!url || typeof url !== "string") return false;
+  if (idea.source_platform === "tiktok") return url.includes("tiktok.com");
+  if (idea.source_platform === "youtube")
+    return url.includes("youtube.com") || url.includes("youtu.be");
+  return false;
+}
 
 // Skeleton Component
 function Skeleton({ className }: { className?: string }) {
@@ -34,6 +47,7 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
     Record<number, boolean>
   >({});
   const [mainImageError, setMainImageError] = useState(false);
+  const [fallbackImageError, setFallbackImageError] = useState(false);
 
   // Sync form data when idea changes
   useEffect(() => {
@@ -41,6 +55,7 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
       setFormData(initialIdea);
       setThumbnailErrors({});
       setMainImageError(false);
+      setFallbackImageError(false);
     }
   }, [initialIdea]);
 
@@ -95,10 +110,13 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
               {formData.title || "Idea Details"}
             </h2>
             <p className="text-xs text-muted-foreground mt-1.5 font-medium">
-              {initialIdea.source_platform === "tiktok"
-                ? "TikTok"
-                : "YouTube Shorts"}{" "}
-              • {initialIdea.enrichment_status}
+              {hasEmbeddableVideo(initialIdea)
+                ? initialIdea.source_platform === "tiktok"
+                  ? "TikTok"
+                  : "YouTube Shorts"
+                : "Google Places"}
+              {" • "}
+              {initialIdea.enrichment_status}
             </p>
           </div>
           <button
@@ -116,7 +134,7 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
             <div className="flex flex-col gap-5">
               {/* Video Container */}
               <div className="w-full aspect-[9/16] bg-muted rounded-2xl overflow-hidden relative shadow-lg">
-                {initialIdea.source_url ? (
+                {hasEmbeddableVideo(initialIdea) ? (
                   initialIdea.source_platform === "tiktok" ? (
                     <div className="w-full h-full flex items-center justify-center overflow-hidden">
                       <TikTokEmbed url={initialIdea.source_url} width={420} />
@@ -130,25 +148,40 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
                       />
                     </div>
                   )
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
-                    No video URL
-                  </div>
-                )}
+                ) : (() => {
+                  const fallbackPhoto =
+                    formData.place?.photoUrl ||
+                    formData.place?.photos?.[0];
+                  return fallbackPhoto && !fallbackImageError ? (
+                    <img
+                      src={fallbackPhoto}
+                      alt={formData.title || "Place photo"}
+                      className="w-full h-full object-cover"
+                      onError={() => setFallbackImageError(true)}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground text-sm gap-2">
+                      <ImageIcon className="h-10 w-10" />
+                      <span>No media available</span>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Source URL */}
-              <div className="border border-border rounded-xl p-4 bg-card">
-                <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">
-                  Source URL
+              {hasEmbeddableVideo(initialIdea) && (
+                <div className="border border-border rounded-xl p-4 bg-card">
+                  <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">
+                    Source URL
+                  </div>
+                  <input
+                    type="text"
+                    readOnly
+                    value={initialIdea.source_url}
+                    className="w-full px-3 py-2 border border-border rounded-lg text-xs bg-muted/50 font-mono"
+                  />
                 </div>
-                <input
-                  type="text"
-                  readOnly
-                  value={initialIdea.source_url || ""}
-                  className="w-full px-3 py-2 border border-border rounded-lg text-xs bg-muted/50 font-mono"
-                />
-              </div>
+              )}
 
               {/* Tags */}
               {hasEnrichment && (

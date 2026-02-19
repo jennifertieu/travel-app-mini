@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { createApiUrl, defaultFetchOptions } from "../lib/api";
 import { parseSSEStream } from "../lib/sse";
 
@@ -162,6 +163,11 @@ export const useStreamingSuggestions = () => {
                 // Clean up localStorage
                 localStorage.removeItem("generating-suggestions");
                 localStorage.removeItem("pending-suggestion-input");
+                if (payload.success && payload.saved > 0) {
+                  toast.success("Ideas ready!", {
+                    description: `${payload.saved} suggestions added to your trip`,
+                  });
+                }
                 break;
               }
               case "error": {

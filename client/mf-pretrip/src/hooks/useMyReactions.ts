@@ -7,6 +7,8 @@ export type MyReactionMap = Record<
   { signal: string; comment: string | null; reactionId: string }
 >;
 
+const EMPTY_MAP: MyReactionMap = {};
+
 /**
  * Batch-fetch the current user's reactions for all ideas in a trip.
  * Returns a map of ideaId -> { signal, comment, reactionId }.
@@ -19,7 +21,7 @@ export function useMyReactions(
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["myReactions", memberId, ideaIds.sort().join(",")],
+    queryKey: ["myReactions", memberId, [...ideaIds].sort().join(",")],
     queryFn: async (): Promise<MyReactionMap> => {
       if (!memberId || ideaIds.length === 0) return {};
 
@@ -60,7 +62,7 @@ export function useMyReactions(
         },
         () => {
           queryClient.invalidateQueries({
-            queryKey: ["myReactions", memberId, ideaIds.sort().join(",")],
+            queryKey: ["myReactions", memberId, [...ideaIds].sort().join(",")],
           });
         }
       )
@@ -72,7 +74,7 @@ export function useMyReactions(
   }, [memberId, ideaIds.join(","), queryClient]);
 
   return {
-    data: query.data ?? {},
+    data: query.data ?? EMPTY_MAP,
     isLoading: query.isLoading,
   };
 }

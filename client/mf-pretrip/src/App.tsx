@@ -4,6 +4,7 @@ import { ModalProvider } from "./contexts/ModalContext";
 import { TripView } from "./views/TripView";
 import { JoinTripPage } from "./views/JoinTripPage";
 import { ModalManager } from "./components/modals/ModalManager";
+import { Toaster } from "./components/ui/sonner";
 import { setupGlobalDebugUtils } from "./lib/debugUtils";
 import "./globals.css";
 
@@ -33,6 +34,7 @@ function App() {
         <ModalProvider>
           {isJoinMode ? <JoinTripPage /> : <TripView />}
           <ModalManager />
+          <Toaster position="bottom-left" closeButton />
         </ModalProvider>
       </MemberProvider>
       {/* 
