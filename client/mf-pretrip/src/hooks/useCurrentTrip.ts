@@ -16,8 +16,27 @@ const CURRENT_TRIP_KEY = "current-trip-id";
  * Extends the existing useTrip hook with comprehensive cache management and trip switching
  */
 export function useCurrentTrip() {
-  const [currentTripId, setCurrentTripId] = useState<string | null>(null);
-  const [isTripIdInitialized, setIsTripIdInitialized] = useState(false);
+  const [currentTripId, setCurrentTripId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+
+    try {
+      const forceZero = localStorage.getItem("force-zero-state");
+      if (forceZero === "true") return null;
+
+      const urlTripId = new URLSearchParams(window.location.search).get(
+        "tripId",
+      );
+      if (urlTripId) {
+        localStorage.setItem(CURRENT_TRIP_KEY, urlTripId);
+        return urlTripId;
+      }
+
+      return localStorage.getItem(CURRENT_TRIP_KEY);
+    } catch {
+      return null;
+    }
+  });
+  const [isTripIdInitialized] = useState(true);
   const [isLocalStorageAvailable, setIsLocalStorageAvailable] = useState(true);
   const [loadingState, setLoadingState] = useState<TripLoadingState | null>(
     null,
@@ -115,33 +134,20 @@ export function useCurrentTrip() {
     updateUrlWithTripId,
   ]);
 
-  // Initialize trip ID from URL first, then localStorage on mount
+  // Sync URL when trip ID came from localStorage (URL didn't have it)
   useEffect(() => {
     try {
-      if (typeof window !== "undefined") {
-        // Debug flag: set localStorage "force-zero-state" to "true" to always show the start screen
-        const forceZero = localStorage.getItem("force-zero-state");
-        if (forceZero === "true") {
-          console.log("🧪 force-zero-state is set — skipping trip restore");
-          setIsTripIdInitialized(true);
-          return;
-        }
+      if (typeof window === "undefined") return;
 
-        // Check URL first
-        const urlTripId = getTripIdFromUrl();
-        if (urlTripId) {
-          setCurrentTripId(urlTripId);
-          // Also update localStorage to match URL
-          localStorage.setItem(CURRENT_TRIP_KEY, urlTripId);
-        } else {
-          // Fall back to localStorage
-          const storedTripId = localStorage.getItem(CURRENT_TRIP_KEY);
-          if (storedTripId) {
-            setCurrentTripId(storedTripId);
-            // Update URL to match localStorage
-            updateUrlWithTripId(storedTripId);
-          }
-        }
+      const forceZero = localStorage.getItem("force-zero-state");
+      if (forceZero === "true") {
+        console.log("🧪 force-zero-state is set — skipping trip restore");
+        return;
+      }
+
+      const urlTripId = getTripIdFromUrl();
+      if (!urlTripId && currentTripId) {
+        updateUrlWithTripId(currentTripId);
       }
     } catch (error) {
       console.warn(
@@ -149,10 +155,8 @@ export function useCurrentTrip() {
         error,
       );
       setIsLocalStorageAvailable(false);
-    } finally {
-      setIsTripIdInitialized(true);
     }
-  }, [getTripIdFromUrl, updateUrlWithTripId]);
+  }, [currentTripId, getTripIdFromUrl, updateUrlWithTripId]);
 
   // Listen for URL changes (browser back/forward) and cross-instance trip changes
   useEffect(() => {
