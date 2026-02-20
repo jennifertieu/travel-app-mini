@@ -15,7 +15,7 @@ export interface TripSummary {
 const STORAGE_KEY = "trip-summary";
 const EVENT_NAME = "tripSummaryChanged";
 
-function broadcast(summary: TripSummary | null) {
+export function broadcast(summary: TripSummary | null) {
   try {
     if (summary) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(summary));

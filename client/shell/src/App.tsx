@@ -113,13 +113,13 @@ const RootLayout = () => {
             </span>
           </Link>
 
-          {/* Center: Trip metadata pills */}
-          <div className="flex-1 flex items-center justify-center">
+          {/* Center: Trip metadata pills - dead center irrespective of other elements */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             {tripSummary && <TripMetadata summary={tripSummary} />}
           </div>
 
           {/* Right: Nav links + Auth */}
-          <div className="flex items-center gap-4 shrink-0">
+          <div className="ml-auto flex items-center gap-4 shrink-0">
             <div className="hidden md:flex items-center gap-1">
               <Link
                 to="/pretrip"

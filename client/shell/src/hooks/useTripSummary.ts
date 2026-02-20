@@ -37,13 +37,8 @@ export function useTripSummary(): TripSummary | null {
   useEffect(() => {
     const handleSummaryChanged = () => refresh();
 
-    const handleTripChanged = (e: Event) => {
-      const detail = (e as CustomEvent<{ tripId: string | null }>).detail;
-      if (!detail?.tripId) {
-        setSummary(null);
-      } else {
-        refresh();
-      }
+    const handleTripChanged = () => {
+      refresh();
     };
 
     window.addEventListener(SUMMARY_EVENT, handleSummaryChanged);

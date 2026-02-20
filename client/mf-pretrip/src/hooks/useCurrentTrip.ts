@@ -6,6 +6,7 @@ import {
   getTripCacheManager,
   TripLoadingState,
 } from "../services/TripCacheManager";
+import { broadcast as broadcastTripSummary } from "./useBroadcastTripSummary";
 
 type Trip = Database["public"]["Tables"]["trips"]["Row"];
 
@@ -219,6 +220,12 @@ export function useCurrentTrip() {
         }
       }
 
+      // Immediately clear stale trip summary so the shell header doesn't show
+      // the previous trip's metadata while the new trip is loading.
+      if (previousTripId !== tripId) {
+        broadcastTripSummary(null);
+      }
+
       // Use Trip Cache Manager for comprehensive cache invalidation and data refetching
       // Run this asynchronously to not block UI updates
       if (previousTripId !== tripId) {
@@ -267,6 +274,7 @@ export function useCurrentTrip() {
    */
   const clearCurrentTrip = useCallback(() => {
     setCurrentTripId(null);
+    broadcastTripSummary(null);
 
     // Clear URL parameter
     updateUrlWithTripId(null);
