@@ -42,6 +42,6 @@ export default defineConfig({
     port: 2000,
   },
   html: {
-    title: "Travel App",
+    title: "TripWeave",
   },
 });

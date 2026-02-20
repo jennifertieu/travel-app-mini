@@ -6,10 +6,12 @@ import {
   RouterProvider,
   Link,
   Outlet,
+  useRouterState,
 } from "@tanstack/react-router";
 import { AuthProvider } from "./contexts/AuthContext";
 import { AuthNav } from "./components/AuthNav";
 import { AuthGuard } from "./components/AuthGuard";
+import { LandingPage } from "./components/LandingPage";
 
 // Lazy load the MFE apps with error handling
 const PretripApp = lazy(() =>
@@ -38,6 +40,13 @@ const LoadingFallback = ({ name }: { name: string }) => (
 
 // Root layout with navigation
 const RootLayout = () => {
+  const routerState = useRouterState();
+  const isLandingPage = routerState.location.pathname === "/";
+
+  if (isLandingPage) {
+    return <Outlet />;
+  }
+
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       <nav
@@ -101,14 +110,7 @@ const rootRoute = createRootRoute({
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: () => (
-    <AuthGuard>
-      <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
-        <h1>Welcome to Travel App</h1>
-        <p>Select a tab above to get started.</p>
-      </div>
-    </AuthGuard>
-  ),
+  component: LandingPage,
 });
 
 const pretripRoute = createRoute({
