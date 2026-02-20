@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       member_profiles: {
         Row: {
+          avatar_url: string | null;
           created_at: string;
           dietary: string[] | null;
           display_name: string | null;
@@ -27,6 +28,7 @@ export type Database = {
           walking_tolerance: string | null;
         };
         Insert: {
+          avatar_url?: string | null;
           created_at?: string;
           dietary?: string[] | null;
           display_name?: string | null;
@@ -38,6 +40,7 @@ export type Database = {
           walking_tolerance?: string | null;
         };
         Update: {
+          avatar_url?: string | null;
           created_at?: string;
           dietary?: string[] | null;
           display_name?: string | null;

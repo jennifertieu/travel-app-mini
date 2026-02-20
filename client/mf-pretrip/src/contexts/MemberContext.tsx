@@ -10,6 +10,7 @@ import { supabase } from "../lib/supabase";
 export interface MemberProfile {
   id: string;
   displayName?: string;
+  avatarUrl?: string;
   dietary: string[];
   travelStyle: "chill" | "balanced" | "packed";
   interests: string[];
@@ -58,12 +59,13 @@ export function MemberProvider({ children }: { children: ReactNode }) {
       if (error) {
         console.warn("Profile not found, creating it...", error);
 
-        // Create profile with name from auth metadata
+        // Create profile with name and avatar from auth metadata
         const displayName =
           user.user_metadata?.full_name ||
           user.user_metadata?.name ||
           user.email?.split("@")[0] ||
           "User";
+        const avatarUrl = user.user_metadata?.avatar_url || null;
 
         const { data: newProfile, error: insertError } = await supabase
           .from("member_profiles")
@@ -71,6 +73,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
             id: user.id,
             user_id: user.id,
             display_name: displayName,
+            avatar_url: avatarUrl,
             dietary: [],
             travel_style: "balanced",
             interests: [],
@@ -87,6 +90,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
         const profile: MemberProfile = {
           id: newProfile.id,
           displayName: newProfile.display_name || undefined,
+          avatarUrl: newProfile.avatar_url || undefined,
           dietary: newProfile.dietary || [],
           travelStyle: (newProfile.travel_style as any) || "balanced",
           interests: newProfile.interests || [],
@@ -97,12 +101,24 @@ export function MemberProvider({ children }: { children: ReactNode }) {
         const profile: MemberProfile = {
           id: data.id,
           displayName: data.display_name || undefined,
+          avatarUrl: data.avatar_url || undefined,
           dietary: data.dietary || [],
           travelStyle: (data.travel_style as any) || "balanced",
           interests: data.interests || [],
           walkingTolerance: (data.walking_tolerance as any) || undefined,
         };
         setMember(profile);
+
+        // Keep avatar fresh if user changed their Google photo
+        const freshAvatar = user.user_metadata?.avatar_url || null;
+        if (freshAvatar && freshAvatar !== data.avatar_url) {
+          await supabase
+            .from("member_profiles")
+            .update({ avatar_url: freshAvatar })
+            .eq("id", data.id);
+          profile.avatarUrl = freshAvatar;
+          setMember({ ...profile });
+        }
       }
 
       setIsInitialized(true);
@@ -123,6 +139,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
       .from("member_profiles")
       .update({
         display_name: updatedMember.displayName,
+        avatar_url: updatedMember.avatarUrl || null,
         dietary: updatedMember.dietary,
         travel_style: updatedMember.travelStyle,
         interests: updatedMember.interests,

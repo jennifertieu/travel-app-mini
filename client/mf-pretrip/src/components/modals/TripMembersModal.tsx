@@ -230,6 +230,7 @@ export function TripMembersModal({
                     const isCreator = member.is_creator;
                     const displayName =
                       member.member_profile?.display_name || "Anonymous User";
+                    const avatarUrl = member.member_profile?.avatar_url;
 
                     return (
                       <div
@@ -237,11 +238,18 @@ export function TripMembersModal({
                         className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
                       >
                         <div
-                          className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                          className={`h-8 w-8 rounded-full flex items-center justify-center overflow-hidden ${
                             isCreator ? "bg-primary/10" : "bg-secondary/50"
                           }`}
                         >
-                          {isCreator ? (
+                          {avatarUrl ? (
+                            <img
+                              src={avatarUrl}
+                              alt={displayName}
+                              className="w-full h-full rounded-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : isCreator ? (
                             <Crown className="h-4 w-4 text-primary" />
                           ) : (
                             <span className="text-sm font-medium text-secondary-foreground">

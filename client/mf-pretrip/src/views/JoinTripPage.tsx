@@ -107,7 +107,11 @@ export function JoinTripPage() {
           <p className="text-muted-foreground text-sm">
             {error || "This invite link is invalid or has expired."}
           </p>
-          <Button onClick={handleGoToTrips} variant="outline" className="w-full">
+          <Button
+            onClick={handleGoToTrips}
+            variant="outline"
+            className="w-full"
+          >
             Go to Trips
           </Button>
         </div>
@@ -154,12 +158,21 @@ export function JoinTripPage() {
               {tripMembers.slice(0, 5).map((m, i) => (
                 <div
                   key={m.user_id}
-                  className="w-10 h-10 rounded-full border-2 border-background bg-primary/10 flex items-center justify-center"
+                  className="w-10 h-10 rounded-full border-2 border-background bg-primary/10 flex items-center justify-center overflow-hidden"
                   style={{ zIndex: tripMembers.length - i }}
                 >
-                  <span className="text-xs font-semibold text-primary">
-                    {m.member_profile.display_name?.[0]?.toUpperCase() || "?"}
-                  </span>
+                  {m.member_profile.avatar_url ? (
+                    <img
+                      src={m.member_profile.avatar_url}
+                      alt={m.member_profile.display_name || "Member"}
+                      className="w-full h-full rounded-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <span className="text-xs font-semibold text-primary">
+                      {m.member_profile.display_name?.[0]?.toUpperCase() || "?"}
+                    </span>
+                  )}
                 </div>
               ))}
               {tripMembers.length > 5 && (
@@ -171,7 +184,8 @@ export function JoinTripPage() {
               )}
             </div>
             <span className="ml-3 text-sm text-muted-foreground">
-              {tripMembers.length} {tripMembers.length === 1 ? "member" : "members"}
+              {tripMembers.length}{" "}
+              {tripMembers.length === 1 ? "member" : "members"}
             </span>
           </motion.div>
         )}

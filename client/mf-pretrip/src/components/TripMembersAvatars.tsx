@@ -92,19 +92,31 @@ export function TripMembersAvatars({
           const displayName =
             member.member_profile?.display_name || "Anonymous";
           const initials = displayName.charAt(0)?.toUpperCase() || "?";
+          const avatarUrl = member.member_profile?.avatar_url;
 
           return (
             <button
               key={member.user_id}
               onClick={handleClick}
-              className={`relative h-9 w-9 rounded-full border-2 border-background flex items-center justify-center text-xs font-medium transition-transform hover:scale-110 hover:z-10 ${
+              className={`relative h-9 w-9 rounded-full border-2 border-background flex items-center justify-center text-xs font-medium transition-transform hover:scale-110 hover:z-10 overflow-hidden ${
                 isCreator
                   ? "bg-primary/10 text-primary"
                   : "bg-secondary text-secondary-foreground"
               }`}
               title={`${displayName} ${isCreator ? "(Owner)" : "(Collaborator)"}`}
             >
-              {isCreator ? <Crown className="h-3 w-3" /> : initials}
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={displayName}
+                  className="w-full h-full rounded-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : isCreator ? (
+                <Crown className="h-3 w-3" />
+              ) : (
+                initials
+              )}
             </button>
           );
         })}
