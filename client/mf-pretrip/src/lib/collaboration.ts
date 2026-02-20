@@ -126,6 +126,39 @@ export async function joinTrip(
 }
 
 /**
+ * Get photo URLs from trip ideas for the invite collage display.
+ * Pulls photoUrl and photos[] from the enriched place JSON on each idea.
+ */
+export async function getTripIdeaPhotos(
+  tripId: string,
+  limit = 8,
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("trip_reel_ideas")
+    .select("place")
+    .eq("trip_id", tripId)
+    .eq("enrichment_status", "DONE")
+    .not("place", "is", null);
+
+  if (error || !data) return [];
+
+  const urls: string[] = [];
+  for (const row of data) {
+    const place = row.place as Record<string, unknown> | null;
+    if (!place) continue;
+    if (typeof place.photoUrl === "string") urls.push(place.photoUrl);
+    if (Array.isArray(place.photos)) {
+      for (const p of place.photos) {
+        if (typeof p === "string" && !urls.includes(p)) urls.push(p);
+      }
+    }
+    if (urls.length >= limit) break;
+  }
+
+  return [...new Set(urls)].slice(0, limit);
+}
+
+/**
  * Get all members of a trip (collaborators + creator)
  *
  * @param tripId - The ID of the trip
