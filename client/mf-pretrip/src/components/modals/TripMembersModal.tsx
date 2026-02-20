@@ -16,6 +16,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { RadialIntro } from "../ui/radial-intro";
 import {
   Dialog,
   DialogContent,
@@ -139,6 +140,37 @@ export function TripMembersModal({
             Manage who can collaborate on this trip
           </DialogDescription>
         </DialogHeader>
+
+        {/* Radial Intro Animation */}
+        {!isLoading && members && members.length >= 1 && (() => {
+          const MIN_ORBIT = 5;
+          const realItems = members.map((m, i) => ({
+            id: i,
+            name: m.member_profile?.display_name || "Anonymous",
+            src:
+              m.member_profile?.avatar_url ||
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                m.member_profile?.display_name || "A",
+              )}&background=random`,
+          }));
+          const ghostCount = Math.max(0, MIN_ORBIT - realItems.length);
+          const ghostItems = Array.from({ length: ghostCount }, (_, i) => ({
+            id: 1000 + i,
+            name: "Invite someone",
+            src: "",
+            isGhost: true as const,
+          }));
+          const orbitItems = [...realItems, ...ghostItems];
+          return (
+            <div className="flex justify-center py-2">
+              <RadialIntro
+                orbitItems={orbitItems}
+                stageSize={200}
+                imageSize={48}
+              />
+            </div>
+          );
+        })()}
 
         <div className="space-y-6">
           {/* Name Prompt for Anonymous Users */}
@@ -298,7 +330,8 @@ export function TripMembersModal({
                 <Button
                   onClick={handleGenerateLink}
                   disabled={isGenerating}
-                  className="w-full"
+                  className="w-full text-white hover:opacity-90"
+                  style={{ backgroundColor: "#0D9488" }}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   {isGenerating ? "Generating..." : "Generate Invite Link"}
