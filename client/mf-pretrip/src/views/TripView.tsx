@@ -12,6 +12,8 @@ import { useMember } from "../contexts/MemberContext";
 import { TripPlanningForm } from "../components/TripPlanningForm";
 import { useCurrentTrip } from "../hooks/useCurrentTrip";
 import { useRealtimeTrip, type Annotation } from "../hooks/useRealtimeTrip";
+import { useTripMembers } from "../hooks/useTripMembers";
+import { useBroadcastTripSummary } from "../hooks/useBroadcastTripSummary";
 import { supabase } from "../lib/supabase";
 import {
   useStreamingSuggestions,
@@ -59,6 +61,9 @@ export function TripView() {
     error: tripError,
     isTripIdInitialized,
   } = useCurrentTrip();
+
+  const { data: members = [] } = useTripMembers(tripId);
+  useBroadcastTripSummary(trip, members.length);
 
   const { data: ideas = [], isLoading: ideasLoading } = useIdeas(tripId);
   const { annotations: realtimeAnnotations, onlineUsers } = useRealtimeTrip(
