@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { createApiUrl, defaultFetchOptions } from "../lib/api";
 import { parseSSEStream } from "../lib/sse";
@@ -157,10 +158,19 @@ export const useAreaSearch = (): UseAreaSearchReturn => {
                   total: payload.total,
                   message: "Search complete!",
                 });
-                // Invalidate ideas cache so new markers appear on map
+                // Invalidate and refetch ideas so new markers appear on map
                 queryClient.invalidateQueries({
                   queryKey: queryKeys.ideas(tripId),
                 });
+                queryClient.refetchQueries({
+                  queryKey: queryKeys.ideas(tripId),
+                  exact: true,
+                });
+                if (payload.success && payload.saved > 0) {
+                  toast.success("Places found!", {
+                    description: `${payload.saved} places added to your map`,
+                  });
+                }
                 break;
               }
               case "error": {

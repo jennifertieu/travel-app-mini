@@ -63,6 +63,25 @@ export const areaSearchStream = async (
     const centerLat = (north + south) / 2;
     const centerLng = (east + west) / 2;
 
+    // Compute radius from bbox (half-diagonal in meters) for constraining Google Places search
+    const latSpan = north - south;
+    const lngSpan = east - west;
+    const metersPerDegLat = 111_000;
+    const metersPerDegLng = 111_000 * Math.cos((centerLat * Math.PI) / 180);
+    const halfDiagonalM =
+      0.5 *
+      Math.sqrt(
+        Math.pow(latSpan * metersPerDegLat, 2) +
+          Math.pow(lngSpan * metersPerDegLng, 2),
+      );
+    const radiusMeters = Math.max(
+      2_000,
+      Math.min(50_000, Math.ceil(halfDiagonalM)),
+    );
+    console.log(
+      `📐 [Area Search] Derived radius: ${radiusMeters}m (half-diagonal)`,
+    );
+
     // Reverse-geocode bounding box center using Nominatim
     let locationName = `${centerLat.toFixed(4)}, ${centerLng.toFixed(4)}`;
     try {
@@ -199,9 +218,26 @@ export const areaSearchStream = async (
       let placeData = null;
       if (suggestion.placeQuery) {
         try {
-          placeData = await matchPlace(suggestion.placeQuery, locationName);
+          placeData = await matchPlace(suggestion.placeQuery, locationName, {
+            centerLat,
+            centerLng,
+            radiusMeters,
+          });
           if (placeData) {
-            console.log(`   ✅ Place matched: "${placeData.name}"`);
+            // Hard bounds check: reject if place is outside the selected bbox
+            const inBounds =
+              placeData.lat >= south &&
+              placeData.lat <= north &&
+              placeData.lng >= west &&
+              placeData.lng <= east;
+            if (!inBounds) {
+              console.log(
+                `   ⚠️ Place "${placeData.name}" outside bounds (${placeData.lat},${placeData.lng}), using center fallback`,
+              );
+              placeData = null;
+            } else {
+              console.log(`   ✅ Place matched: "${placeData.name}"`);
+            }
           } else {
             console.log(`   ⚠️ No place match found`);
           }

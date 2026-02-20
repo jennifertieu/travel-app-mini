@@ -191,16 +191,23 @@ async function fetchPlaceDetails(placeId: string): Promise<{
 
 /**
  * Search for a place using Google Places API Text Search
+ * When locationBias is provided, uses center+radius directly; otherwise geocodes location string.
  */
 async function searchGooglePlaces(
   query: string,
-  location: string
+  location: string,
+  locationBias?: { centerLat: number; centerLng: number; radiusMeters: number },
 ): Promise<PlaceMatchResult | null> {
   const apiKey = GOOGLE_MAPS_PLATFORM_API_KEY;
 
   console.log("🗺️ [Google Places] Starting place search...");
   console.log(`   Query: "${query}"`);
   console.log(`   Location: "${location}"`);
+  if (locationBias) {
+    console.log(
+      `   Location bias: ${locationBias.centerLat},${locationBias.centerLng} radius=${locationBias.radiusMeters}m`,
+    );
+  }
   console.log(`   API Key configured: ${!!apiKey}`);
 
   if (!apiKey) {
@@ -209,54 +216,67 @@ async function searchGooglePlaces(
   }
 
   try {
-    const geocodeParams = new URLSearchParams({
-      address: location,
-      key: apiKey,
-    });
+    let locationCoords: { lat: number; lng: number };
 
-    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?${geocodeParams}`;
-    console.log(`📍 [Google Geocoding] Geocoding location: ${location}`);
+    if (locationBias) {
+      locationCoords = {
+        lat: locationBias.centerLat,
+        lng: locationBias.centerLng,
+      };
+    } else {
+      const geocodeParams = new URLSearchParams({
+        address: location,
+        key: apiKey,
+      });
 
-    const geocodeResponse = await fetch(geocodeUrl);
+      const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?${geocodeParams}`;
+      console.log(`📍 [Google Geocoding] Geocoding location: ${location}`);
 
-    if (!geocodeResponse.ok) {
-      const status = geocodeResponse.status;
-      if (status === 429) {
-        console.error("❌ [Google Places] Rate limit exceeded");
+      const geocodeResponse = await fetch(geocodeUrl);
+
+      if (!geocodeResponse.ok) {
+        const status = geocodeResponse.status;
+        if (status === 429) {
+          console.error("❌ [Google Places] Rate limit exceeded");
+          return null;
+        }
+        console.error(`❌ [Google Geocoding] API error: ${status}`);
         return null;
       }
-      console.error(`❌ [Google Geocoding] API error: ${status}`);
-      return null;
-    }
 
-    const geocodeData = await geocodeResponse.json();
-    console.log(`✅ [Google Geocoding] Response status: ${geocodeData.status}`);
+      const geocodeData = await geocodeResponse.json();
+      console.log(`✅ [Google Geocoding] Response status: ${geocodeData.status}`);
 
-    if (geocodeData.status === "OVER_QUERY_LIMIT") {
-      console.error("❌ [Google Places] Quota exceeded");
-      return null;
-    }
+      if (geocodeData.status === "OVER_QUERY_LIMIT") {
+        console.error("❌ [Google Places] Quota exceeded");
+        return null;
+      }
 
-    if (
-      !geocodeData.results ||
-      geocodeData.results.length === 0 ||
-      geocodeData.status !== "OK"
-    ) {
-      console.error(
-        `❌ [Google Geocoding] Failed to geocode: ${location}, status: ${geocodeData.status}`
+      if (
+        !geocodeData.results ||
+        geocodeData.results.length === 0 ||
+        geocodeData.status !== "OK"
+      ) {
+        console.error(
+          `❌ [Google Geocoding] Failed to geocode: ${location}, status: ${geocodeData.status}`,
+        );
+        return null;
+      }
+
+      locationCoords = geocodeData.results[0].geometry.location;
+      console.log(
+        `📍 [Google Geocoding] Coordinates: ${locationCoords.lat}, ${locationCoords.lng}`,
       );
-      return null;
     }
 
-    const locationCoords = geocodeData.results[0].geometry.location;
-    console.log(
-      `📍 [Google Geocoding] Coordinates: ${locationCoords.lat}, ${locationCoords.lng}`
-    );
+    const radius = locationBias
+      ? String(locationBias.radiusMeters)
+      : "50000";
 
     const searchParams = new URLSearchParams({
       query: `${query} in ${location}`,
       location: `${locationCoords.lat},${locationCoords.lng}`,
-      radius: "50000",
+      radius,
       key: apiKey,
     });
 
@@ -353,16 +373,24 @@ async function searchGooglePlaces(
   }
 }
 
+export interface MatchPlaceLocationBias {
+  centerLat: number;
+  centerLng: number;
+  radiusMeters: number;
+}
+
 /**
  * Match a place using Google Places API
+ * When locationBias is provided, constrains search to that center+radius (e.g. for area search).
  */
 export async function matchPlace(
   placeQuery: string,
-  destination: string
+  destination: string,
+  locationBias?: MatchPlaceLocationBias,
 ): Promise<PlaceMatchResult | null> {
   if (!placeQuery || !destination) {
     return null;
   }
 
-  return await searchGooglePlaces(placeQuery, destination);
+  return await searchGooglePlaces(placeQuery, destination, locationBias);
 }

@@ -226,7 +226,6 @@ export const MapView = forwardRef<
   const searchLabelRef = useRef<L.Marker | null>(null);
   const [searchingBounds, setSearchingBounds] =
     useState<AnnotationCoordinates | null>(null);
-  const [showSearchToast, setShowSearchToast] = useState(false);
 
   // Drawing State
   const [isDrawMode, setIsDrawMode] = useState(false);
@@ -342,12 +341,7 @@ export const MapView = forwardRef<
         searchLabelRef.current = null;
       }
       setSearchingBounds(null);
-
-      // Show success toast if no error
-      if (!searchError) {
-        setShowSearchToast(true);
-        setTimeout(() => setShowSearchToast(false), 2500);
-      }
+      // Success toast is shown by useAreaSearch (Sonner)
     }
     wasSearchingRef.current = isSearching;
   }, [isSearching, searchError]);
@@ -1309,11 +1303,6 @@ export const MapView = forwardRef<
         isOpen={showShortcuts}
         onClose={() => setShowShortcuts(false)}
       />
-
-      {/* Search success toast */}
-      {showSearchToast && (
-        <div className="area-search-toast">✨ Places added to your map</div>
-      )}
 
     </div>
   );
