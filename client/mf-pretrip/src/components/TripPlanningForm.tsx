@@ -52,7 +52,8 @@ export function TripPlanningForm({
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
 
-  const [durationDays, setDurationDays] = useState<number | "">("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [budgetLevel, setBudgetLevel] = useState<"$" | "$$" | "$$$" | null>(
     null,
   );
@@ -109,13 +110,22 @@ export function TripPlanningForm({
       return;
     }
 
+    let durationDays: number | null = null;
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      durationDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    }
+
     const tripData: TripInsert = {
       destination: selectedPlace?.displayName || destination.trim(),
       destination_lat: selectedPlace?.lat || null,
       destination_lng: selectedPlace?.lng || null,
       created_by: memberId,
       title: `Trip to ${selectedPlace?.name || destination.trim()}`,
-      duration_days: durationDays || null,
+      start_date: startDate || null,
+      end_date: endDate || null,
+      duration_days: durationDays,
       budget_level: budgetLevel || null,
       interests: interests.length > 0 ? interests : null,
     };
@@ -126,7 +136,7 @@ export function TripPlanningForm({
       const suggestionInput: TripSuggestionInput = {
         tripId: result.id,
         destination: selectedPlace?.displayName || destination.trim(),
-        durationDays: typeof durationDays === "number" ? durationDays : null,
+        durationDays,
         budgetLevel: budgetLevel || null,
         interests: interests.length > 0 ? interests : null,
         createdBy: memberId,
@@ -213,25 +223,32 @@ export function TripPlanningForm({
               </div>
             </div>
 
-            {/* Duration Input */}
+            {/* Date Inputs */}
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                How many days are you planning for the trip?
+                When are you going?
               </label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  type="number"
-                  placeholder="Number of days"
-                  value={durationDays}
-                  onChange={(e) =>
-                    setDurationDays(
-                      e.target.value ? parseInt(e.target.value) : "",
-                    )
-                  }
-                  min="1"
-                  className="pl-10 h-12 text-base border rounded-md"
-                />
+              <div className="flex gap-3">
+                <div className="relative flex-1">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    min={new Date().toISOString().split("T")[0]}
+                    className="pl-10 h-12 text-base border rounded-md"
+                  />
+                </div>
+                <div className="relative flex-1">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate || new Date().toISOString().split("T")[0]}
+                    className="pl-10 h-12 text-base border rounded-md"
+                  />
+                </div>
               </div>
             </div>
 
