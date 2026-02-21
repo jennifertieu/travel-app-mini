@@ -14,6 +14,7 @@ import { AuthNav } from "./components/AuthNav";
 import { AuthGuard } from "./components/AuthGuard";
 import { LandingPage } from "./components/LandingPage";
 import { TripMemberAvatars } from "./components/TripMemberAvatars";
+import { TripSwitcher } from "./components/TripSwitcher";
 import { useTripSummary, type TripSummary } from "./hooks/useTripSummary";
 
 // Lazy load the MFE apps with error handling
@@ -112,13 +113,16 @@ const RootLayout = () => {
     <div className="h-screen flex flex-col">
       <nav className="flex-shrink-0 relative z-[2000] border-b border-gray-200 bg-gray-50 px-4 py-2.5">
         <div className="flex items-center">
-          {/* Left: Logo, then Trip metadata pills */}
+          {/* Left: Logo, Trip switcher, then metadata pills */}
           <Link to="/pretrip" className="flex items-center gap-2 no-underline shrink-0">
             <TripWeaveLogo />
             <span className="text-base font-bold text-gray-900 tracking-tight">
               TripWeave
             </span>
           </Link>
+          <div className="ml-4 shrink-0">
+            <TripSwitcher />
+          </div>
           {tripSummary && (
             <div className="flex items-center gap-2 ml-6 shrink-0">
               <TripMetadata summary={tripSummary} />

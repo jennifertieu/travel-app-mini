@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 
 import { IdeaCard } from "../cards/IdeaCard";
 import { IdeaCardSkeleton } from "../cards/IdeaCardSkeleton";
@@ -25,6 +26,20 @@ import type { Annotation } from "../../hooks/useRealtimeTrip";
 type Idea = Database["public"]["Tables"]["trip_reel_ideas"]["Row"];
 
 type Tab = "explore" | "saved" | "notes";
+
+/** Map trip interest (UI) → idea categories (AI). Ideas use: food, sightseeing, nature, shopping, nightlife, activity, stay, other. */
+const INTEREST_TO_IDEA_CATEGORIES: Record<string, string[]> = {
+  culture: ["sightseeing"],
+  history: ["sightseeing"],
+  art: ["sightseeing"],
+  adventure: ["activity"],
+  relaxation: ["nature", "stay"],
+  photography: ["nature", "sightseeing", "other"],
+  food: ["food"],
+  nature: ["nature"],
+  nightlife: ["nightlife"],
+  shopping: ["shopping"],
+};
 
 interface TripInfo {
   title?: string | null;
@@ -80,6 +95,46 @@ export function IdeaSidebar({
     duration: boolean;
   }>({ interests: false, budget: false, duration: false });
 
+  const [interestsDropdownOpen, setInterestsDropdownOpen] = useState(false);
+  const interestsTriggerRef = useRef<HTMLButtonElement>(null);
+  const interestsPanelRef = useRef<HTMLDivElement>(null);
+  const [interestsPanelPosition, setInterestsPanelPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+  const [portalMounted, setPortalMounted] = useState(false);
+
+  useEffect(() => {
+    setPortalMounted(true);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!interestsDropdownOpen || !interestsTriggerRef.current) return;
+    const rect = interestsTriggerRef.current.getBoundingClientRect();
+    setInterestsPanelPosition({ top: rect.bottom + 6, left: rect.left });
+  }, [interestsDropdownOpen]);
+
+  useEffect(() => {
+    if (!interestsDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        interestsTriggerRef.current?.contains(target) ||
+        interestsPanelRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setInterestsDropdownOpen(false);
+    };
+    const id = setTimeout(() => {
+      document.addEventListener("mousedown", handleClickOutside);
+    }, 0);
+    return () => {
+      clearTimeout(id);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [interestsDropdownOpen]);
+
   const ideaIds = useMemo(() => ideas.map((i) => i.id), [ideas]);
   const { data: allReactions } = useAllTripReactions(tripId ?? null, ideaIds);
   const { data: members = [] } = useTripMembers(tripId ?? null);
@@ -112,14 +167,23 @@ export function IdeaSidebar({
       );
     }
 
-    // Category / interests filter
+    // Category / interests filter (trip interests map to idea categories)
     if (activeFilters.interests && trip?.interests?.length) {
-      const tripInterests = trip.interests.map((i) => i.toLowerCase());
-      result = result.filter(
-        (idea) =>
-          idea.category &&
-          tripInterests.includes(idea.category.toLowerCase()),
-      );
+      const allowedCategories = new Set<string>();
+      for (const interest of trip.interests) {
+        const key = interest.toLowerCase().trim();
+        const categories = INTEREST_TO_IDEA_CATEGORIES[key];
+        if (categories) {
+          categories.forEach((c) => allowedCategories.add(c));
+        } else {
+          allowedCategories.add("other");
+        }
+      }
+      result = result.filter((idea) => {
+        const cat = idea.category?.trim().toLowerCase();
+        if (!cat) return true; // no category: keep so list doesn't empty
+        return allowedCategories.has(cat);
+      });
     }
 
     // Budget filter
@@ -131,9 +195,16 @@ export function IdeaSidebar({
       );
     }
 
-    // Duration filter
-    if (activeFilters.duration && trip?.duration_days) {
-      result = result.filter((idea) => !!idea.duration_bucket);
+    // Duration filter: show only ideas with duration info; for short trips (≤2 days) prefer shorter activities
+    if (activeFilters.duration) {
+      result = result.filter((idea) => {
+        if (!idea.duration_bucket) return false;
+        if (trip?.duration_days != null && trip.duration_days <= 2) {
+          const d = idea.duration_bucket.toLowerCase();
+          return d === "30m" || d === "1-2h";
+        }
+        return true;
+      });
     }
 
     return result;
@@ -154,6 +225,24 @@ export function IdeaSidebar({
 
   const toggleFilter = (key: "interests" | "budget" | "duration") => {
     setActiveFilters((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const hasAnyFilterOn =
+    activeFilters.interests || activeFilters.budget || activeFilters.duration;
+  const toggleAllFilters = () => {
+    if (hasAnyFilterOn) {
+      setActiveFilters({
+        interests: false,
+        budget: false,
+        duration: false,
+      });
+    } else {
+      setActiveFilters({
+        interests: !!(trip?.interests && trip.interests.length > 0),
+        budget: !!trip?.budget_level,
+        duration: true,
+      });
+    }
   };
 
   const displayIdeas = activeTab === "saved" ? savedIdeas : filteredIdeas;
@@ -223,7 +312,7 @@ export function IdeaSidebar({
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 py-2 px-3 rounded-md transition-all ${
+              className={`flex-1 py-2 px-3 rounded-md transition-colors ${
                 activeTab === tab.key
                   ? "bg-background shadow-sm font-medium"
                   : "text-muted-foreground hover:text-foreground"
@@ -265,22 +354,91 @@ export function IdeaSidebar({
         {/* Filter Chips */}
         {activeTab !== "notes" && (
           <div className="flex items-center gap-2 mt-3 pb-3 overflow-x-auto">
-            <button className="p-1.5 rounded-md border border-input hover:bg-muted transition-colors shrink-0">
-              <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+            <button
+              type="button"
+              onClick={toggleAllFilters}
+              className={`p-1.5 rounded-md border transition-colors shrink-0 ${
+                hasAnyFilterOn
+                  ? "border-emerald-500 bg-emerald-500/10 text-emerald-600"
+                  : "border-input hover:bg-muted text-muted-foreground"
+              }`}
+              title={hasAnyFilterOn ? "Clear all filters" : "Turn on all filters"}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
             </button>
 
             {trip?.interests && trip.interests.length > 0 && (
-              <button
-                onClick={() => toggleFilter("interests")}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors shrink-0 ${
-                  activeFilters.interests
-                    ? "bg-emerald-500 text-white border-emerald-500"
-                    : "bg-muted text-foreground border-transparent hover:border-border"
-                }`}
-              >
-                Interests
-                <ChevronDown className="h-3 w-3" />
-              </button>
+              <div className="relative shrink-0">
+                <button
+                  ref={interestsTriggerRef}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setInterestsDropdownOpen((open) => !open);
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                    activeFilters.interests
+                      ? "bg-emerald-500 text-white border-emerald-500"
+                      : "bg-muted text-foreground border-transparent hover:border-border"
+                  }`}
+                  aria-expanded={interestsDropdownOpen}
+                  aria-haspopup="listbox"
+                >
+                  Interests
+                  <ChevronDown
+                    className={`h-3 w-3 transition-transform ${
+                      interestsDropdownOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                {portalMounted &&
+                  interestsDropdownOpen &&
+                  interestsPanelPosition &&
+                  createPortal(
+                    <div
+                      ref={interestsPanelRef}
+                      className="fixed min-w-[180px] rounded-lg border border-border bg-background shadow-lg py-2 z-[9999]"
+                      style={{
+                        top: interestsPanelPosition.top,
+                        left: interestsPanelPosition.left,
+                      }}
+                      role="listbox"
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
+                      <p className="px-3 py-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                        Trip interests
+                      </p>
+                      <ul className="max-h-48 overflow-y-auto">
+                        {trip.interests.map((interest) => (
+                          <li
+                            key={interest}
+                            className="px-3 py-1.5 text-sm capitalize"
+                          >
+                            {interest}
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="border-t border-border mt-2 pt-2 px-3">
+                        <label className="flex items-center gap-2 cursor-pointer text-sm">
+                          <input
+                            type="checkbox"
+                            checked={activeFilters.interests}
+                            onChange={(e) => {
+                              setActiveFilters((prev) => ({
+                                ...prev,
+                                interests: e.target.checked,
+                              }));
+                            }}
+                            className="rounded border-input"
+                          />
+                          Filter by these interests
+                        </label>
+                      </div>
+                    </div>,
+                    document.body,
+                  )}
+              </div>
             )}
 
             {trip?.budget_level && (
@@ -345,11 +503,22 @@ export function IdeaSidebar({
                 <p className="text-sm text-muted-foreground mb-4">
                   {activeTab === "saved"
                     ? "No saved ideas yet"
-                    : searchQuery
-                      ? "No ideas match your search"
-                      : "No ideas yet"}
+                    : hasAnyFilterOn
+                      ? "No ideas match your filters"
+                      : searchQuery
+                        ? "No ideas match your search"
+                        : "No ideas yet"}
                 </p>
-                {activeTab === "explore" && !searchQuery && (
+                {activeTab === "explore" && hasAnyFilterOn && (
+                  <Button
+                    onClick={toggleAllFilters}
+                    size="sm"
+                    variant="outline"
+                  >
+                    Clear filters
+                  </Button>
+                )}
+                {activeTab === "explore" && !searchQuery && !hasAnyFilterOn && (
                   <Button
                     onClick={() => openModal("addIdea")}
                     size="sm"

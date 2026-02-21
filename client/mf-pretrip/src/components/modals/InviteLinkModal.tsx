@@ -68,7 +68,7 @@ export function InviteLinkModal() {
       />
 
       {/* Modal */}
-      <div className="relative bg-background border border-border rounded-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col shadow-2xl transform transition-all duration-300 scale-100 opacity-100">
+      <div className="relative bg-background border border-border rounded-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col shadow-2xl transform transition-[transform,opacity] duration-300 scale-100 opacity-100">
         {/* Header */}
         <div className="border-b border-border px-6 py-5 flex items-center justify-between flex-shrink-0 bg-background">
           <div>

@@ -13,7 +13,8 @@ import {
   mapBudgetLevelToDatabase,
 } from "../../lib/utils";
 import { queryKeys } from "../../lib/queryKeys";
-import { Calendar, DollarSign, MapPin, Users, X, Trash2 } from "lucide-react";
+import { DollarSign, MapPin, Users, X, Trash2 } from "lucide-react";
+import { DateRangePicker } from "../DateRangePicker";
 
 export function TripSettingsModal() {
   const { isOpen, closeModal } = useModals();
@@ -163,7 +164,7 @@ export function TripSettingsModal() {
         onClick={handleClose}
       />
 
-      <div className="relative bg-background border border-border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl transform transition-all duration-300 scale-100 opacity-100">
+      <div className="relative bg-background border border-border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl transform transition-[transform,opacity] duration-300 scale-100 opacity-100">
         <div className="border-b border-border px-6 py-5 flex items-center justify-between flex-shrink-0 bg-background">
           <div>
             <h2 className="text-xl font-semibold tracking-tight">
@@ -199,7 +200,7 @@ export function TripSettingsModal() {
                     destination: event.target.value,
                   }))
                 }
-                className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
+                className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-[border-color,box-shadow]"
                 required
               />
             </div>
@@ -218,42 +219,23 @@ export function TripSettingsModal() {
                     title: event.target.value,
                   }))
                 }
-                className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
+                className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-[border-color,box-shadow]"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      startDate: event.target.value,
-                    }))
-                  }
-                  className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">End Date</label>
-                <input
-                  type="date"
-                  value={formData.endDate}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      endDate: event.target.value,
-                    }))
-                  }
-                  className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
-                />
-              </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Start and end date</label>
+              <DateRangePicker
+                startDate={formData.startDate}
+                endDate={formData.endDate}
+                onStartChange={(value) =>
+                  setFormData((prev) => ({ ...prev, startDate: value }))
+                }
+                onEndChange={(value) =>
+                  setFormData((prev) => ({ ...prev, endDate: value }))
+                }
+                compact
+              />
             </div>
 
             <div className="space-y-2">
@@ -284,7 +266,7 @@ export function TripSettingsModal() {
                         budgetLevel: option.value as any,
                       }))
                     }
-                    className={`p-4 border rounded-lg text-left transition-all ${
+                    className={`p-4 border rounded-lg text-left transition-colors ${
                       formData.budgetLevel === option.value
                         ? "border-primary bg-primary/10 text-primary"
                         : "border-border hover:border-border/80"
@@ -310,7 +292,7 @@ export function TripSettingsModal() {
                     key={interest}
                     type="button"
                     onClick={() => handleInterestToggle(interest)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                       formData.interests.includes(interest)
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"

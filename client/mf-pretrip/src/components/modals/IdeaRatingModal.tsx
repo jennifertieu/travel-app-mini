@@ -250,7 +250,7 @@ export function IdeaRatingModal({ ideas, tripId }: IdeaRatingModalProps) {
               </span>
               <div className="mt-1.5 h-1.5 w-48 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-primary transition-all duration-300"
+                  className="h-full bg-primary transition-[width] duration-300"
                   style={{
                     width: `${totalCount > 0 ? (ratedCount / totalCount) * 100 : 0}%`,
                   }}

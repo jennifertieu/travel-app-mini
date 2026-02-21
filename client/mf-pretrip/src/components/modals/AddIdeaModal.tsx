@@ -413,7 +413,7 @@ export function AddIdeaModal() {
 
       {/* Modal */}
       <div
-        className={`relative bg-background border border-border rounded-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl transform transition-all duration-300 scale-100 opacity-100 ${
+        className={`relative bg-background border border-border rounded-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl transform transition-[transform,opacity] duration-300 scale-100 opacity-100 ${
           step === "input" ? "max-w-lg" : "max-w-6xl"
         }`}
       >
@@ -465,7 +465,7 @@ export function AddIdeaModal() {
                       onChange={(e) => handleUrlChange(e.target.value)}
                       onPaste={handlePaste}
                       autoFocus
-                      className={`w-full py-5 px-6 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 transition-all font-medium bg-muted/30 backdrop-blur-sm ${
+                      className={`w-full py-5 px-6 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 transition-[border-color,box-shadow] font-medium bg-muted/30 backdrop-blur-sm ${
                         url ? "pr-14" : ""
                       } ${
                         url && !isValidUrl
@@ -554,7 +554,7 @@ export function AddIdeaModal() {
                     placeholder="e.g., 'Perfect for Day 2 morning' or 'Must try their Vietnamese coffee'"
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
-                    className="w-full px-4 py-3 border border-border rounded-lg text-sm resize-none min-h-24 focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all font-medium"
+                    className="w-full px-4 py-3 border border-border rounded-lg text-sm resize-none min-h-24 focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-[border-color,box-shadow] font-medium"
                   />
                   <div className="text-xs text-muted-foreground mt-3">
                     💡 AI will use this to better understand your preferences
@@ -657,7 +657,7 @@ export function AddIdeaModal() {
                     Place Details
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-all">
+                    <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-colors">
                       <div className="flex items-center gap-2 mb-3">
                         <span className="text-xl">📍</span>
                         <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -688,7 +688,7 @@ export function AddIdeaModal() {
                       )}
                     </div>
 
-                    <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-all">
+                    <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-colors">
                       <div className="flex items-center gap-2 mb-3">
                         <span className="text-xl">⭐</span>
                         <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -713,7 +713,7 @@ export function AddIdeaModal() {
                       )}
                     </div>
 
-                    <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-all">
+                    <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-colors">
                       <div className="flex items-center gap-2 mb-3">
                         <span className="text-xl">💰</span>
                         <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -737,7 +737,7 @@ export function AddIdeaModal() {
                       )}
                     </div>
 
-                    <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-all">
+                    <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-colors">
                       <div className="flex items-center gap-2 mb-3">
                         <span className="text-xl">🕐</span>
                         <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">

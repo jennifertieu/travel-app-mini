@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* react-day-picker base layout and variables (Airbnb-style date range) */
+@import "react-day-picker/style.css";
+
 @layer base {
   :root {
     --background: 0 0% 100%;

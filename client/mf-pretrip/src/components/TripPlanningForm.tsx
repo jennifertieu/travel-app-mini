@@ -4,10 +4,11 @@ import { motion } from "motion/react";
 import { searchPlaces, PlaceSearchResult } from "../lib/place-search";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { MapPin, Calendar, Sparkles } from "lucide-react";
+import { MapPin, Sparkles } from "lucide-react";
 import { Database, TablesInsert } from "@travel-app/shared-types";
 import { TripSuggestionInput } from "../hooks/useStreamingSuggestions";
 import { PhotoCollage } from "./PhotoCollage";
+import { DateRangePicker } from "./DateRangePicker";
 
 type TripInsert = TablesInsert<"trips">;
 
@@ -243,31 +244,17 @@ export function TripPlanningForm({
 
               {/* Date Inputs */}
               <motion.div className="space-y-2" {...stagger(2)}>
-                <label className="text-sm font-medium">
+                <label className="text-sm font-medium" id="when-are-you-going">
                   When are you going?
                 </label>
-                <div className="flex gap-3">
-                  <div className="relative flex-1">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      min={new Date().toISOString().split("T")[0]}
-                      className="pl-10 h-12 text-base border rounded-xl shadow-sm"
-                    />
-                  </div>
-                  <div className="relative flex-1">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      min={startDate || new Date().toISOString().split("T")[0]}
-                      className="pl-10 h-12 text-base border rounded-xl shadow-sm"
-                    />
-                  </div>
-                </div>
+                <DateRangePicker
+                  startDate={startDate}
+                  endDate={endDate}
+                  onStartChange={setStartDate}
+                  onEndChange={setEndDate}
+                  minDate={new Date(new Date().setHours(0, 0, 0, 0))}
+                  labelId="when-are-you-going"
+                />
               </motion.div>
 
               {/* Budget Selection */}

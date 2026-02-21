@@ -168,7 +168,7 @@ export function AnnotationModal({
           <div className="flex p-0.5 bg-muted rounded-lg mb-3">
             <button
               onClick={() => setActiveTab("note")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-md transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-md transition-colors ${
                 activeTab === "note"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -179,7 +179,7 @@ export function AnnotationModal({
             </button>
             <button
               onClick={() => setActiveTab("search")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-md transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-md transition-colors ${
                 activeTab === "search"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -240,7 +240,7 @@ export function AnnotationModal({
                             prev === c.hex ? null : c.hex,
                           )
                         }
-                        className={`flex items-center gap-1 px-2 py-1 rounded-md border-2 transition-all text-xs ${
+                        className={`flex items-center gap-1 px-2 py-1 rounded-md border-2 transition-[border-color,background-color] text-xs ${
                           selectedColor === c.hex
                             ? "border-foreground bg-muted scale-105"
                             : "border-border hover:border-muted-foreground hover:bg-muted/50"
@@ -321,7 +321,7 @@ export function AnnotationModal({
                               color: null,
                             })
                           }
-                          className="flex items-center gap-1.5 px-2.5 py-2 border border-border rounded-lg text-xs font-medium hover:bg-muted/80 hover:border-muted-foreground/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex items-center gap-1.5 px-2.5 py-2 border border-border rounded-lg text-xs font-medium hover:bg-muted/80 hover:border-muted-foreground/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <span className="text-sm">{category.icon}</span>
                           <span>{category.label}</span>

@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   useCallback,
+  useMemo,
   forwardRef,
   useImperativeHandle,
 } from "react";
@@ -148,18 +149,11 @@ export const MapView = forwardRef<
     startSearch,
   } = useAreaSearch();
 
-  // Filter out current user from online users
-  const otherOnlineUsers = onlineUsers.filter((user) => {
-    const isCurrentUser = user.id === member?.id;
-    if (isCurrentUser) {
-      console.log(
-        "🔵 [MapView] Filtering out current user:",
-        user.id,
-        member?.id,
-      );
-    }
-    return !isCurrentUser;
-  });
+  // Filter out current user from online users (memoized so MapToolbar re-renders less)
+  const otherOnlineUsers = useMemo(
+    () => onlineUsers.filter((user) => user.id !== member?.id),
+    [onlineUsers, member?.id],
+  );
 
   // Debug logging
   useEffect(() => {
@@ -264,6 +258,31 @@ export const MapView = forwardRef<
     { value: "#F59E0B", label: "Yellow" },
     { value: "#8B5CF6", label: "Purple" },
   ];
+
+  // Stable callbacks for MapToolbar to reduce re-renders during hover/interaction
+  const onDrawToolChange = useCallback(
+    (tool: "polygon" | "rect" | "path") => {
+      setDrawTool(tool);
+      drawPointsRef.current = [];
+      drawStartRef.current = null;
+      isPathDrawingRef.current = false;
+      lastPathPointRef.current = null;
+    },
+    [],
+  );
+  const onShortcutsOpen = useCallback(() => setShowShortcuts(true), []);
+  const onRecenter = useCallback(() => {
+    if (!map) return;
+    if (tripId) {
+      try {
+        localStorage.removeItem(`map-view-${tripId}`);
+      } catch {
+        // ignore
+      }
+    }
+    restoredFromStorageRef.current = false;
+    map.setView(center, DEFAULT_ZOOM);
+  }, [map, center, tripId]);
 
   // Calculate panel position from annotation coordinates
   const calculatePanelPosition = (
@@ -1359,28 +1378,12 @@ export const MapView = forwardRef<
         isDrawMode={isDrawMode}
         onDrawModeToggle={setIsDrawMode}
         drawTool={drawTool}
-        onDrawToolChange={(tool) => {
-          setDrawTool(tool);
-          drawPointsRef.current = [];
-          drawStartRef.current = null;
-          isPathDrawingRef.current = false;
-          lastPathPointRef.current = null;
-        }}
+        onDrawToolChange={onDrawToolChange}
         selectedColor={selectedColor}
         onColorChange={setSelectedColor}
         drawingColors={DRAWING_COLORS}
-        onShortcutsOpen={() => setShowShortcuts(true)}
-        onRecenter={() => {
-          if (!map) return;
-          // Reset to the trip's original center, clearing any saved pan/zoom
-          if (tripId) {
-            try {
-              localStorage.removeItem(`map-view-${tripId}`);
-            } catch {}
-          }
-          restoredFromStorageRef.current = false;
-          map.setView(center, DEFAULT_ZOOM);
-        }}
+        onShortcutsOpen={onShortcutsOpen}
+        onRecenter={onRecenter}
       />
 
       {/* Annotation Modal */}

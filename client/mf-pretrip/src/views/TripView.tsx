@@ -60,6 +60,18 @@ export function TripView() {
     return () => window.removeEventListener("openTripModal", handler);
   }, [openModal]);
 
+  // Open create trip modal when navigated from shell (e.g. from itinerary page)
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("pending-open-create-trip") === "1") {
+        sessionStorage.removeItem("pending-open-create-trip");
+        openModal("createTrip");
+      }
+    } catch {
+      // ignore
+    }
+  }, [openModal]);
+
   const handleOpenAddIdea = useCallback(() => {
     openModal("addIdea", { startStreaming, isStreaming });
   }, [openModal, startStreaming, isStreaming]);

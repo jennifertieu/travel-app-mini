@@ -355,7 +355,7 @@ export function IdeaDetailModal({ idea: initialIdea, tripId }: IdeaDetailModalPr
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       {/* Location */}
-                      <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-all">
+                      <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-colors">
                         <div className="flex items-center gap-2 mb-3">
                           <span className="text-xl">📍</span>
                           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -372,7 +372,7 @@ export function IdeaDetailModal({ idea: initialIdea, tripId }: IdeaDetailModalPr
                       </div>
 
                       {/* Rating */}
-                      <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-all">
+                      <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-colors">
                         <div className="flex items-center gap-2 mb-3">
                           <span className="text-xl">⭐</span>
                           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -393,7 +393,7 @@ export function IdeaDetailModal({ idea: initialIdea, tripId }: IdeaDetailModalPr
                       </div>
 
                       {/* Cost */}
-                      <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-all">
+                      <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-colors">
                         <div className="flex items-center gap-2 mb-3">
                           <span className="text-xl">💰</span>
                           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -408,7 +408,7 @@ export function IdeaDetailModal({ idea: initialIdea, tripId }: IdeaDetailModalPr
                       </div>
 
                       {/* Best Time */}
-                      <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-all">
+                      <div className="p-4 border border-border rounded-xl bg-card hover:border-foreground/20 transition-colors">
                         <div className="flex items-center gap-2 mb-3">
                           <span className="text-xl">🕐</span>
                           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">

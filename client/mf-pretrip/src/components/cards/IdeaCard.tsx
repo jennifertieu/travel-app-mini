@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { Card, CardContent } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { useModals } from "../../contexts/ModalContext";
@@ -31,7 +32,7 @@ interface IdeaCardProps {
   onToggleSave?: (ideaId: string) => void;
 }
 
-export function IdeaCard({ idea, reactions = [], members = [], isSaved, onToggleSave }: IdeaCardProps) {
+function IdeaCardInner({ idea, reactions = [], members = [], isSaved, onToggleSave }: IdeaCardProps) {
   const { openModal } = useModals();
 
   const getStatusConfig = (status: string) => {
@@ -96,7 +97,7 @@ export function IdeaCard({ idea, reactions = [], members = [], isSaved, onToggle
 
   return (
     <Card
-      className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:border-foreground/10 group overflow-hidden"
+      className="cursor-pointer hover:shadow-lg transition-[box-shadow,border-color] duration-200 hover:border-foreground/10 group overflow-hidden"
       onClick={() => openModal("ideaDetail", { ideaId: idea.id })}
     >
       {/* Image & Overlays */}
@@ -110,7 +111,7 @@ export function IdeaCard({ idea, reactions = [], members = [], isSaved, onToggle
           <img
             src={place.photoUrl}
             alt={location?.name || idea.title || "Place photo"}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = "none";
             }}
@@ -125,7 +126,7 @@ export function IdeaCard({ idea, reactions = [], members = [], isSaved, onToggle
         <div className="absolute top-2 left-2 flex flex-wrap gap-1.5 max-w-[calc(100%-48px)]">
           {idea.enrichment_status !== "DONE" && (
             <Badge
-              className={`${statusConfig.color} border-0 shadow-sm backdrop-blur-sm bg-opacity-90 text-xs px-1.5 py-0.5 h-5`}
+              className={`${statusConfig.color} border-0 shadow-sm bg-opacity-95 text-xs px-1.5 py-0.5 h-5`}
             >
               <span className="mr-1">{statusConfig.icon}</span>
               {statusConfig.label}
@@ -134,7 +135,7 @@ export function IdeaCard({ idea, reactions = [], members = [], isSaved, onToggle
           {idea.category && categoryConfig && (
             <Badge
               variant="secondary"
-              className="bg-background/90 backdrop-blur-sm shadow-sm text-xs px-1.5 py-0.5 h-5 border-0 flex items-center gap-1"
+              className="bg-background/95 shadow-sm text-xs px-1.5 py-0.5 h-5 border-0 flex items-center gap-1"
             >
               {categoryConfig.icon}
               <span className="capitalize">{idea.category}</span>
@@ -149,7 +150,7 @@ export function IdeaCard({ idea, reactions = [], members = [], isSaved, onToggle
               e.stopPropagation();
               onToggleSave(idea.id);
             }}
-            className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 backdrop-blur-sm shadow-sm hover:bg-background transition-colors"
+            className="absolute top-2 right-2 p-1.5 rounded-full bg-background/90 shadow-sm hover:bg-background transition-colors"
             aria-label={isSaved ? "Unsave idea" : "Save idea"}
           >
             <Heart
@@ -232,3 +233,5 @@ export function IdeaCard({ idea, reactions = [], members = [], isSaved, onToggle
     </Card>
   );
 }
+
+export const IdeaCard = React.memo(IdeaCardInner);
