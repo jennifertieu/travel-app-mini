@@ -220,6 +220,11 @@ export const MapView = forwardRef<
   const drawPointsRef = useRef<L.LatLng[]>([]);
   const isPathDrawingRef = useRef(false);
   const lastPathPointRef = useRef<L.LatLng | null>(null);
+  const doneMarkerRef = useRef<L.Marker | null>(null);
+  const drawActionsRef = useRef<{
+    finalize: () => void;
+    cancel: () => void;
+  } | null>(null);
 
   // Area search overlay refs
   const searchOverlayRef = useRef<L.Rectangle | L.Polygon | null>(null);
@@ -244,7 +249,12 @@ export const MapView = forwardRef<
 
   // Local drawing state for realtime annotation drawing
   const [localPreview, setLocalPreview] = useState<L.Rectangle | null>(null);
-  const [selectedColor, setSelectedColor] = useState("#3B82F6"); // Default blue
+  const [selectedColor, setSelectedColor] = useState("#3B82F6");
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    canClose: boolean;
+  } | null>(null);
 
   // Available colors for drawing
   const DRAWING_COLORS = [
@@ -706,7 +716,9 @@ export const MapView = forwardRef<
     if (!map) return;
 
     const container = map.getContainer();
-    const closeThresholdPx = 12;
+    const closeThresholdPx = 20;
+    const snapFeedbackPx = 35;
+    let isNearFirstPoint = false;
 
     const cleanupPreview = () => {
       if (previewLineRef.current) {
@@ -724,6 +736,10 @@ export const MapView = forwardRef<
       if (previewPathRef.current) {
         previewPathRef.current.remove();
         previewPathRef.current = null;
+      }
+      if (doneMarkerRef.current) {
+        doneMarkerRef.current.remove();
+        doneMarkerRef.current = null;
       }
       previewPointRefs.current.forEach((marker) => marker.remove());
       previewPointRefs.current = [];
@@ -794,8 +810,32 @@ export const MapView = forwardRef<
         drawTool === "polygon" &&
         drawPointsRef.current.length > 0
       ) {
-        updatePreviewLine([...drawPointsRef.current, e.latlng]);
-        // Broadcast polygon preview update
+        const points = drawPointsRef.current;
+        let lineTarget = e.latlng;
+        const wasNear = isNearFirstPoint;
+
+        if (points.length >= 3) {
+          const firstPx = map.latLngToContainerPoint(points[0]);
+          const cursorPx = map.latLngToContainerPoint(e.latlng);
+          const dist = firstPx.distanceTo(cursorPx);
+
+          if (dist <= snapFeedbackPx) {
+            isNearFirstPoint = true;
+            lineTarget = points[0];
+            container.style.cursor = "pointer";
+          } else {
+            isNearFirstPoint = false;
+            container.style.cursor = "crosshair";
+          }
+        } else {
+          isNearFirstPoint = false;
+        }
+
+        if (wasNear !== isNearFirstPoint) {
+          updatePreviewPolygon(points);
+        }
+
+        updatePreviewLine([...points, lineTarget]);
         broadcastPolygonPreviewUpdate(e.latlng.lat, e.latlng.lng);
       }
 
@@ -947,21 +987,47 @@ export const MapView = forwardRef<
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
 
-      if (e.key === "Escape" && isDrawMode) {
+      if (e.key === "Escape") {
+        setContextMenu(null);
+        if (!isDrawMode) return;
         if (drawTool === "rect" && drawStartRef.current) {
-          // Cancel rectangle drawing
           localPreview?.remove();
           setLocalPreview(null);
           drawStartRef.current = null;
-          broadcastDrawingEnd(true); // cancelled
+          broadcastDrawingEnd(true);
         } else if (drawTool === "path" && isPathDrawingRef.current) {
-          // Cancel path drawing
           resetDrawing();
           broadcastPathDrawingEnd(true);
         } else if (drawTool === "polygon" && drawPointsRef.current.length > 0) {
-          // Cancel polygon drawing
           resetDrawing();
-          broadcastPolygonDrawingEnd(true); // cancelled
+          broadcastPolygonDrawingEnd(true);
+        }
+      }
+
+      if (e.key === "Enter" && isDrawMode && drawTool === "polygon") {
+        if (drawPointsRef.current.length >= 3) {
+          finalizePolygon(drawPointsRef.current);
+        }
+      }
+
+      if (
+        isDrawMode &&
+        drawTool === "polygon" &&
+        drawPointsRef.current.length > 0 &&
+        (e.key === "Backspace" || (e.key === "z" && (e.metaKey || e.ctrlKey)))
+      ) {
+        e.preventDefault();
+        drawPointsRef.current = drawPointsRef.current.slice(0, -1);
+        const remaining = drawPointsRef.current;
+        if (remaining.length === 0) {
+          resetDrawing();
+          broadcastPolygonDrawingEnd(true);
+        } else {
+          updatePreviewPolygon(remaining);
+          broadcastPolygonPointAdded(
+            remaining.map((p) => ({ lat: p.lat, lng: p.lng })),
+            selectedColor,
+          );
         }
       }
 
@@ -1023,16 +1089,57 @@ export const MapView = forwardRef<
         previewPolygonRef.current.setLatLngs(points);
       }
 
+      const showSnap = isNearFirstPoint && points.length >= 3;
+
       previewPointRefs.current.forEach((marker) => marker.remove());
       previewPointRefs.current = points.map((point, index) =>
         L.circleMarker(point, {
-          radius: index === 0 ? 6 : 4,
+          radius: index === 0 ? (showSnap ? 10 : 6) : 4,
           color: index === 0 ? "#FFFFFF" : selectedColor,
           weight: index === 0 ? 3 : 2,
           fillColor: selectedColor,
-          fillOpacity: 1,
+          fillOpacity: index === 0 && showSnap ? 0.6 : 1,
         }).addTo(map),
       );
+
+      if (points.length >= 3) {
+        const firstPt = points[0];
+        const offset = map.latLngToContainerPoint(firstPt);
+        const shifted = map.containerPointToLatLng(
+          L.point(offset.x, offset.y - 28),
+        );
+
+        if (!doneMarkerRef.current) {
+          const icon = L.divIcon({
+            className: "polygon-done-btn",
+            html: `<button style="
+              display:flex;align-items:center;gap:4px;
+              padding:3px 10px;
+              background:${selectedColor};color:#fff;
+              border:none;border-radius:12px;
+              font-size:11px;font-weight:600;font-family:inherit;
+              cursor:pointer;white-space:nowrap;
+              box-shadow:0 2px 6px rgba(0,0,0,.25);
+              line-height:1.4;
+            ">&#10003; Done</button>`,
+            iconSize: [0, 0],
+            iconAnchor: [30, 12],
+          });
+          doneMarkerRef.current = L.marker(shifted, {
+            icon,
+            interactive: true,
+            zIndexOffset: 10000,
+          }).addTo(map);
+          doneMarkerRef.current.on("click", () => {
+            finalizePolygon(drawPointsRef.current);
+          });
+        } else {
+          doneMarkerRef.current.setLatLng(shifted);
+        }
+      } else if (doneMarkerRef.current) {
+        doneMarkerRef.current.remove();
+        doneMarkerRef.current = null;
+      }
     };
 
     const updatePreviewLine = (points: L.LatLng[]) => {
@@ -1086,17 +1193,27 @@ export const MapView = forwardRef<
 
       setPendingAnnotation(annotationCoords);
       setPanelPosition(calculatePanelPosition(annotationCoords, map));
-      // Clear rubber-band line and point markers only; keep polygon visible until save/close
       if (previewLineRef.current) {
         previewLineRef.current.remove();
         previewLineRef.current = null;
+      }
+      if (doneMarkerRef.current) {
+        doneMarkerRef.current.remove();
+        doneMarkerRef.current = null;
       }
       previewPointRefs.current.forEach((marker) => marker.remove());
       previewPointRefs.current = [];
       drawPointsRef.current = [];
 
-      // Broadcast polygon drawing completed
       broadcastPolygonDrawingEnd(false);
+    };
+
+    drawActionsRef.current = {
+      finalize: () => finalizePolygon(drawPointsRef.current),
+      cancel: () => {
+        resetDrawing();
+        broadcastPolygonDrawingEnd(true);
+      },
     };
 
     if (isDrawMode) {
@@ -1147,20 +1264,37 @@ export const MapView = forwardRef<
       }
     };
 
-    // Attach event listeners
+    const onContextMenu = (e: L.LeafletMouseEvent) => {
+      if (!isDrawMode || drawTool !== "polygon") return;
+      if (drawPointsRef.current.length === 0) return;
+      e.originalEvent.preventDefault();
+      const { x, y } = e.containerPoint;
+      setContextMenu({
+        x,
+        y,
+        canClose: drawPointsRef.current.length >= 3,
+      });
+    };
+
+    const dismissContextMenu = () => setContextMenu(null);
+    map.on("click", dismissContextMenu);
+
     map.on("click", onClick);
     map.on("mousemove", handleMouseMove);
     map.on("dblclick", onDoubleClick);
     map.on("mousedown", handleMouseDown);
     map.on("mouseup", handleMouseUp);
+    map.on("contextmenu", onContextMenu);
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
+      map.off("click", dismissContextMenu);
       map.off("click", onClick);
       map.off("mousemove", handleMouseMove);
       map.off("dblclick", onDoubleClick);
       map.off("mousedown", handleMouseDown);
       map.off("mouseup", handleMouseUp);
+      map.off("contextmenu", onContextMenu);
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [
@@ -1189,6 +1323,35 @@ export const MapView = forwardRef<
 
       {/* Drawing Previews Layer */}
       <MapDrawingOverlay map={map} drawingPreviews={drawingPreviews} />
+
+      {/* Polygon right-click context menu */}
+      {contextMenu && (
+        <div
+          className="absolute z-[2000] min-w-[160px] py-1 bg-popover border border-border rounded-lg shadow-xl animate-in fade-in zoom-in-95 duration-100"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          {contextMenu.canClose && (
+            <button
+              className="w-full px-3 py-1.5 text-sm text-left hover:bg-accent transition-colors"
+              onClick={() => {
+                setContextMenu(null);
+                drawActionsRef.current?.finalize();
+              }}
+            >
+              Close polygon
+            </button>
+          )}
+          <button
+            className="w-full px-3 py-1.5 text-sm text-left text-destructive hover:bg-accent transition-colors"
+            onClick={() => {
+              setContextMenu(null);
+              drawActionsRef.current?.cancel();
+            }}
+          >
+            Cancel drawing
+          </button>
+        </div>
+      )}
 
       {/* Map Toolbar */}
       <MapToolbar

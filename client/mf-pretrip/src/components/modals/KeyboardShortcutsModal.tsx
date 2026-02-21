@@ -20,6 +20,8 @@ const SHORTCUT_GROUPS = [
       { keys: ["R"], description: "Rectangle tool" },
       { keys: ["P"], description: "Polygon tool" },
       { keys: ["V"], description: "Pan mode (exit drawing)" },
+      { keys: ["Enter"], description: "Close polygon" },
+      { keys: ["⌫"], description: "Undo last polygon point" },
       { keys: ["Esc"], description: "Cancel current drawing" },
     ],
   },
