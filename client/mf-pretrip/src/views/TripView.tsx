@@ -20,6 +20,7 @@ import {
   type TripSuggestionInput,
 } from "../hooks/useStreamingSuggestions";
 import { useModals } from "../contexts/ModalContext";
+import { useMyReactions } from "../hooks/useMyReactions";
 import { queryKeys } from "../lib/queryKeys";
 
 // Ideas are always sourced from useIdeas (backed by Supabase realtime).
@@ -47,6 +48,18 @@ export function TripView() {
 
   const { openModal } = useModals();
 
+  // Listen for modal-open requests from the shell (cross-MFE communication)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.modal) {
+        openModal(detail.modal, detail);
+      }
+    };
+    window.addEventListener("openTripModal", handler);
+    return () => window.removeEventListener("openTripModal", handler);
+  }, [openModal]);
+
   const handleOpenAddIdea = useCallback(() => {
     openModal("addIdea", { startStreaming, isStreaming });
   }, [openModal, startStreaming, isStreaming]);
@@ -70,6 +83,15 @@ export function TripView() {
     tripId,
     member,
   );
+
+  // Compute unrated count for the Rate pill in the sidebar
+  const ratedIdeas = ideas.filter((i) => i.enrichment_status === "DONE");
+  const ratedIdeaIds = ratedIdeas.map((i) => i.id);
+  const { data: myReactions = {} } = useMyReactions(
+    member?.id ?? null,
+    ratedIdeaIds,
+  );
+  const unratedCount = ratedIdeaIds.filter((id) => !myReactions[id]).length;
 
   // Local state for optimistic updates
   const [localAnnotations, setLocalAnnotations] = useState<Annotation[]>([]);
@@ -274,11 +296,53 @@ export function TripView() {
 
   return (
     <div className="h-full flex bg-background">
-      {/* Left: Header + Map */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <TripHeader trip={trip || null} onTripSelect={setCurrentTrip} />
+      {/* Sidebar area */}
+      {sidebarCollapsed ? (
+        /* Collapsed rail */
+        <div className="flex-shrink-0 w-10 border-r bg-muted/40 flex flex-col items-center pt-4 gap-3">
+          <button
+            onClick={() => setSidebarCollapsed(false)}
+            className="p-1.5 rounded-md hover:bg-muted transition-colors"
+            aria-label="Open sidebar"
+          >
+            <PanelRightOpen className="h-4 w-4 text-muted-foreground" />
+          </button>
+          <span className="text-[10px] text-muted-foreground [writing-mode:vertical-lr] select-none">
+            Ideas
+          </span>
+        </div>
+      ) : (
+        /* Expanded sidebar */
+        <div className="flex-shrink-0 w-96 relative">
+          <button
+            onClick={() => setSidebarCollapsed(true)}
+            className="absolute -right-3 top-20 z-10 bg-background border rounded-full p-1 shadow-sm hover:bg-muted transition-colors"
+            aria-label="Close sidebar"
+          >
+            <PanelRightClose className="h-4 w-4 text-muted-foreground" />
+          </button>
+          <IdeaSidebar
+            ideas={ideas}
+            annotations={localAnnotations}
+            isLoading={ideasLoading}
+            isGenerating={isGenerating || isStreaming}
+            tripId={tripId}
+            memberId={member?.id ?? null}
+            memberName={member?.displayName ?? null}
+            trip={trip}
+            unratedCount={ratedIdeas.length > 0 ? unratedCount : 0}
+            onOpenRating={() => openModal("ratingMode")}
+            onAnnotationClick={handleAnnotationClick}
+            onAnnotationDelete={handleAnnotationDelete}
+            onDrawModeToggle={handleDrawModeToggle}
+            onOpenAddIdea={handleOpenAddIdea}
+            totalExpected={5}
+          />
+        </div>
+      )}
 
+      {/* Right: Map */}
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Map — always mounted so ideas appear instantly when they arrive */}
         <div className="flex-1 relative">
           <MapView
@@ -304,46 +368,6 @@ export function TripView() {
           )}
         </div>
       </div>
-
-      {/* Sidebar area */}
-      {sidebarCollapsed ? (
-        /* Collapsed rail — always visible */
-        <div className="flex-shrink-0 w-10 border-l bg-muted/40 flex flex-col items-center pt-4 gap-3">
-          <button
-            onClick={() => setSidebarCollapsed(false)}
-            className="p-1.5 rounded-md hover:bg-muted transition-colors"
-            aria-label="Open sidebar"
-          >
-            <PanelRightOpen className="h-4 w-4 text-muted-foreground" />
-          </button>
-          <span className="text-[10px] text-muted-foreground [writing-mode:vertical-lr] select-none">
-            Ideas
-          </span>
-        </div>
-      ) : (
-        /* Expanded sidebar */
-        <div className="flex-shrink-0 w-80 relative">
-          <button
-            onClick={() => setSidebarCollapsed(true)}
-            className="absolute -left-3 top-20 z-10 bg-background border rounded-full p-1 shadow-sm hover:bg-muted transition-colors"
-            aria-label="Close sidebar"
-          >
-            <PanelRightClose className="h-4 w-4 text-muted-foreground" />
-          </button>
-          <IdeaSidebar
-            ideas={ideas}
-            annotations={localAnnotations}
-            isLoading={ideasLoading}
-            isGenerating={isGenerating || isStreaming}
-            tripId={tripId}
-            onAnnotationClick={handleAnnotationClick}
-            onAnnotationDelete={handleAnnotationDelete}
-            onDrawModeToggle={handleDrawModeToggle}
-            onOpenAddIdea={handleOpenAddIdea}
-            totalExpected={5}
-          />
-        </div>
-      )}
     </div>
   );
 }

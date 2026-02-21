@@ -34,7 +34,7 @@ export function ModalManager() {
       <InviteLinkModal />
       <TripSettingsModal />
       {/* Show modal immediately, even if idea is still loading */}
-      {isOpen("ideaDetail") && <IdeaDetailModal idea={selectedIdea} />}
+      {isOpen("ideaDetail") && <IdeaDetailModal idea={selectedIdea} tripId={currentTripId} />}
       {/* Idea Rating Modal - rate all ideas in sequence */}
       {isOpen("ratingMode") && (
         <IdeaRatingModal ideas={ideas} tripId={currentTripId} />

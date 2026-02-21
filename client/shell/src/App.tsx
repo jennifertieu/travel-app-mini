@@ -8,11 +8,12 @@ import {
   Outlet,
   useRouterState,
 } from "@tanstack/react-router";
-import { Globe, Calendar, Users } from "lucide-react";
+import { Globe, Calendar, Users, Settings } from "lucide-react";
 import { AuthProvider } from "./contexts/AuthContext";
 import { AuthNav } from "./components/AuthNav";
 import { AuthGuard } from "./components/AuthGuard";
 import { LandingPage } from "./components/LandingPage";
+import { TripMemberAvatars } from "./components/TripMemberAvatars";
 import { useTripSummary, type TripSummary } from "./hooks/useTripSummary";
 
 // Lazy load the MFE apps with error handling
@@ -55,8 +56,8 @@ const TripWeaveLogo = () => (
 );
 
 function formatDateRange(startDate: string, endDate: string): string | null {
-  const start = new Date(startDate + "T00:00:00");
-  const end = new Date(endDate + "T00:00:00");
+  const start = new Date(startDate);
+  const end = new Date(endDate);
   if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
   const sameMonth = start.getMonth() === end.getMonth();
   const fmt = (d: Date) =>
@@ -88,9 +89,9 @@ const TripMetadata = ({ summary }: { summary: TripSummary }) => {
   return (
     <div className="flex items-center gap-2">
       <MetadataPill icon={Globe}>{summary.destination}</MetadataPill>
-      {dateRange && (
-        <MetadataPill icon={Calendar}>{dateRange}</MetadataPill>
-      )}
+      <MetadataPill icon={Calendar}>
+        {dateRange ?? "Add dates"}
+      </MetadataPill>
       <MetadataPill icon={Users}>
         {summary.memberCount} {summary.memberCount === 1 ? "Traveler" : "Travelers"}
       </MetadataPill>
@@ -111,18 +112,18 @@ const RootLayout = () => {
     <div className="h-screen flex flex-col">
       <nav className="flex-shrink-0 relative z-[2000] border-b border-gray-200 bg-gray-50 px-4 py-2.5">
         <div className="flex items-center">
-          {/* Left: Logo */}
+          {/* Left: Logo, then Trip metadata pills */}
           <Link to="/pretrip" className="flex items-center gap-2 no-underline shrink-0">
             <TripWeaveLogo />
             <span className="text-base font-bold text-gray-900 tracking-tight">
               TripWeave
             </span>
           </Link>
-
-          {/* Center: Trip metadata pills - dead center irrespective of other elements */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            {tripSummary && <TripMetadata summary={tripSummary} />}
-          </div>
+          {tripSummary && (
+            <div className="flex items-center gap-2 ml-6 shrink-0">
+              <TripMetadata summary={tripSummary} />
+            </div>
+          )}
 
           {/* Right: Nav links + Auth */}
           <div className="ml-auto flex items-center gap-4 shrink-0">
@@ -149,6 +150,24 @@ const RootLayout = () => {
                 During Trip
               </Link>
             </div>
+            {tripSummary && (
+              <div className="flex items-center gap-2">
+                <TripMemberAvatars tripId={tripSummary.id} />
+                <button
+                  onClick={() =>
+                    window.dispatchEvent(
+                      new CustomEvent("openTripModal", {
+                        detail: { modal: "tripSettings" },
+                      }),
+                    )
+                  }
+                  className="p-1.5 rounded-md hover:bg-gray-200 transition-colors"
+                  title="Trip settings"
+                >
+                  <Settings size={15} className="text-gray-500" />
+                </button>
+              </div>
+            )}
             <AuthNav />
           </div>
         </div>

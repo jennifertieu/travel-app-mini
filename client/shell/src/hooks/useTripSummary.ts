@@ -101,6 +101,9 @@ export function useTripSummary(): TripSummary | null {
     const handleSummaryBroadcast = () => {
       const cached = readCachedSummary();
       if (cached) setSummary(cached);
+      // Also refetch from backend to ensure we have latest (e.g. after settings save)
+      const id = readTripId();
+      if (id) fetchFromBackend(id);
     };
 
     window.addEventListener(TRIP_CHANGED_EVENT, handleTripChanged);
@@ -112,7 +115,7 @@ export function useTripSummary(): TripSummary | null {
       window.removeEventListener(SUMMARY_EVENT, handleSummaryBroadcast);
       window.removeEventListener("storage", handleSummaryBroadcast);
     };
-  }, []);
+  }, [fetchFromBackend]);
 
   return summary;
 }

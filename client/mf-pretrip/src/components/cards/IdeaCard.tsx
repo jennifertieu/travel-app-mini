@@ -5,6 +5,7 @@ import { Badge } from "../ui/badge";
 import { useModals } from "../../contexts/ModalContext";
 import {
   Clock,
+  Heart,
   Star,
   Utensils,
   Camera,
@@ -15,15 +16,22 @@ import {
   Bed,
   MoreHorizontal,
 } from "lucide-react";
+import { AvatarStack } from "../ui/AvatarStack";
 import type { Database } from "@travel-app/shared-types";
+import type { TripMember } from "../../hooks/useTripMembers";
 
 type Idea = Database["public"]["Tables"]["trip_reel_ideas"]["Row"];
+type Reaction = Database["public"]["Tables"]["trip_reel_idea_reactions"]["Row"];
 
 interface IdeaCardProps {
   idea: Idea;
+  reactions?: Reaction[];
+  members?: TripMember[];
+  isSaved?: boolean;
+  onToggleSave?: (ideaId: string) => void;
 }
 
-export function IdeaCard({ idea }: IdeaCardProps) {
+export function IdeaCard({ idea, reactions = [], members = [], isSaved, onToggleSave }: IdeaCardProps) {
   const { openModal } = useModals();
 
   const getStatusConfig = (status: string) => {
@@ -114,7 +122,7 @@ export function IdeaCard({ idea }: IdeaCardProps) {
         )}
 
         {/* Top Overlay: Status & Category */}
-        <div className="absolute top-2 left-2 flex flex-wrap gap-1.5 max-w-[calc(100%-16px)]">
+        <div className="absolute top-2 left-2 flex flex-wrap gap-1.5 max-w-[calc(100%-48px)]">
           {idea.enrichment_status !== "DONE" && (
             <Badge
               className={`${statusConfig.color} border-0 shadow-sm backdrop-blur-sm bg-opacity-90 text-xs px-1.5 py-0.5 h-5`}
@@ -133,6 +141,26 @@ export function IdeaCard({ idea }: IdeaCardProps) {
             </Badge>
           )}
         </div>
+
+        {/* Save / Heart button */}
+        {onToggleSave && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSave(idea.id);
+            }}
+            className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 backdrop-blur-sm shadow-sm hover:bg-background transition-colors"
+            aria-label={isSaved ? "Unsave idea" : "Save idea"}
+          >
+            <Heart
+              className={`h-4 w-4 transition-colors ${
+                isSaved
+                  ? "fill-red-500 text-red-500"
+                  : "text-muted-foreground"
+              }`}
+            />
+          </button>
+        )}
       </div>
 
       <CardContent className="p-3 space-y-1.5">
@@ -181,6 +209,24 @@ export function IdeaCard({ idea }: IdeaCardProps) {
                 </Badge>
               ))}
           </div>
+        )}
+
+        {/* Voter avatars */}
+        {reactions.length > 0 && (
+          <AvatarStack
+            members={reactions.map((r) => {
+              const m = members.find(
+                (tm) => tm.member_profile?.id === r.member_id || tm.user_id === r.member_id
+              );
+              return {
+                avatar_url: m?.member_profile?.avatar_url ?? null,
+                display_name:
+                  m?.member_profile?.display_name ?? r.member_name ?? null,
+              };
+            })}
+            max={4}
+            size="sm"
+          />
         )}
       </CardContent>
     </Card>

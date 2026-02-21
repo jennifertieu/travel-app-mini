@@ -6,18 +6,22 @@ import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Badge } from "../ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
-import { X, ImageIcon } from "lucide-react";
+import { X, ImageIcon, Heart } from "lucide-react";
 import { TikTokEmbed, YouTubeEmbed } from "react-social-media-embed";
 import { useModals } from "../../contexts/ModalContext";
+import { useMember } from "../../contexts/MemberContext";
 import { useUpdateIdea } from "../../hooks/useIdeas";
+import { useReactions } from "../../hooks/useReactions";
+import { useTripMembers } from "../../hooks/useTripMembers";
+import { ReactionBar } from "../ui/ReactionBar";
 import { ReviewsSection } from "../cards/ReviewsSection";
+import { supabase } from "../../lib/supabase";
 
 interface IdeaDetailModalProps {
   idea: any;
+  tripId?: string | null;
 }
 
-const COST_OPTIONS = ["$", "$$", "$$$"] as const;
-const TIME_OF_DAY_OPTIONS = ["morning", "afternoon", "evening"] as const;
 
 /** Only true when we have a real embeddable video URL (not ai-suggestion-*, ai-area-search-*, etc.) */
 function hasEmbeddableVideo(idea: {
@@ -37,9 +41,12 @@ function Skeleton({ className }: { className?: string }) {
   return <div className={`animate-pulse bg-muted rounded ${className}`}></div>;
 }
 
-export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
+export function IdeaDetailModal({ idea: initialIdea, tripId }: IdeaDetailModalProps) {
   const { isOpen, closeModal } = useModals();
+  const { member } = useMember();
   const updateIdeaMutation = useUpdateIdea(initialIdea?.id || "");
+  const { data: reactions = [] } = useReactions(initialIdea?.id ?? null);
+  const { data: members = [] } = useTripMembers(tripId ?? null);
 
   // Local form state
   const [formData, setFormData] = useState<any>(initialIdea || {});
@@ -62,6 +69,28 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
   const hasEnrichment =
     initialIdea?.enrichment_status !== "CREATED" &&
     initialIdea?.enrichment_status !== "UNFURLED";
+
+  const saveReaction = reactions.find(
+    (r) => r.signal === "save" && r.member_id === member?.id,
+  );
+  const isSaved = !!saveReaction;
+
+  const handleToggleSave = async () => {
+    if (!member || !initialIdea) return;
+    if (saveReaction) {
+      await supabase
+        .from("trip_reel_idea_reactions")
+        .delete()
+        .eq("id", saveReaction.id);
+    } else {
+      await supabase.from("trip_reel_idea_reactions").insert({
+        idea_id: initialIdea.id,
+        member_id: member.id,
+        member_name: member.displayName ?? null,
+        signal: "save",
+      });
+    }
+  };
 
   const handleClose = async () => {
     if (hasEnrichment && initialIdea) {
@@ -99,8 +128,8 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
         className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col !p-0 gap-0"
       >
         {/* Header */}
-        <div className="border-b border-border px-6 py-5 flex items-center justify-between flex-shrink-0">
-          <div className="flex-1">
+        <div className="border-b border-border px-6 py-4 flex items-center justify-between flex-shrink-0 gap-4">
+          <div className="min-w-0">
             <h2 className="text-xl font-semibold tracking-tight">
               {formData.title || "Idea Details"}
             </h2>
@@ -114,12 +143,36 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
               {initialIdea.enrichment_status}
             </p>
           </div>
-          <button
-            onClick={handleClose}
-            className="ml-4 p-2 hover:bg-muted rounded-lg transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-3 shrink-0">
+            {hasEnrichment && (
+              <ReactionBar
+                reactions={reactions}
+                members={members}
+                currentMemberId={member?.id ?? null}
+              />
+            )}
+            <Button
+              variant={isSaved ? "default" : "outline"}
+              size="sm"
+              onClick={handleToggleSave}
+              className={`h-8 gap-1.5 px-3 ${
+                isSaved
+                  ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+                  : ""
+              }`}
+            >
+              <Heart
+                className={`h-3.5 w-3.5 ${isSaved ? "fill-red-500 text-red-500" : ""}`}
+              />
+              {isSaved ? "Saved" : "Save"}
+            </Button>
+            <button
+              onClick={handleClose}
+              className="p-2 hover:bg-muted rounded-lg transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Body */}
@@ -347,28 +400,10 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
                             Cost
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          {COST_OPTIONS.map((cost) => (
-                            <Button
-                              key={cost}
-                              size="sm"
-                              variant={
-                                formData.cost_bucket === cost
-                                  ? "default"
-                                  : "outline"
-                              }
-                              onClick={() =>
-                                setFormData({ ...formData, cost_bucket: cost })
-                              }
-                              className={`text-sm font-bold h-7 px-2.5 ${
-                                formData.cost_bucket === cost
-                                  ? ""
-                                  : "text-muted-foreground hover:text-foreground"
-                              }`}
-                            >
-                              {cost}
-                            </Button>
-                          ))}
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {formData.cost_bucket || "—"}
+                          </p>
                         </div>
                       </div>
 
@@ -380,31 +415,10 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
                             Best Time
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          {TIME_OF_DAY_OPTIONS.map((time) => (
-                            <Button
-                              key={time}
-                              size="sm"
-                              variant={
-                                formData.time_of_day === time
-                                  ? "default"
-                                  : "outline"
-                              }
-                              onClick={() =>
-                                setFormData({
-                                  ...formData,
-                                  time_of_day: time,
-                                })
-                              }
-                              className={`text-xs font-bold h-7 px-2.5 capitalize ${
-                                formData.time_of_day === time
-                                  ? ""
-                                  : "text-muted-foreground hover:text-foreground"
-                              }`}
-                            >
-                              {time}
-                            </Button>
-                          ))}
+                        <div>
+                          <p className="text-sm font-semibold text-foreground capitalize">
+                            {formData.time_of_day || "—"}
+                          </p>
                         </div>
                       </div>
                     </div>
