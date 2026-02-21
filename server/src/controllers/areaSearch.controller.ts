@@ -264,6 +264,7 @@ export const areaSearchStream = async (
           priceLevel: placeData.priceLevel,
           photoUrl: placeData.photoUrl,
           photos: placeData.photos,
+          reviews: placeData.reviews,
         };
         updateData.location = {
           lat: placeData.lat,
@@ -309,6 +310,7 @@ export const areaSearchStream = async (
                 priceLevel: placeData.priceLevel,
                 photoUrl: placeData.photoUrl,
                 photos: placeData.photos,
+                reviews: placeData.reviews,
               },
               location: {
                 lat: placeData.lat,

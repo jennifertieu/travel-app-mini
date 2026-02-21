@@ -59,20 +59,19 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
     }
   }, [initialIdea]);
 
-  const handleClose = () => {
-    closeModal("ideaDetail");
-  };
+  const hasEnrichment =
+    initialIdea?.enrichment_status !== "CREATED" &&
+    initialIdea?.enrichment_status !== "UNFURLED";
 
-  const handleSave = async () => {
-    if (initialIdea) {
+  const handleClose = async () => {
+    if (hasEnrichment && initialIdea) {
       try {
         await updateIdeaMutation.mutateAsync(formData);
-        handleClose();
       } catch (error) {
         console.error("Failed to update idea:", error);
-        alert("Failed to update idea. Please try again.");
       }
     }
+    closeModal("ideaDetail");
   };
 
   const handleAddTag = (tag: string) => {
@@ -92,10 +91,6 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
   };
 
   if (!isOpen("ideaDetail") || !initialIdea) return null;
-
-  const hasEnrichment =
-    initialIdea.enrichment_status !== "CREATED" &&
-    initialIdea.enrichment_status !== "UNFURLED";
 
   return (
     <Dialog open={isOpen("ideaDetail")} onOpenChange={handleClose}>
@@ -433,24 +428,6 @@ export function IdeaDetailModal({ idea: initialIdea }: IdeaDetailModalProps) {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="border-t border-border px-6 py-4 flex items-center justify-between flex-shrink-0">
-          <div className="text-sm text-muted-foreground">
-            {initialIdea.enrichment_status}
-          </div>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={handleClose} className="px-6">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={updateIdeaMutation.isPending || !hasEnrichment}
-              className="px-6 font-semibold"
-            >
-              {updateIdeaMutation.isPending ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
-        </div>
       </DialogContent>
     </Dialog>
   );

@@ -135,7 +135,7 @@ export function AnnotationModal({
   return (
     <div
       ref={panelRef}
-      className="absolute z-[1000] animate-in fade-in slide-in-from-left-2 duration-200"
+      className="fixed z-[5000] animate-in fade-in slide-in-from-left-2 duration-200"
       style={{
         left: `${adjustedPosition.x}px`,
         top: `${adjustedPosition.y}px`,

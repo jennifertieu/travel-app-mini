@@ -276,22 +276,24 @@ export const MapView = forwardRef<
 
     const point = mapInstance.latLngToContainerPoint(centerLatLng);
 
-    // Position to the right with offset, handling viewport bounds
+    // Convert container-relative coords to viewport-relative for fixed positioning
+    const containerRect = mapInstance.getContainer().getBoundingClientRect();
+    const vpX = point.x + containerRect.left;
+    const vpY = point.y + containerRect.top;
+
     const panelWidth = 320;
     const offset = 30;
     const viewportWidth = window.innerWidth;
 
-    let x = point.x + offset;
+    let x = vpX + offset;
 
-    // If panel would go off right edge, position to left instead
     if (x + panelWidth > viewportWidth) {
-      x = point.x - panelWidth - offset;
+      x = vpX - panelWidth - offset;
     }
 
-    // Ensure x is never negative
     x = Math.max(offset, x);
 
-    return { x, y: point.y };
+    return { x, y: vpY };
   };
 
   // Expose setDrawMode to parent via ref

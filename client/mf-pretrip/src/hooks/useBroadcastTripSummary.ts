@@ -48,12 +48,15 @@ export function useBroadcastTripSummary(
       return;
     }
 
+    const isValidDate = (v: string | null): v is string =>
+      !!v && !isNaN(new Date(v + "T00:00:00").getTime());
+
     const summary: TripSummary = {
       id: trip.id,
       title: trip.title,
       destination: trip.destination,
-      startDate: trip.start_date,
-      endDate: trip.end_date,
+      startDate: isValidDate(trip.start_date) ? trip.start_date : null,
+      endDate: isValidDate(trip.end_date) ? trip.end_date : null,
       memberCount,
     };
 

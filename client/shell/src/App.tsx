@@ -54,9 +54,10 @@ const TripWeaveLogo = () => (
   </svg>
 );
 
-function formatDateRange(startDate: string, endDate: string): string {
+function formatDateRange(startDate: string, endDate: string): string | null {
   const start = new Date(startDate + "T00:00:00");
   const end = new Date(endDate + "T00:00:00");
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
   const sameMonth = start.getMonth() === end.getMonth();
   const fmt = (d: Date) =>
     d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
@@ -78,19 +79,24 @@ const MetadataPill = ({
   </span>
 );
 
-const TripMetadata = ({ summary }: { summary: TripSummary }) => (
-  <div className="flex items-center gap-2">
-    <MetadataPill icon={Globe}>{summary.destination}</MetadataPill>
-    {summary.startDate && summary.endDate && (
-      <MetadataPill icon={Calendar}>
-        {formatDateRange(summary.startDate, summary.endDate)}
+const TripMetadata = ({ summary }: { summary: TripSummary }) => {
+  const dateRange =
+    summary.startDate && summary.endDate
+      ? formatDateRange(summary.startDate, summary.endDate)
+      : null;
+
+  return (
+    <div className="flex items-center gap-2">
+      <MetadataPill icon={Globe}>{summary.destination}</MetadataPill>
+      {dateRange && (
+        <MetadataPill icon={Calendar}>{dateRange}</MetadataPill>
+      )}
+      <MetadataPill icon={Users}>
+        {summary.memberCount} {summary.memberCount === 1 ? "Traveler" : "Travelers"}
       </MetadataPill>
-    )}
-    <MetadataPill icon={Users}>
-      {summary.memberCount} {summary.memberCount === 1 ? "Traveler" : "Travelers"}
-    </MetadataPill>
-  </div>
-);
+    </div>
+  );
+};
 
 const RootLayout = () => {
   const routerState = useRouterState();
