@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { RouterProvider } from "@tanstack/react-router";
 import { MemberProvider } from "./contexts/MemberContext";
-import { DuringtripHeader } from "./components/DuringtripHeader";
-import { TripsListView } from "./views/TripsListView";
+import { router } from "./routeTree";
 import "./styles/globals.css";
 
 const queryClient = new QueryClient({
@@ -17,12 +17,7 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <MemberProvider>
-        <div className="bg-background" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-          <DuringtripHeader />
-          <div style={{ flex: 1, overflowY: "auto" }}>
-            <TripsListView />
-          </div>
-        </div>
+        <RouterProvider router={router} />
       </MemberProvider>
     </QueryClientProvider>
   );

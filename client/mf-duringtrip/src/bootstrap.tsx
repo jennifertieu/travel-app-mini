@@ -7,9 +7,6 @@ const container = document.getElementById("root");
 
 if (container) {
   const root = ReactDOM.createRoot(container);
-  root.render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>,
-  );
+  // Temporarily disable StrictMode to debug reload issue
+  root.render(<App />);
 }

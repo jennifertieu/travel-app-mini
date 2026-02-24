@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { CollaborativeTrip } from "../hooks/useUserTrips";
 
 interface TripCardProps {
@@ -9,6 +10,7 @@ function capitalizeWords(str: string): string {
 }
 
 export function TripCard({ trip }: TripCardProps) {
+  const navigate = useNavigate();
   const destination = capitalizeWords(trip.title || trip.destination);
   const days = trip.duration_days ?? "?";
   const people = trip.member_count + 1; // +1 for the owner
@@ -49,10 +51,7 @@ export function TripCard({ trip }: TripCardProps) {
         <button
           className="flex-1 py-2.5 text-sm font-medium rounded-md transition-opacity hover:opacity-90"
           style={{ color: "#fff", backgroundColor: "#000" }}
-          onClick={() => {
-            // TODO: Start Trip
-            console.log("Start Trip:", trip.id);
-          }}
+          onClick={() => navigate({ to: "/trip/$tripId", params: { tripId: trip.id } })}
         >
           Start Trip
         </button>

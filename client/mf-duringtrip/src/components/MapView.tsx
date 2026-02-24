@@ -3,8 +3,8 @@ import mapboxgl from 'mapbox-gl';
 import { LocationCoordinates } from '../types/location';
 
 // You'll need to set this in your .env.local file
-// VITE_MAPBOX_TOKEN=your_token_here
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
+// PUBLIC_MAPBOX_TOKEN=your_token_here
+const MAPBOX_TOKEN = import.meta.env.PUBLIC_MAPBOX_TOKEN as string | undefined;
 
 // Safari-specific fix: Ensure token is set before any map operations
 if (!MAPBOX_TOKEN || MAPBOX_TOKEN.trim() === '') {
@@ -199,7 +199,7 @@ export const MapView: React.FC<MapViewProps> = ({ location, onMapLoad }) => {
         <div>
           <p>{mapError}</p>
           <p style={{ fontSize: '0.875rem', marginTop: '8px', color: '#6b7280' }}>
-            Make sure VITE_MAPBOX_TOKEN is set in your .env.local file
+            Make sure PUBLIC_MAPBOX_TOKEN is set in your .env.local file
           </p>
         </div>
       </div>
