@@ -10,7 +10,7 @@
     },
     "supabase": {
       "type": "http",
-      "url": "https://mcp.supabase.com/mcp?project_ref=imzyqjkdbxeubmmmwlyk&read_only=true"
+      "url": "https://mcp.supabase.com/mcp?project_ref=imzyqjkdbxeubmmmwlyk"
     },
     "figma": {
       "type": "http",
