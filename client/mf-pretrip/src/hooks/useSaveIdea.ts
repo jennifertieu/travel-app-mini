@@ -52,12 +52,15 @@ export function useSaveIdea(
           .delete()
           .eq("id", existing.id);
       } else {
-        await supabase.from("trip_reel_idea_reactions").insert({
-          idea_id: ideaId,
-          member_id: memberId,
-          member_name: memberName,
-          signal: SAVE_SIGNAL,
-        });
+        await supabase.from("trip_reel_idea_reactions").upsert(
+          {
+            idea_id: ideaId,
+            member_id: memberId,
+            member_name: memberName,
+            signal: SAVE_SIGNAL,
+          },
+          { onConflict: "idea_id,member_id" },
+        );
       }
 
       queryClient.invalidateQueries({
