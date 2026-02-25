@@ -51,12 +51,13 @@ export function useTripSummary(): TripSummary | null {
     abortRef.current = controller;
 
     try {
-      const [tripResult, membersResult] = await Promise.all([
+      const [tripResult, collaboratorsResult] = await Promise.all([
         supabase.from("trips").select("*").eq("id", id).maybeSingle(),
         supabase
-          .from("trip_members")
-          .select("id", { count: "exact", head: true })
-          .eq("trip_id", id),
+          .from("trip_collaborators")
+          .select("user_id")
+          .eq("trip_id", id)
+          .not("user_id", "is", null),
       ]);
 
       if (controller.signal.aborted) return;
@@ -67,13 +68,24 @@ export function useTripSummary(): TripSummary | null {
         return;
       }
 
+      const collaboratorUserIds = (collaboratorsResult.data ?? []).map(
+        (row) => row.user_id,
+      );
+      const creatorId = trip.created_by ?? null;
+      const creatorInCollaborators =
+        creatorId != null && collaboratorUserIds.includes(creatorId);
+      const memberCount =
+        (creatorId ? 1 : 0) +
+        collaboratorUserIds.length -
+        (creatorInCollaborators ? 1 : 0);
+
       const next: TripSummary = {
         id: trip.id,
         title: trip.title,
         destination: trip.destination,
         startDate: trip.start_date,
         endDate: trip.end_date,
-        memberCount: membersResult.count ?? 0,
+        memberCount,
       };
       setSummary(next);
     } catch {
