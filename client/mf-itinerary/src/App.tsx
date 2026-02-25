@@ -2,6 +2,7 @@ import "./globals.css";
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "./lib/supabase";
 import { ItineraryPanel } from "./components/ItineraryPanel";
+import { MapPanel } from "./components/MapPanel";
 import { BuildingState } from "./components/BuildingState";
 import { EmptyState } from "./components/EmptyState";
 import type { ItineraryData } from "./types";
@@ -71,7 +72,10 @@ const App = () => {
         },
         (payload) => {
           console.log("Itinerary realtime update:", payload);
-          if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+          if (
+            payload.eventType === "INSERT" ||
+            payload.eventType === "UPDATE"
+          ) {
             setItinerary(payload.new as Itinerary);
             setIsBuilding(false);
             localStorage.removeItem("building-itinerary");
@@ -129,7 +133,18 @@ const App = () => {
 
       {!isLoading && !itinerary && !isBuilding && <EmptyState />}
 
-      {itineraryData && <ItineraryPanel data={itineraryData} />}
+      {itineraryData && (
+        <div className="flex flex-1 min-h-0">
+          <div className="w-1/2 overflow-y-auto">
+            <ItineraryPanel data={itineraryData} />
+          </div>
+          <div className="w-1/2">
+            <MapPanel
+              activities={itineraryData.days.flatMap((d) => d.activities)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Fallback: show raw JSON if data doesn't match expected shape */}
       {itinerary && !itineraryData && !isLoading && (

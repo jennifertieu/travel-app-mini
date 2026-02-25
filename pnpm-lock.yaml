@@ -126,6 +126,9 @@ importers:
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
+      leaflet:
+        specifier: ^1.9.4
+        version: 1.9.4
       lucide-react:
         specifier: ^0.468.0
         version: 0.468.0(react@19.2.4)
@@ -148,6 +151,9 @@ importers:
       '@rsbuild/plugin-react':
         specifier: ^1.4.5
         version: 1.4.5(@rsbuild/core@1.7.2)
+      '@types/leaflet':
+        specifier: ^1.9.15
+        version: 1.9.21
       '@types/react':
         specifier: ^19.0.0
         version: 19.2.10
