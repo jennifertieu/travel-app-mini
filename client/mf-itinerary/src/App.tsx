@@ -5,6 +5,7 @@ import { ItineraryPanel } from "./components/ItineraryPanel";
 import { MapPanel } from "./components/MapPanel";
 import { BuildingState } from "./components/BuildingState";
 import { EmptyState } from "./components/EmptyState";
+import { useAnnotations } from "./hooks/useAnnotations";
 import type { ItineraryData } from "./types";
 
 type Itinerary = {
@@ -22,6 +23,7 @@ const getTripId = (): string | null => {
 
 const App = () => {
   const [tripId] = useState<string | null>(getTripId);
+  const annotations = useAnnotations(tripId);
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isBuilding, setIsBuilding] = useState(false);
@@ -141,6 +143,7 @@ const App = () => {
           <div className="w-1/2">
             <MapPanel
               activities={itineraryData.days.flatMap((d) => d.activities)}
+              annotations={annotations}
             />
           </div>
         </div>

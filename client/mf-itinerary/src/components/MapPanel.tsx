@@ -2,6 +2,8 @@ import { useRef, useEffect } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { Activity } from "../types";
+import type { Annotation } from "../lib/annotation-utils";
+import { renderAnnotations } from "../lib/annotation-utils";
 import {
   DEFAULT_MAP_CENTER,
   DEFAULT_ZOOM,
@@ -12,12 +14,14 @@ import {
 
 interface MapPanelProps {
   activities: Activity[];
+  annotations?: Annotation[];
 }
 
-export function MapPanel({ activities }: MapPanelProps) {
+export function MapPanel({ activities, annotations }: MapPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.LayerGroup | null>(null);
+  const annotationLayerRef = useRef<L.LayerGroup | null>(null);
 
   // Initialize map once
   useEffect(() => {
@@ -36,6 +40,7 @@ export function MapPanel({ activities }: MapPanelProps) {
     }).addTo(map);
 
     markersRef.current = L.layerGroup().addTo(map);
+    annotationLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
 
     // ResizeObserver to handle container resize
@@ -49,6 +54,7 @@ export function MapPanel({ activities }: MapPanelProps) {
       map.remove();
       mapRef.current = null;
       markersRef.current = null;
+      annotationLayerRef.current = null;
     };
   }, []);
 
@@ -86,6 +92,20 @@ export function MapPanel({ activities }: MapPanelProps) {
 
     map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
   }, [activities]);
+
+  // Render annotation shapes when annotations change
+  useEffect(() => {
+    const map = mapRef.current;
+    const annotationGroup = annotationLayerRef.current;
+    if (!map || !annotationGroup) return;
+
+    if (!annotations?.length) {
+      annotationGroup.clearLayers();
+      return;
+    }
+
+    renderAnnotations(map, annotations, annotationGroup);
+  }, [annotations]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }
