@@ -20,10 +20,10 @@ interface GenerateSuggestionsRequest {
 
 export const generateSuggestions = async (
   request: Request,
-  response: Response
+  response: Response,
 ) => {
   console.log(
-    "\n🚀 [Suggestions API] ========== NEW GENERATION REQUEST =========="
+    "\n🚀 [Suggestions API] ========== NEW GENERATION REQUEST ==========",
   );
 
   try {
@@ -36,7 +36,7 @@ export const generateSuggestions = async (
     console.log(
       `🎨 [Suggestions API] Interests: ${
         body.interests?.join(", ") || "general"
-      }`
+      }`,
     );
 
     if (!body.tripId || !body.destination) {
@@ -56,13 +56,13 @@ export const generateSuggestions = async (
     if (checkError) {
       console.error(
         "❌ [Suggestions API] Error checking existing ideas:",
-        checkError
+        checkError,
       );
     }
 
     if (existingIdeas && existingIdeas.length > 0) {
       console.log(
-        `⚠️ [Suggestions API] ${existingIdeas.length} AI suggestions already exist for this trip, skipping generation`
+        `⚠️ [Suggestions API] ${existingIdeas.length} AI suggestions already exist for this trip, skipping generation`,
       );
       return response.json({
         success: true,
@@ -80,10 +80,10 @@ export const generateSuggestions = async (
           durationDays: body.durationDays,
           budgetLevel: body.budgetLevel,
           interests: body.interests,
-        })
+        }),
       );
       console.log(
-        `✅ [Suggestions API] Generated ${suggestions.length} suggestions`
+        `✅ [Suggestions API] Generated ${suggestions.length} suggestions`,
       );
     } catch (aiError) {
       console.error("❌ [Suggestions API] AI generation failed:", aiError);
@@ -99,7 +99,7 @@ export const generateSuggestions = async (
     for (let i = 0; i < suggestions.length; i++) {
       const suggestion = suggestions[i];
       console.log(
-        `   Processing ${i + 1}/${suggestions.length}: ${suggestion.name}`
+        `   Processing ${i + 1}/${suggestions.length}: ${suggestion.name}`,
       );
 
       let placeData = null;
@@ -172,7 +172,7 @@ export const generateSuggestions = async (
         if (insertError) {
           console.error(
             `   ❌ Failed to save: ${suggestion.name}`,
-            insertError
+            insertError,
           );
           errors.push({ name: suggestion.name, error: insertError });
         } else {
@@ -186,10 +186,10 @@ export const generateSuggestions = async (
     }
 
     console.log(
-      `\n📊 [Suggestions API] Results: ${suggestionIds.length} saved, ${errors.length} failed`
+      `\n📊 [Suggestions API] Results: ${suggestionIds.length} saved, ${errors.length} failed`,
     );
     console.log(
-      `✅ [Suggestions API] ========== REQUEST COMPLETE ==========\n`
+      `✅ [Suggestions API] ========== REQUEST COMPLETE ==========\n`,
     );
 
     return response.json({
@@ -211,11 +211,12 @@ export const generateSuggestions = async (
 
 export const generateSuggestionsStream = async (
   request: Request,
-  response: Response
+  response: Response,
 ) => {
   console.log(
-    "\n🚀 [Suggestions API] ========== NEW STREAMING GENERATION REQUEST =========="
+    "\n🚀 [Suggestions API] ========== NEW STREAMING GENERATION REQUEST ==========",
   );
+  const requestStartTime = Date.now();
 
   try {
     const body: GenerateSuggestionsRequest = request.body;
@@ -235,7 +236,7 @@ export const generateSuggestionsStream = async (
     console.log(
       `🎨 [Suggestions API] Interests: ${
         body.interests?.join(", ") || "general"
-      }`
+      }`,
     );
 
     // Check if suggestions already exist for this trip
@@ -248,7 +249,7 @@ export const generateSuggestionsStream = async (
     if (checkError) {
       console.error(
         "❌ [Suggestions API] Error checking existing ideas:",
-        checkError
+        checkError,
       );
     }
 
@@ -262,6 +263,10 @@ export const generateSuggestionsStream = async (
       return;
     }
 
+    console.log(
+      `⏱️ [TIMING] Existing ideas check: ${Date.now() - requestStartTime}ms`,
+    );
+
     sendSSEEvent(response, "progress", {
       step: "generating",
       message: "Generating AI suggestions...",
@@ -269,6 +274,7 @@ export const generateSuggestionsStream = async (
 
     console.log("\n🤖 [Suggestions API] Step 1: Generate AI suggestions...");
     let suggestions: ActivitySuggestion[];
+    const aiStartTime = Date.now();
     try {
       suggestions = await withRateLimit(() =>
         generateActivitySuggestions({
@@ -276,10 +282,13 @@ export const generateSuggestionsStream = async (
           durationDays: body.durationDays,
           budgetLevel: body.budgetLevel,
           interests: body.interests,
-        })
+        }),
       );
       console.log(
-        `✅ [Suggestions API] Generated ${suggestions.length} suggestions`
+        `✅ [Suggestions API] Generated ${suggestions.length} suggestions`,
+      );
+      console.log(
+        `⏱️ [TIMING] AI generation (OpenAI): ${Date.now() - aiStartTime}ms (${suggestions.length} suggestions)`,
       );
     } catch (aiError) {
       console.error("❌ [Suggestions API] AI generation failed:", aiError);
@@ -293,11 +302,12 @@ export const generateSuggestionsStream = async (
 
     // Step 2: Save all suggestions to DB immediately (without place data) and stream them
     console.log(
-      "\n💾 [Suggestions API] Step 2: Save basic suggestions to DB..."
+      "\n💾 [Suggestions API] Step 2: Save basic suggestions to DB...",
     );
     const suggestionIds: string[] = [];
     const ideaIds: string[] = [];
     const errors: Array<{ name: string; error: unknown }> = [];
+    const saveStartTime = Date.now();
 
     for (let i = 0; i < suggestions.length; i++) {
       const suggestion = suggestions[i];
@@ -327,7 +337,7 @@ export const generateSuggestionsStream = async (
         if (insertError) {
           console.error(
             `   ❌ Failed to save: ${suggestion.name}`,
-            insertError
+            insertError,
           );
           errors.push({ name: suggestion.name, error: insertError });
         } else {
@@ -361,6 +371,9 @@ export const generateSuggestionsStream = async (
         errors.push({ name: suggestion.name, error: saveError });
       }
     }
+    console.log(
+      `⏱️ [TIMING] Save loop (DB inserts): ${Date.now() - saveStartTime}ms (${suggestionIds.length} saved)`,
+    );
 
     // Step 3: Enrich each with Google Places and send updates
     console.log("\n🗺️ [Suggestions API] Step 3: Enrich with Google Places...");
@@ -375,11 +388,12 @@ export const generateSuggestionsStream = async (
       console.log(
         `   Enriching ${i + 1}/${suggestions.length}: ${suggestion.name} [+${
           itemStartTime - streamStartTime
-        }ms]`
+        }ms]`,
       );
 
       let placeData = null;
       if (suggestion.placeQuery) {
+        const placeStartTime = Date.now();
         try {
           placeData = await matchPlace(suggestion.placeQuery, body.destination);
           if (placeData) {
@@ -390,6 +404,9 @@ export const generateSuggestionsStream = async (
         } catch (placeError) {
           console.error(`   ❌ Place matching failed:`, placeError);
         }
+        console.log(
+          `   ⏱️ [TIMING] matchPlace "${suggestion.name}": ${Date.now() - placeStartTime}ms`,
+        );
       }
 
       // Update DB with place data
@@ -418,6 +435,7 @@ export const generateSuggestionsStream = async (
         };
       }
 
+      const dbUpdateStart = Date.now();
       const { error: updateError } = await supabase
         .from("trip_reel_ideas")
         .update(updateData)
@@ -426,15 +444,18 @@ export const generateSuggestionsStream = async (
       if (updateError) {
         console.error(
           `   ❌ Failed to update: ${suggestion.name}`,
-          updateError
+          updateError,
         );
       }
+      console.log(
+        `   ⏱️ [TIMING] DB update "${suggestion.name}": ${Date.now() - dbUpdateStart}ms`,
+      );
 
       const elapsed = Date.now() - streamStartTime;
       console.log(
         `   📡 Sending SSE enriched event ${i + 1}/${
           suggestions.length
-        } at +${elapsed}ms`
+        } at +${elapsed}ms`,
       );
 
       // Send enriched update
@@ -467,10 +488,14 @@ export const generateSuggestionsStream = async (
     }
 
     console.log(
-      `\n📊 [Suggestions API] Results: ${suggestionIds.length} saved, ${errors.length} failed`
+      `\n📊 [Suggestions API] Results: ${suggestionIds.length} saved, ${errors.length} failed`,
     );
     console.log(
-      `✅ [Suggestions API] ========== STREAMING REQUEST COMPLETE ==========\n`
+      `✅ [Suggestions API] ========== STREAMING REQUEST COMPLETE ==========\n`,
+    );
+
+    console.log(
+      `\n⏱️ [TIMING] ========== TOTAL END-TO-END: ${Date.now() - requestStartTime}ms ==========`,
     );
 
     sendSSEEvent(response, "complete", {

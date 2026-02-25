@@ -59,6 +59,7 @@ export async function generateAIEnrichment(
   const apiKey = process.env.OPENAI_API_KEY;
 
   console.log("🤖 [AI Service] Starting OpenAI enrichment...");
+  const fnStartTime = Date.now();
   console.log("🔑 [AI Service] API Key present:", !!apiKey);
   console.log(
     "🔑 [AI Service] API Key prefix:",
@@ -76,6 +77,7 @@ export async function generateAIEnrichment(
 
   try {
     console.log("🌐 [AI Service] Sending request to OpenAI API...");
+    const fetchStartTime = Date.now();
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -123,6 +125,9 @@ export async function generateAIEnrichment(
 
     const data = await response.json();
     console.log("✅ [AI Service] Response received from OpenAI");
+    console.log(
+      `⏱️ [TIMING] OpenAI API fetch (enrichment): ${Date.now() - fetchStartTime}ms`,
+    );
     console.log("📊 [AI Service] Usage:", data.usage);
 
     const content = data.choices?.[0]?.message?.content;
@@ -155,6 +160,9 @@ export async function generateAIEnrichment(
     };
 
     console.log("🎉 [AI Service] Enrichment complete!");
+    console.log(
+      `⏱️ [TIMING] generateAIEnrichment total: ${Date.now() - fnStartTime}ms`,
+    );
     return result;
   } catch (error) {
     console.error("💥 [AI Service] Error during enrichment:", error);
@@ -363,6 +371,7 @@ export async function generateActivitySuggestions(
   const apiKey = process.env.OPENAI_API_KEY;
 
   console.log("🎯 [AI Suggestions] Starting activity suggestion generation...");
+  const fnStartTime = Date.now();
   console.log("📍 [AI Suggestions] Destination:", input.destination);
   console.log("📅 [AI Suggestions] Duration:", input.durationDays, "days");
   console.log(
@@ -384,6 +393,7 @@ export async function generateActivitySuggestions(
 
   try {
     console.log("🌐 [AI Suggestions] Sending request to OpenAI API...");
+    const fetchStartTime = Date.now();
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -431,6 +441,9 @@ export async function generateActivitySuggestions(
 
     const data = await response.json();
     console.log("✅ [AI Suggestions] Response received from OpenAI");
+    console.log(
+      `⏱️ [TIMING] OpenAI API fetch: ${Date.now() - fetchStartTime}ms`,
+    );
     console.log("📊 [AI Suggestions] Usage:", data.usage);
 
     const content = data.choices?.[0]?.message?.content;
@@ -473,6 +486,9 @@ export async function generateActivitySuggestions(
 
     console.log(
       "🎉 [AI Suggestions] Activity suggestions generated successfully!",
+    );
+    console.log(
+      `⏱️ [TIMING] generateActivitySuggestions total: ${Date.now() - fnStartTime}ms`,
     );
     return validatedSuggestions;
   } catch (error) {
@@ -564,6 +580,7 @@ export async function generateAreaSearchSuggestions(
   console.log(
     "🔍 [Area Search AI] Starting area search suggestion generation...",
   );
+  const fnStartTime = Date.now();
   console.log("📍 [Area Search AI] Location:", input.locationName);
   console.log("🔎 [Area Search AI] Query:", input.query);
   console.log("📐 [Area Search AI] Bounds:", JSON.stringify(input.bounds));
@@ -577,6 +594,7 @@ export async function generateAreaSearchSuggestions(
 
   try {
     console.log("🌐 [Area Search AI] Sending request to OpenAI API...");
+    const fetchStartTime = Date.now();
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -622,6 +640,9 @@ export async function generateAreaSearchSuggestions(
 
     const data = await response.json();
     console.log("✅ [Area Search AI] Response received from OpenAI");
+    console.log(
+      `⏱️ [TIMING] OpenAI API fetch (area search): ${Date.now() - fetchStartTime}ms`,
+    );
     console.log("📊 [Area Search AI] Usage:", data.usage);
 
     const content = data.choices?.[0]?.message?.content;
@@ -664,6 +685,9 @@ export async function generateAreaSearchSuggestions(
 
     console.log(
       "🎉 [Area Search AI] Area search suggestions generated successfully!",
+    );
+    console.log(
+      `⏱️ [TIMING] generateAreaSearchSuggestions total: ${Date.now() - fnStartTime}ms`,
     );
     return validatedSuggestions;
   } catch (error) {

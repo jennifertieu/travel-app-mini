@@ -169,23 +169,23 @@ export function TripPlanningForm({
   const isFormValid = destination.trim().length > 0;
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-background via-background to-accent/5">
-      <div className="flex-1 grid lg:grid-cols-[1fr_0.85fr] items-center">
-        {/* Left: Form */}
-        <div className="flex items-center justify-center px-4 lg:px-12 py-8 lg:py-0">
-          <div className="w-full max-w-xl space-y-8">
+    <div className="h-full flex flex-col bg-gradient-to-br from-background via-background to-accent/5 min-h-0">
+      <div className="flex-1 grid lg:grid-cols-[1fr_0.85fr] items-start min-h-0">
+        {/* Left: Form — scrollable when content overflows */}
+        <div className="flex justify-center px-4 lg:px-12 py-6 lg:py-8 overflow-y-auto min-h-0">
+          <div className="w-full max-w-xl space-y-6 lg:space-y-7 py-2">
             {/* Header */}
-            <motion.div className="space-y-2" {...stagger(0)}>
-              <h1 className="text-4xl font-bold tracking-tight">
+            <motion.div className="space-y-1.5" {...stagger(0)}>
+              <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">
                 Let's plan your trip
               </h1>
-              <p className="text-muted-foreground text-lg">
+              <p className="text-muted-foreground text-base lg:text-lg">
                 You don't need a full plan yet. Start with ideas
               </p>
             </motion.div>
 
             {/* Form Fields */}
-            <div className="space-y-6">
+            <div className="space-y-5 lg:space-y-6">
               {/* Destination Input */}
               <motion.div className="space-y-2" {...stagger(1)}>
                 <label className="text-sm font-medium">
@@ -206,7 +206,7 @@ export function TripPlanningForm({
                       onBlur={() => {
                         setTimeout(() => setShowResults(false), 200);
                       }}
-                      className="pl-10 pr-10 h-12 text-base border rounded-xl shadow-sm"
+                      className="pl-10 pr-10 h-11 lg:h-12 text-base border rounded-xl shadow-sm"
                     />
                     {isSearching && (
                       <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-0.5">
@@ -254,6 +254,7 @@ export function TripPlanningForm({
                   onEndChange={setEndDate}
                   minDate={new Date(new Date().setHours(0, 0, 0, 0))}
                   labelId="when-are-you-going"
+                  inputClassName="h-11 lg:h-12"
                 />
               </motion.div>
 
@@ -270,7 +271,7 @@ export function TripPlanningForm({
                       onClick={() => setBudgetLevel(option.value)}
                       whileHover={{ scale: 1.03 }}
                       whileTap={{ scale: 0.97 }}
-                      className={`flex-1 py-3 rounded-xl border-2 transition-colors font-medium flex flex-col items-center gap-0.5 ${
+                      className={`flex-1 py-2.5 lg:py-3 rounded-xl border-2 transition-colors font-medium flex flex-col items-center gap-0.5 ${
                         budgetLevel === option.value
                           ? "border-primary bg-primary/5"
                           : "border-input hover:border-primary/50"
@@ -320,7 +321,7 @@ export function TripPlanningForm({
                   <Button
                     onClick={handleSubmit}
                     disabled={!isFormValid || createTripMutation.isPending}
-                    className="w-full h-16 text-lg font-semibold rounded-xl"
+                    className="w-full h-14 lg:h-16 text-base lg:text-lg font-semibold rounded-xl"
                     size="lg"
                   >
                     {createTripMutation.isPending ? (

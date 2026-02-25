@@ -27,6 +27,7 @@ export const areaSearchStream = async (
   console.log(
     "\n🔍 [Area Search] ========== NEW AREA SEARCH REQUEST ==========",
   );
+  const requestStartTime = Date.now();
 
   try {
     const body: AreaSearchRequest = request.body;
@@ -108,6 +109,10 @@ export const areaSearchStream = async (
       );
     }
 
+    console.log(
+      `⏱️ [TIMING] Reverse geocoding: ${Date.now() - requestStartTime}ms`,
+    );
+
     sendSSEEvent(response, "progress", {
       step: "generating",
       message: "Generating AI suggestions for your area...",
@@ -116,6 +121,7 @@ export const areaSearchStream = async (
     // Generate suggestions via OpenAI
     console.log("\n🤖 [Area Search] Step 1: Generate AI suggestions...");
     let suggestions: ActivitySuggestion[];
+    const aiStartTime = Date.now();
     try {
       suggestions = await generateAreaSearchSuggestions({
         query: body.query,
@@ -124,6 +130,9 @@ export const areaSearchStream = async (
       });
       console.log(
         `✅ [Area Search] Generated ${suggestions.length} suggestions`,
+      );
+      console.log(
+        `⏱️ [TIMING] AI generation (area search): ${Date.now() - aiStartTime}ms`,
       );
     } catch (aiError) {
       console.error("❌ [Area Search] AI generation failed:", aiError);
@@ -139,6 +148,7 @@ export const areaSearchStream = async (
     console.log("\n💾 [Area Search] Step 2: Save suggestions to DB...");
     const suggestionIds: string[] = [];
     const ideaIds: string[] = [];
+    const saveStartTime = Date.now();
 
     for (let i = 0; i < suggestions.length; i++) {
       const suggestion = suggestions[i];
@@ -202,9 +212,13 @@ export const areaSearchStream = async (
         console.error(`   ❌ Exception saving: ${suggestion.name}`, saveError);
       }
     }
+    console.log(
+      `⏱️ [TIMING] Save loop (DB inserts): ${Date.now() - saveStartTime}ms`,
+    );
 
     // Step 3: Enrich each with Google Places
     console.log("\n🗺️ [Area Search] Step 3: Enrich with Google Places...");
+    const enrichStartTime = Date.now();
 
     for (let i = 0; i < suggestions.length; i++) {
       const suggestion = suggestions[i];
@@ -217,6 +231,7 @@ export const areaSearchStream = async (
 
       let placeData = null;
       if (suggestion.placeQuery) {
+        const placeStartTime = Date.now();
         try {
           placeData = await matchPlace(suggestion.placeQuery, locationName, {
             centerLat,
@@ -244,6 +259,9 @@ export const areaSearchStream = async (
         } catch (placeError) {
           console.error(`   ❌ Place matching failed:`, placeError);
         }
+        console.log(
+          `   ⏱️ [TIMING] matchPlace "${suggestion.name}": ${Date.now() - placeStartTime}ms`,
+        );
       }
 
       // Build update data — use bounding box center as fallback coordinates
@@ -281,6 +299,7 @@ export const areaSearchStream = async (
         };
       }
 
+      const dbUpdateStart = Date.now();
       const { error: updateError } = await supabase
         .from("trip_reel_ideas")
         .update(updateData)
@@ -292,6 +311,9 @@ export const areaSearchStream = async (
           updateError,
         );
       }
+      console.log(
+        `   ⏱️ [TIMING] DB update "${suggestion.name}": ${Date.now() - dbUpdateStart}ms`,
+      );
 
       sendSSEEvent(response, "enriched", {
         id: ideaId,
@@ -336,6 +358,13 @@ export const areaSearchStream = async (
     );
     console.log(
       `✅ [Area Search] ========== AREA SEARCH COMPLETE ==========\n`,
+    );
+
+    console.log(
+      `⏱️ [TIMING] Enrichment loop total: ${Date.now() - enrichStartTime}ms`,
+    );
+    console.log(
+      `\n⏱️ [TIMING] ========== AREA SEARCH TOTAL END-TO-END: ${Date.now() - requestStartTime}ms ==========`,
     );
 
     sendSSEEvent(response, "complete", {
