@@ -72,7 +72,7 @@ export function JoinTripPage() {
       setError(null);
       await joinTrip(inviteToken, member.id);
       setCurrentTrip(inviteToken);
-      window.location.href = "/pretrip";
+      window.location.href = `/pretrip?tripId=${inviteToken}`;
     } catch (err) {
       console.error("Failed to join trip:", err);
       setError(err instanceof Error ? err.message : "Failed to join trip");

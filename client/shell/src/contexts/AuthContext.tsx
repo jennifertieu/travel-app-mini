@@ -111,7 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/pretrip`,
+          redirectTo: window.location.href,
         },
       });
 
@@ -226,6 +226,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       subscription.unsubscribe();
     };
   }, []);
+
+  // Expose session to remotes (e.g. mf-itinerary) so their Supabase client can set it for RLS
+  useEffect(() => {
+    (
+      window as unknown as { __TRIPWEAVE_SESSION__?: Session | null }
+    ).__TRIPWEAVE_SESSION__ = session ?? null;
+  }, [session]);
 
   const value: AuthContextValue = {
     user,
