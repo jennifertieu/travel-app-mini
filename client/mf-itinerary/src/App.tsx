@@ -1,5 +1,10 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import "./globals.css";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "./lib/supabase";
+import { ItineraryPanel } from "./components/ItineraryPanel";
+import { BuildingState } from "./components/BuildingState";
+import { EmptyState } from "./components/EmptyState";
+import type { ItineraryData } from "./types";
 
 type Itinerary = {
   id: string;
@@ -20,15 +25,6 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isBuilding, setIsBuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const styleInjected = useRef(false);
-
-  useEffect(() => {
-    if (styleInjected.current) return;
-    styleInjected.current = true;
-    const sheet = document.createElement("style");
-    sheet.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
-    document.head.appendChild(sheet);
-  }, []);
 
   const fetchItinerary = useCallback(async (id: string) => {
     setIsLoading(true);
@@ -89,124 +85,65 @@ const App = () => {
     };
   }, [tripId, fetchItinerary]);
 
+  // Parse the itinerary JSON into typed data
+  const itineraryData: ItineraryData | null = (() => {
+    if (!itinerary?.itinerary) return null;
+    try {
+      const raw = itinerary.itinerary as Record<string, unknown>;
+      // Support both { days: [...] } and { itinerary: { days: [...] } } shapes
+      const inner = (raw.itinerary ?? raw) as Record<string, unknown>;
+      if (inner.days && Array.isArray(inner.days)) {
+        return inner as unknown as ItineraryData;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  })();
+
   if (!tripId) {
     return (
-      <div style={styles.container}>
-        <h1 style={styles.heading}>Itinerary</h1>
-        <p style={styles.muted}>No trip selected. Go to Pre-Trip and click "Build Trip".</p>
+      <div className="flex flex-col items-center justify-center h-full py-20 text-center">
+        <p className="text-sm text-muted-foreground">
+          No trip selected. Go to Pre-Trip and click "Build Trip".
+        </p>
       </div>
     );
   }
 
   return (
-    <div style={styles.container}>
-      <h1 style={styles.heading}>Itinerary</h1>
-      <p style={styles.muted}>Trip ID: {tripId}</p>
+    <div className="flex flex-col h-full">
+      {isBuilding && <BuildingState />}
 
-      {isBuilding && (
-        <div style={styles.buildingBanner}>
-          <span style={styles.spinner} />
-          Building your itinerary with AI... This may take 15–30 seconds.
+      {isLoading && !isBuilding && (
+        <div className="flex items-center justify-center py-20">
+          <p className="text-sm text-muted-foreground">Loading itinerary...</p>
         </div>
       )}
 
-      {isLoading && !isBuilding && (
-        <p style={styles.muted}>Loading itinerary...</p>
-      )}
-
       {error && (
-        <div style={styles.errorBanner}>Error: {error}</div>
+        <div className="mx-4 mt-4 px-4 py-3 rounded-lg bg-red-950 text-red-300 text-sm">
+          Error: {error}
+        </div>
       )}
 
-      {!isLoading && !itinerary && !isBuilding && (
-        <p style={styles.muted}>No itinerary found for this trip yet.</p>
-      )}
+      {!isLoading && !itinerary && !isBuilding && <EmptyState />}
 
-      {itinerary && (
-        <div>
-          <h2 style={styles.subheading}>
-            Raw Itinerary Data
-            <span style={styles.timestamp}>
-              {" "}(updated: {itinerary.updated_at || itinerary.created_at})
-            </span>
-          </h2>
-          <pre style={styles.jsonBlock}>
+      {itineraryData && <ItineraryPanel data={itineraryData} />}
+
+      {/* Fallback: show raw JSON if data doesn't match expected shape */}
+      {itinerary && !itineraryData && !isLoading && (
+        <div className="p-4">
+          <p className="text-xs text-muted-foreground mb-2">
+            Raw itinerary data (unexpected format):
+          </p>
+          <pre className="bg-muted p-4 rounded-lg text-xs overflow-auto max-h-[70vh] whitespace-pre-wrap break-words">
             {JSON.stringify(itinerary.itinerary, null, 2)}
           </pre>
         </div>
       )}
     </div>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    padding: "2rem",
-    maxWidth: "960px",
-    margin: "0 auto",
-    fontFamily: "system-ui, -apple-system, sans-serif",
-  },
-  heading: {
-    fontSize: "1.5rem",
-    fontWeight: 700,
-    marginBottom: "0.5rem",
-  },
-  subheading: {
-    fontSize: "1rem",
-    fontWeight: 600,
-    marginBottom: "0.75rem",
-  },
-  timestamp: {
-    fontSize: "0.75rem",
-    fontWeight: 400,
-    color: "#888",
-  },
-  muted: {
-    color: "#888",
-    fontSize: "0.875rem",
-    marginBottom: "1rem",
-  },
-  buildingBanner: {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.75rem",
-    padding: "1rem",
-    marginBottom: "1rem",
-    borderRadius: "8px",
-    backgroundColor: "#1e1b4b",
-    color: "#c7d2fe",
-    fontSize: "0.875rem",
-    fontWeight: 500,
-  },
-  spinner: {
-    display: "inline-block",
-    width: "16px",
-    height: "16px",
-    border: "2px solid #c7d2fe",
-    borderTopColor: "transparent",
-    borderRadius: "50%",
-    animation: "spin 0.8s linear infinite",
-  },
-  errorBanner: {
-    padding: "0.75rem 1rem",
-    marginBottom: "1rem",
-    borderRadius: "8px",
-    backgroundColor: "#450a0a",
-    color: "#fca5a5",
-    fontSize: "0.875rem",
-  },
-  jsonBlock: {
-    backgroundColor: "#1a1a2e",
-    color: "#e2e8f0",
-    padding: "1.5rem",
-    borderRadius: "8px",
-    fontSize: "0.8rem",
-    lineHeight: 1.5,
-    overflow: "auto",
-    maxHeight: "70vh",
-    whiteSpace: "pre-wrap",
-    wordBreak: "break-word",
-  },
 };
 
 export default App;
