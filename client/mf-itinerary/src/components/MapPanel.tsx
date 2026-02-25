@@ -93,18 +93,25 @@ export function MapPanel({ activities, annotations }: MapPanelProps) {
     map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
   }, [activities]);
 
-  // Render annotation shapes when annotations change
+  // Render annotation shapes when annotations change or zoom changes
   useEffect(() => {
     const map = mapRef.current;
     const annotationGroup = annotationLayerRef.current;
     if (!map || !annotationGroup) return;
 
-    if (!annotations?.length) {
-      annotationGroup.clearLayers();
-      return;
-    }
+    const render = () => {
+      if (!annotations?.length) {
+        annotationGroup.clearLayers();
+        return;
+      }
+      renderAnnotations(map, annotations, annotationGroup);
+    };
 
-    renderAnnotations(map, annotations, annotationGroup);
+    render();
+    map.on("zoomend", render);
+    return () => {
+      map.off("zoomend", render);
+    };
   }, [annotations]);
 
   return <div ref={containerRef} className="h-full w-full" />;

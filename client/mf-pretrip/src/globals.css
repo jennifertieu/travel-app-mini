@@ -95,83 +95,80 @@
     0 4px 16px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Map Annotation Labels - Hidden by default, show on hover */
+/* Map Annotation Labels */
 .map-annotation-icon {
   pointer-events: auto !important;
   z-index: 400 !important;
+  background: none !important;
+  border: none !important;
+  width: auto !important;
+  height: auto !important;
+  overflow: visible !important;
 }
 
 .map-annotation-card {
   position: relative;
-  background: white;
-  border-radius: 8px;
-  padding: 8px 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  border-left: 3px solid var(--annotation-color, #3B82F6);
-  min-width: 120px;
-  max-width: 200px;
-  opacity: 0;
-  transform: scale(0.8);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  background: none;
+  border: none;
+  padding: 0;
+  min-width: 0;
+  max-width: 300px;
+  opacity: 0.9;
   pointer-events: none;
+  white-space: nowrap;
 }
 
-/* Show label on hover */
 .map-annotation-icon:hover .map-annotation-card {
   opacity: 1;
-  transform: scale(1);
   pointer-events: auto;
 }
 
 /* Always show highlighted annotations */
 .map-annotation-card.highlighted {
   opacity: 1 !important;
-  transform: scale(1) !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-  border-left-width: 4px;
 }
 
 .ann-header {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .ann-icon {
-  font-size: 16px;
+  font-size: 14px;
   flex-shrink: 0;
 }
 
 .ann-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  color: #111827;
-  line-height: 1.3;
-  word-break: break-word;
+  color: #374151;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 0 3px white, 0 0 3px white, 0 0 3px white;
 }
 
 .ann-note {
-  margin-top: 4px;
-  font-size: 11px;
+  font-size: 10px;
   color: #6b7280;
-  line-height: 1.4;
-  border-top: 1px solid #e5e7eb;
-  padding-top: 4px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 0 3px white, 0 0 3px white;
 }
 
 /* Dark mode support */
-.dark .map-annotation-card {
-  background: #1f2937;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-}
-
 .dark .ann-title {
-  color: #f9fafb;
+  color: #e5e7eb;
+  text-shadow: 0 0 3px black, 0 0 3px black, 0 0 3px black;
 }
 
 .dark .ann-note {
   color: #9ca3af;
-  border-top-color: #374151;
+  text-shadow: 0 0 3px black, 0 0 3px black;
 }
 
 /* Area search pulse animation on drawn shape */

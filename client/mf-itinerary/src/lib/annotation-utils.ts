@@ -31,6 +31,8 @@ export function escapeAnnotationHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+const LABEL_ZOOM_THRESHOLD = 13;
+
 export function createAnnotationIcon(
   ann: {
     color?: string | null;
@@ -39,6 +41,7 @@ export function createAnnotationIcon(
     name?: string | null;
   },
   isHighlighted: boolean,
+  zoom: number = LABEL_ZOOM_THRESHOLD,
 ): L.DivIcon {
   const color = ann.color ?? NEUTRAL_ANNOTATION_COLOR;
   const icon =
@@ -48,13 +51,24 @@ export function createAnnotationIcon(
         ? COLOR_ICON_MAP[ann.color] || "\u{1F4DD}"
         : "\u{1F4DD}";
 
-  const displayName = ann.name || ann.label || "";
-  const safeName = escapeAnnotationHtml(
-    displayName.length > 24 ? displayName.slice(0, 24) + "\u2026" : displayName,
-  );
+  const showText = zoom >= LABEL_ZOOM_THRESHOLD;
 
-  const hasNote = ann.name && ann.label && ann.name !== ann.label;
-  const safeNote = hasNote ? escapeAnnotationHtml(ann.label!) : "";
+  const displayName = ann.name || ann.label || "";
+  const safeName = showText
+    ? escapeAnnotationHtml(
+        displayName.length > 24
+          ? displayName.slice(0, 24) + "\u2026"
+          : displayName,
+      )
+    : "";
+
+  const labelText = ann.label || "";
+  const safeLabel =
+    showText && labelText
+      ? escapeAnnotationHtml(
+          labelText.length > 40 ? labelText.slice(0, 40) + "\u2026" : labelText,
+        )
+      : "";
   const highlightedClass = isHighlighted ? " highlighted" : "";
 
   return L.divIcon({
@@ -63,12 +77,12 @@ export function createAnnotationIcon(
       <div class="map-annotation-card${highlightedClass}" style="--annotation-color: ${color};">
         <div class="ann-header">
           <span class="ann-icon">${icon}</span>
-          <span class="ann-title">${safeName}</span>
+          ${safeName ? `<span class="ann-title">${safeName}</span>` : ""}
         </div>
-        ${hasNote ? `<div class="ann-note">${safeNote}</div>` : ""}
+        ${safeLabel ? `<div class="ann-note">${safeLabel}</div>` : ""}
       </div>
     `,
-    iconSize: [0, 0],
+    iconSize: undefined as any,
     iconAnchor: [0, 0],
   });
 }
@@ -79,6 +93,7 @@ export function renderAnnotations(
   layerGroup: L.LayerGroup,
 ): void {
   layerGroup.clearLayers();
+  const zoom = map.getZoom();
 
   for (const ann of annotations) {
     const coords = ann.coordinates as any;
@@ -110,7 +125,7 @@ export function renderAnnotations(
           latLngs.length;
         layerGroup.addLayer(
           L.marker([avgLat, avgLng], {
-            icon: createAnnotationIcon(ann as any, false),
+            icon: createAnnotationIcon(ann as any, false, zoom),
             interactive: true,
           }),
         );
@@ -137,7 +152,7 @@ export function renderAnnotations(
         const midIdx = Math.floor(latLngs.length / 2);
         layerGroup.addLayer(
           L.marker(latLngs[midIdx], {
-            icon: createAnnotationIcon(ann as any, false),
+            icon: createAnnotationIcon(ann as any, false, zoom),
             interactive: true,
           }),
         );
@@ -170,7 +185,7 @@ export function renderAnnotations(
         const centerLng = (coords.east + coords.west) / 2;
         layerGroup.addLayer(
           L.marker([centerLat, centerLng], {
-            icon: createAnnotationIcon(ann as any, false),
+            icon: createAnnotationIcon(ann as any, false, zoom),
             interactive: true,
           }),
         );

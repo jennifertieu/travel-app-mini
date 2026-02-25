@@ -57,6 +57,8 @@ function escapeAnnotationHtml(value: string) {
 
 const NEUTRAL_ANNOTATION_COLOR = "#6B7280"; // Gray for uncategorized
 
+const LABEL_ZOOM_THRESHOLD = 13;
+
 function createAnnotationIcon(
   ann: {
     color?: string | null;
@@ -65,6 +67,7 @@ function createAnnotationIcon(
     name?: string | null;
   },
   isHighlighted: boolean,
+  zoom: number = LABEL_ZOOM_THRESHOLD,
 ): L.DivIcon {
   const color = ann.color ?? NEUTRAL_ANNOTATION_COLOR;
   const icon =
@@ -74,14 +77,24 @@ function createAnnotationIcon(
         ? COLOR_ICON_MAP[ann.color] || "\u{1F4DD}"
         : "\u{1F4DD}"; // Generic note for uncategorized
 
-  const displayName = ann.name || ann.label || "";
-  const safeName = escapeAnnotationHtml(
-    displayName.length > 24 ? displayName.slice(0, 24) + "\u2026" : displayName,
-  );
+  const showText = zoom >= LABEL_ZOOM_THRESHOLD;
 
-  // Show full note on hover only if there's both a name and a separate label
-  const hasNote = ann.name && ann.label && ann.name !== ann.label;
-  const safeNote = hasNote ? escapeAnnotationHtml(ann.label!) : "";
+  const displayName = ann.name || ann.label || "";
+  const safeName = showText
+    ? escapeAnnotationHtml(
+        displayName.length > 24
+          ? displayName.slice(0, 24) + "\u2026"
+          : displayName,
+      )
+    : "";
+
+  const labelText = ann.label || "";
+  const safeLabel =
+    showText && labelText
+      ? escapeAnnotationHtml(
+          labelText.length > 40 ? labelText.slice(0, 40) + "\u2026" : labelText,
+        )
+      : "";
 
   const highlightedClass = isHighlighted ? " highlighted" : "";
 
@@ -91,12 +104,12 @@ function createAnnotationIcon(
       <div class="map-annotation-card${highlightedClass}" style="--annotation-color: ${color};">
         <div class="ann-header">
           <span class="ann-icon">${icon}</span>
-          <span class="ann-title">${safeName}</span>
+          ${safeName ? `<span class="ann-title">${safeName}</span>` : ""}
         </div>
-        ${hasNote ? `<div class="ann-note">${safeNote}</div>` : ""}
+        ${safeLabel ? `<div class="ann-note">${safeLabel}</div>` : ""}
       </div>
     `,
-    iconSize: [0, 0],
+    iconSize: undefined as any,
     iconAnchor: [0, 0],
   });
 }
@@ -260,16 +273,13 @@ export const MapView = forwardRef<
   ];
 
   // Stable callbacks for MapToolbar to reduce re-renders during hover/interaction
-  const onDrawToolChange = useCallback(
-    (tool: "polygon" | "rect" | "path") => {
-      setDrawTool(tool);
-      drawPointsRef.current = [];
-      drawStartRef.current = null;
-      isPathDrawingRef.current = false;
-      lastPathPointRef.current = null;
-    },
-    [],
-  );
+  const onDrawToolChange = useCallback((tool: "polygon" | "rect" | "path") => {
+    setDrawTool(tool);
+    drawPointsRef.current = [];
+    drawStartRef.current = null;
+    isPathDrawingRef.current = false;
+    lastPathPointRef.current = null;
+  }, []);
   const onShortcutsOpen = useCallback(() => setShowShortcuts(true), []);
   const onRecenter = useCallback(() => {
     if (!map) return;
@@ -590,144 +600,168 @@ export const MapView = forwardRef<
   useEffect(() => {
     if (!map) return;
 
-    // Clear old shapes and labels
-    rectanglesRef.current.forEach((rect) => rect.remove());
-    rectanglesRef.current = [];
-    polygonsRef.current.forEach((poly) => poly.remove());
-    polygonsRef.current = [];
-    pathDecorationsRef.current.forEach((pl) => pl.remove());
-    pathDecorationsRef.current = [];
-    annotationLabelsRef.current.forEach((marker) => marker.remove());
-    annotationLabelsRef.current = [];
+    const zoom = map.getZoom();
 
-    annotations.forEach((ann) => {
-      const coords = ann.coordinates as any;
-      if (!coords) return;
+    const renderAnnotationShapes = (currentZoom: number) => {
+      // Clear old shapes and labels
+      rectanglesRef.current.forEach((rect) => rect.remove());
+      rectanglesRef.current = [];
+      polygonsRef.current.forEach((poly) => poly.remove());
+      polygonsRef.current = [];
+      pathDecorationsRef.current.forEach((pl) => pl.remove());
+      pathDecorationsRef.current = [];
+      annotationLabelsRef.current.forEach((marker) => marker.remove());
+      annotationLabelsRef.current = [];
 
-      const isHighlighted = ann.id === highlightedAnnotationId;
-      const annColor = ann.color ?? NEUTRAL_ANNOTATION_COLOR;
+      annotations.forEach((ann) => {
+        const coords = ann.coordinates as any;
+        if (!coords) return;
 
-      if (coords.type === "polygon" && Array.isArray(coords.points)) {
-        const latLngs = coords.points
-          .filter((point: any) => point && typeof point.lat === "number")
-          .map((point: any) => [point.lat, point.lng] as L.LatLngTuple);
+        const isHighlighted = ann.id === highlightedAnnotationId;
+        const annColor = ann.color ?? NEUTRAL_ANNOTATION_COLOR;
 
-        if (latLngs.length < 3) return;
+        if (coords.type === "polygon" && Array.isArray(coords.points)) {
+          const latLngs = coords.points
+            .filter((point: any) => point && typeof point.lat === "number")
+            .map((point: any) => [point.lat, point.lng] as L.LatLngTuple);
 
-        const polygon = L.polygon(latLngs, {
-          color: annColor,
-          weight: isHighlighted ? 3 : 2.5,
-          fillOpacity: isHighlighted ? 0.15 : 0.06,
-          dashArray: isHighlighted ? undefined : "6, 4",
-          className: isHighlighted ? "annotation-highlighted" : "",
-        });
+          if (latLngs.length < 3) return;
 
-        polygon.addTo(map);
-        polygonsRef.current.push(polygon);
-
-        // Add frosted-glass label at centroid
-        if (ann.label || (ann as any).name) {
-          const avgLat =
-            latLngs.reduce((sum, p) => sum + p[0], 0) / latLngs.length;
-          const avgLng =
-            latLngs.reduce((sum, p) => sum + p[1], 0) / latLngs.length;
-
-          const labelMarker = L.marker([avgLat, avgLng], {
-            icon: createAnnotationIcon(ann as any, isHighlighted),
-            interactive: true,
+          const polygon = L.polygon(latLngs, {
+            color: annColor,
+            weight: isHighlighted ? 3 : 2.5,
+            fillOpacity: isHighlighted ? 0.15 : 0.06,
+            dashArray: isHighlighted ? undefined : "6, 4",
+            className: isHighlighted ? "annotation-highlighted" : "",
           });
-          labelMarker.addTo(map);
-          annotationLabelsRef.current.push(labelMarker);
+
+          polygon.addTo(map);
+          polygonsRef.current.push(polygon);
+
+          // Add frosted-glass label at centroid
+          if (ann.label || (ann as any).name) {
+            const avgLat =
+              latLngs.reduce((sum, p) => sum + p[0], 0) / latLngs.length;
+            const avgLng =
+              latLngs.reduce((sum, p) => sum + p[1], 0) / latLngs.length;
+
+            const labelMarker = L.marker([avgLat, avgLng], {
+              icon: createAnnotationIcon(
+                ann as any,
+                isHighlighted,
+                currentZoom,
+              ),
+              interactive: true,
+            });
+            labelMarker.addTo(map);
+            annotationLabelsRef.current.push(labelMarker);
+          }
+
+          // Pan to highlighted annotation
+          if (isHighlighted) {
+            const bounds = polygon.getBounds();
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+          }
+          return;
         }
 
-        // Pan to highlighted annotation
-        if (isHighlighted) {
-          const bounds = polygon.getBounds();
-          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-        }
-        return;
-      }
+        if (coords.type === "path" && Array.isArray(coords.points)) {
+          const latLngs = coords.points
+            .filter((point: any) => point && typeof point.lat === "number")
+            .map((point: any) => [point.lat, point.lng] as L.LatLngTuple);
 
-      if (coords.type === "path" && Array.isArray(coords.points)) {
-        const latLngs = coords.points
-          .filter((point: any) => point && typeof point.lat === "number")
-          .map((point: any) => [point.lat, point.lng] as L.LatLngTuple);
+          if (latLngs.length < 2) return;
 
-        if (latLngs.length < 2) return;
-
-        const polyline = L.polyline(latLngs, {
-          color: annColor,
-          weight: isHighlighted ? 3 : 2.5,
-          opacity: isHighlighted ? 0.9 : 0.7,
-          dashArray: isHighlighted ? undefined : "6, 4",
-          className: isHighlighted ? "annotation-highlighted" : "",
-        });
-
-        polyline.addTo(map);
-        pathDecorationsRef.current.push(polyline);
-
-        // Add frosted-glass label at path midpoint
-        if (ann.label || (ann as any).name) {
-          const midIdx = Math.floor(latLngs.length / 2);
-          const midPoint = latLngs[midIdx];
-
-          const labelMarker = L.marker(midPoint, {
-            icon: createAnnotationIcon(ann as any, isHighlighted),
-            interactive: true,
+          const polyline = L.polyline(latLngs, {
+            color: annColor,
+            weight: isHighlighted ? 3 : 2.5,
+            opacity: isHighlighted ? 0.9 : 0.7,
+            dashArray: isHighlighted ? undefined : "6, 4",
+            className: isHighlighted ? "annotation-highlighted" : "",
           });
-          labelMarker.addTo(map);
-          annotationLabelsRef.current.push(labelMarker);
+
+          polyline.addTo(map);
+          pathDecorationsRef.current.push(polyline);
+
+          // Add frosted-glass label at path midpoint
+          if (ann.label || (ann as any).name) {
+            const midIdx = Math.floor(latLngs.length / 2);
+            const midPoint = latLngs[midIdx];
+
+            const labelMarker = L.marker(midPoint, {
+              icon: createAnnotationIcon(
+                ann as any,
+                isHighlighted,
+                currentZoom,
+              ),
+              interactive: true,
+            });
+            labelMarker.addTo(map);
+            annotationLabelsRef.current.push(labelMarker);
+          }
+
+          // Pan to highlighted annotation
+          if (isHighlighted) {
+            const bounds = polyline.getBounds();
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+          }
+          return;
         }
 
-        // Pan to highlighted annotation
-        if (isHighlighted) {
-          const bounds = polyline.getBounds();
-          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-        }
-        return;
-      }
+        if (
+          typeof coords.north === "number" &&
+          typeof coords.south === "number" &&
+          typeof coords.east === "number" &&
+          typeof coords.west === "number"
+        ) {
+          const bounds: L.LatLngBoundsExpression = [
+            [coords.north, coords.west],
+            [coords.south, coords.east],
+          ];
 
-      if (
-        typeof coords.north === "number" &&
-        typeof coords.south === "number" &&
-        typeof coords.east === "number" &&
-        typeof coords.west === "number"
-      ) {
-        const bounds: L.LatLngBoundsExpression = [
-          [coords.north, coords.west],
-          [coords.south, coords.east],
-        ];
-
-        const rect = L.rectangle(bounds, {
-          color: annColor,
-          weight: isHighlighted ? 3 : 2.5,
-          fillOpacity: isHighlighted ? 0.15 : 0.06,
-          dashArray: isHighlighted ? undefined : "6, 4",
-          className: isHighlighted ? "annotation-highlighted" : "",
-        });
-
-        rect.addTo(map);
-        rectanglesRef.current.push(rect);
-
-        // Add frosted-glass label at center
-        if (ann.label || (ann as any).name) {
-          const centerLat = (coords.north + coords.south) / 2;
-          const centerLng = (coords.east + coords.west) / 2;
-
-          const labelMarker = L.marker([centerLat, centerLng], {
-            icon: createAnnotationIcon(ann as any, isHighlighted),
-            interactive: true,
+          const rect = L.rectangle(bounds, {
+            color: annColor,
+            weight: isHighlighted ? 3 : 2.5,
+            fillOpacity: isHighlighted ? 0.15 : 0.06,
+            dashArray: isHighlighted ? undefined : "6, 4",
+            className: isHighlighted ? "annotation-highlighted" : "",
           });
-          labelMarker.addTo(map);
-          annotationLabelsRef.current.push(labelMarker);
-        }
 
-        // Pan to highlighted annotation
-        if (isHighlighted) {
-          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+          rect.addTo(map);
+          rectanglesRef.current.push(rect);
+
+          // Add frosted-glass label at center
+          if (ann.label || (ann as any).name) {
+            const centerLat = (coords.north + coords.south) / 2;
+            const centerLng = (coords.east + coords.west) / 2;
+
+            const labelMarker = L.marker([centerLat, centerLng], {
+              icon: createAnnotationIcon(
+                ann as any,
+                isHighlighted,
+                currentZoom,
+              ),
+              interactive: true,
+            });
+            labelMarker.addTo(map);
+            annotationLabelsRef.current.push(labelMarker);
+          }
+
+          // Pan to highlighted annotation
+          if (isHighlighted) {
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+          }
         }
-      }
-    });
+      });
+    };
+
+    renderAnnotationShapes(zoom);
+
+    const onZoomEnd = () => renderAnnotationShapes(map.getZoom());
+    map.on("zoomend", onZoomEnd);
+    return () => {
+      map.off("zoomend", onZoomEnd);
+    };
   }, [map, annotations, highlightedAnnotationId]);
 
   // Handle Drawing Logic
@@ -1471,7 +1505,6 @@ export const MapView = forwardRef<
         isOpen={showShortcuts}
         onClose={() => setShowShortcuts(false)}
       />
-
     </div>
   );
 });
