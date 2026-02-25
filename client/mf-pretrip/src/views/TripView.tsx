@@ -105,21 +105,13 @@ export function TripView() {
   );
   const unratedCount = ratedIdeaIds.filter((id) => !myReactions[id]).length;
 
-  // Local state for optimistic updates
-  const [localAnnotations, setLocalAnnotations] = useState<Annotation[]>([]);
-
-  // Sync realtime annotations to local state
-  useEffect(() => {
-    setLocalAnnotations(realtimeAnnotations);
-  }, [realtimeAnnotations]);
-
   // Debug logging
   useEffect(() => {
     console.log(`🎯 TripView: tripId changed to ${tripId}`);
     console.log(`🎯 TripView: trip object:`, trip);
     console.log(`🎯 TripView: ideas count:`, ideas.length);
-    console.log(`🎯 TripView: annotations count:`, localAnnotations.length);
-  }, [tripId, trip, ideas.length, localAnnotations.length]);
+    console.log(`🎯 TripView: annotations count:`, realtimeAnnotations.length);
+  }, [tripId, trip, ideas.length, realtimeAnnotations.length]);
 
   // Keep a stable ref to startStreaming so useEffects don't re-fire on every render
   const startStreamingRef = useRef(startStreaming);
@@ -282,11 +274,6 @@ export function TripView() {
   };
 
   const handleAnnotationDelete = async (annotationId: string) => {
-    console.log("🗑️ Deleting annotation:", annotationId);
-
-    // Optimistic update - remove immediately from UI
-    setLocalAnnotations((prev) => prev.filter((a) => a.id !== annotationId));
-
     const { error } = await supabase
       .from("trip_annotations" as any)
       .delete()
@@ -294,11 +281,7 @@ export function TripView() {
 
     if (error) {
       console.error("❌ Failed to delete annotation:", error);
-      // Revert optimistic update on error
-      setLocalAnnotations(realtimeAnnotations);
       alert("Failed to delete annotation. Please try again.");
-    } else {
-      console.log("✅ Annotation deleted successfully");
     }
   };
 
@@ -335,7 +318,7 @@ export function TripView() {
           </button>
           <IdeaSidebar
             ideas={ideas}
-            annotations={localAnnotations}
+            annotations={realtimeAnnotations}
             isLoading={ideasLoading}
             isGenerating={isGenerating || isStreaming}
             tripId={tripId}
@@ -362,9 +345,6 @@ export function TripView() {
             center={mapCenter}
             tripId={tripId}
             highlightedAnnotationId={highlightedAnnotationId}
-            onAnnotationSaved={(ann) =>
-              setLocalAnnotations((prev) => [...prev, ann])
-            }
             ref={mapViewRef}
           />
           {showGeneratingEmpty && (
