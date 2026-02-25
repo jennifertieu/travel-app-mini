@@ -7,6 +7,7 @@ export interface MemberProfile {
   id: string;
   user_id: string | null;
   display_name: string | null;
+  avatar_url: string | null;
   dietary: string[] | null;
   interests: string[] | null;
   travel_style: string | null;

@@ -28,6 +28,10 @@ export default defineConfig({
           strictVersion: false,
         },
       },
+      dts: false,
+      dev: {
+        disableDts: true,
+      },
     }),
     ...(useZephyr ? [withZephyr()] : []),
   ],

@@ -1,340 +1,373 @@
-# Travel App Deployment Guide
+# Deployment Guide — TripWeave
 
-This guide covers deploying your Module Federation travel app using Zephyr Cloud for the frontend micro frontends and various options for the backend API.
+Deploy the frontend to Zephyr Cloud with `tripweave.app` as the production domain, backend on Render, database on Supabase.
 
-## 🏗️ Architecture Overview
+## Architecture
 
-- **Frontend**: 4 Module Federation micro frontends deployed via Zephyr Cloud
-- **Backend**: Node.js/Express API (deploy separately)
-- **Database**: Supabase (already cloud-hosted)
-
-## 📋 Prerequisites
-
-- Node.js 18+
-- pnpm (recommended)
-- Git repository (GitHub, GitLab, etc.)
-- Zephyr Cloud account
-- Backend hosting platform account (Railway, Render, Vercel, etc.)
-
-## 🚀 Frontend Deployment (Zephyr Cloud)
-
-### Step 1: Install Zephyr Plugin
-
-```bash
-cd client
-pnpm add zephyr-webpack-plugin
+```
+tripweave.app (production)
+        │
+        ▼
+Frontend (Zephyr Cloud)                 Backend (Render)              Database
++----------------------------+          +--------------------+        +----------+
+| shell (host app)           |────────▶ | Express API        |──────▶ | Supabase |
+|   ├── mf_pretrip           |          | (Node.js)          |        | (Postgres)|
+|   ├── mf_itinerary         |          +--------------------+        +----------+
+|   └── mf_duringtrip        |          trip-weave-jlop.onrender.com
++----------------------------+
 ```
 
-### Step 2: Verify Configuration Updates
+- **Frontend**: 4 Module Federation micro-frontends on Zephyr Cloud's edge
+- **Backend**: Express API on Render
+- **Database**: Supabase (cloud-hosted)
+- **Domain**: `tripweave.app` (Porkbun) → Cloudflare DNS → Zephyr environment
 
-The following files have been updated with Zephyr integration:
+## Current State
 
-- `client/shell/rsbuild.config.ts` - Shell app (host)
-- `client/mf-pretrip/rsbuild.config.ts` - Pre-trip micro frontend
-- `client/mf-itinerary/rsbuild.config.ts` - Itinerary micro frontend  
-- `client/mf-duringtrip/rsbuild.config.ts` - During trip micro frontend
-
-Each config now includes:
-```typescript
-import { withZephyr } from "zephyr-webpack-plugin";
-
-export default defineConfig(withZephyr()({
-  // ... existing configuration
-}));
+The app is already deploying to Zephyr under the `lgt-champs` org. Per-build URLs look like:
+```
+https://thomas-nguyen-368-shell-travel-app-lgt-champs-59141bba9-ze.zephyrcloud.app
 ```
 
-### Step 3: Individual Package.json Files
-
-Each micro frontend now has its own `package.json` for Zephyr deployment tracking:
-
-- `client/shell/package.json`
-- `client/mf-pretrip/package.json`
-- `client/mf-itinerary/package.json`
-- `client/mf-duringtrip/package.json`
-
-### Step 4: Deploy to Zephyr Cloud
-
-#### First-time Setup
-
-1. **Commit and push your changes**:
-   ```bash
-   git add .
-   git commit -m "Add Zephyr Cloud configuration"
-   git push origin main
-   ```
-
-2. **Deploy all micro frontends**:
-   ```bash
-   cd client
-   pnpm build
-   ```
-
-   On first run, Zephyr will:
-   - Open a browser for account creation/login
-   - Authenticate the CLI
-   - Deploy all micro frontends automatically
-   - Provide deployment URLs
-
-#### Expected Output
-
-After successful deployment, you'll see URLs like:
-```
-✅ Shell App: https://shell-abc123.zephyr-cloud.io
-✅ Pre-trip MF: https://pretrip-def456.zephyr-cloud.io  
-✅ Itinerary MF: https://itinerary-ghi789.zephyr-cloud.io
-✅ During Trip MF: https://duringtrip-jkl012.zephyr-cloud.io
-```
-
-### Step 5: Update Production Remote URLs
-
-After deployment, update the shell app's remote URLs for production. You can either:
-
-**Option A: Environment-based configuration (Recommended)**
-Create a production environment file or use build-time variables to switch between dev and prod URLs.
-
-**Option B: Manual update**
-Update the shell app's remote URLs:
-
-```typescript
-// client/shell/rsbuild.config.ts
-remotes: {
-  // Production URLs from Zephyr deployment (replace with your actual URLs)
-  pretrip_main: "mf_pretrip@https://pretrip-def456.zephyr-cloud.io/remoteEntry.js",
-  itinerary_main: "mf_itinerary@https://itinerary-ghi789.zephyr-cloud.io/remoteEntry.js", 
-  duringtrip_main: "mf_duringtrip@https://duringtrip-jkl012.zephyr-cloud.io/remoteEntry.js",
-},
-```
-
-Then redeploy the shell:
-```bash
-cd client/shell
-pnpm build
-```
-
-## 🖥️ Backend Deployment Options
-
-### Option 1: Railway (Recommended)
-
-1. **Create Railway account** at [railway.app](https://railway.app)
-
-2. **Connect your repository**:
-   - Click "New Project" → "Deploy from GitHub repo"
-   - Select your travel-app repository
-
-3. **Configure build settings**:
-   - Root directory: `server`
-   - Build command: `pnpm build`
-   - Start command: `pnpm start`
-
-4. **Set environment variables**:
-   ```env
-   PORT=5001
-   SUPABASE_URL=your_supabase_url
-   SUPABASE_ANON_KEY=your_supabase_anon_key
-   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-   OPENAI_API_KEY=your_openai_key
-   GOOGLE_MAPS_API_KEY=your_google_maps_key
-   NODE_ENV=production
-   ```
-
-5. **Deploy**: Railway will auto-deploy on git push
-
-### Option 2: Render
-
-1. **Create Render account** at [render.com](https://render.com)
-
-2. **Create new Web Service**:
-   - Connect your GitHub repository
-   - Root directory: `server`
-   - Build command: `pnpm install && pnpm build`
-   - Start command: `pnpm start`
-
-3. **Set environment variables** (same as Railway)
-
-### Option 3: Vercel
-
-1. **Install Vercel CLI**:
-   ```bash
-   npm i -g vercel
-   ```
-
-2. **Deploy from server directory**:
-   ```bash
-   cd server
-   vercel
-   ```
-
-3. **Configure vercel.json**:
-   ```json
-   {
-     "version": 2,
-     "builds": [
-       {
-         "src": "dist/app.js",
-         "use": "@vercel/node"
-       }
-     ],
-     "routes": [
-       {
-         "src": "/(.*)",
-         "dest": "dist/app.js"
-       }
-     ]
-   }
-   ```
-
-## 🔧 Environment Configuration
-
-### Frontend Environment Variables
-
-Update your frontend environment files with production URLs:
-
-**client/shell/.env.local** (for production):
-```env
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_BACKEND_URL=https://your-backend-url.railway.app
-```
-
-**Note**: You may also need to update environment files for other micro frontends if they make direct API calls.
-
-### CORS Configuration
-
-Update your backend CORS settings for production:
-
-```typescript
-// server/src/app.ts
-app.use(cors({
-  origin: [
-    'https://shell-abc123.zephyr-cloud.io', // Your shell app URL
-    'http://localhost:2000', // Keep for local development
-  ],
-  credentials: true
-}));
-```
-
-## 🔄 Continuous Deployment
-
-### Automatic Deployments
-
-Both Zephyr Cloud and most backend platforms support automatic deployments:
-
-1. **Zephyr Cloud**: Automatically deploys on `pnpm build` (integrates with your build process)
-2. **Railway/Render**: Auto-deploy on git push to main branch
-3. **Vercel**: Auto-deploy on git push
-
-### Deployment Workflow
-
-Recommended deployment order:
-1. Deploy backend first (Railway/Render/Vercel)
-2. Update frontend environment variables with backend URL
-3. Deploy micro frontends with Zephyr Cloud
-4. Update shell app with production remote URLs
-5. Final shell app deployment
-
-### Manual Deployments
-
-For manual deployments:
-
-```bash
-# Frontend
-cd client
-pnpm build
-
-# Backend (if using Vercel CLI)
-cd server
-vercel --prod
-```
-
-## 🧪 Testing Deployment
-
-### Pre-deployment Checklist
-
-- [ ] All environment variables set correctly
-- [ ] CORS configured for production URLs
-- [ ] Database migrations applied
-- [ ] API endpoints accessible
-- [ ] All micro frontends build successfully
-
-### Post-deployment Testing
-
-1. **Test shell app**: Visit your Zephyr shell URL
-2. **Test navigation**: Ensure all micro frontend routes work
-3. **Test API calls**: Check browser network tab for successful API calls
-4. **Test authentication**: Verify Supabase auth works in production
-5. **Test real-time features**: Ensure WebSocket connections work
-
-## 🔍 Monitoring & Debugging
-
-### Zephyr Cloud Dashboard
-
-- Visit [zephyr-cloud.io](https://zephyr-cloud.io) dashboard
-- Monitor deployment status
-- View build logs
-- Manage rollbacks
-
-### Backend Monitoring
-
-Most platforms provide:
-- Application logs
-- Performance metrics
-- Error tracking
-- Uptime monitoring
-
-### Common Issues
-
-1. **CORS errors**: Update backend CORS configuration
-2. **Environment variables**: Verify all required vars are set
-3. **Module Federation errors**: Check browser console for loading issues
-4. **API connection**: Verify backend URL in frontend env vars
-
-## 📈 Scaling Considerations
-
-### Frontend Scaling
-
-- Zephyr Cloud provides global CDN automatically
-- Each micro frontend scales independently
-- Consider implementing lazy loading for better performance
-
-### Backend Scaling
-
-- Most platforms offer auto-scaling
-- Consider database connection pooling
-- Implement caching for frequently accessed data
-- Monitor API response times
-
-## 🔐 Security Best Practices
-
-1. **Environment Variables**: Never commit secrets to git
-2. **CORS**: Restrict to specific domains in production
-3. **API Keys**: Use environment-specific keys
-4. **HTTPS**: Ensure all connections use HTTPS
-5. **Database**: Use connection strings with SSL
-
-## 📚 Additional Resources
-
-- [Zephyr Cloud Documentation](https://docs.zephyr-cloud.io)
-- [Module Federation Deployment Guide](https://module-federation.io/guide/deployment/)
-- [Railway Documentation](https://docs.railway.app)
-- [Render Documentation](https://render.com/docs)
-- [Vercel Documentation](https://vercel.com/docs)
-
-## 🆘 Troubleshooting
-
-### Common Deployment Issues
-
-1. **Build failures**: Check Node.js version compatibility
-2. **Module not found**: Verify all dependencies are in package.json
-3. **Environment variables**: Double-check variable names and values
-4. **Network errors**: Verify API URLs and CORS settings
-
-### Getting Help
-
-- Check platform-specific documentation
-- Review build logs for specific error messages
-- Test locally with production environment variables
-- Use browser developer tools to debug frontend issues
+These change every build. The goal is to get a stable `tripweave.app` URL for production (needed for Google OAuth whitelisting).
 
 ---
 
-**Next Steps**: After successful deployment, consider setting up monitoring, analytics, and automated testing for your production application.
+## Step-by-Step: Get tripweave.app Working
+
+### Step 1: Create a Free Cloudflare Account (~2 min)
+
+Zephyr requires a cloud provider integration for custom domains. Cloudflare is the easiest and free.
+
+1. Go to [dash.cloudflare.com](https://dash.cloudflare.com) and sign up
+2. Click **Add a Site** → enter `tripweave.app`
+3. Select the **Free** plan
+4. Cloudflare will scan existing DNS records — confirm them
+5. Cloudflare gives you two nameservers (e.g. `aria.ns.cloudflare.com`, `duke.ns.cloudflare.com`) — copy these
+
+### Step 2: Point Porkbun to Cloudflare (~2 min + propagation wait)
+
+1. Log in to [Porkbun](https://porkbun.com)
+2. Find `tripweave.app` → **Manage** → **Nameservers**
+3. Replace the default Porkbun nameservers with the two Cloudflare nameservers
+4. Save
+
+Propagation takes 5 min to 24 hours. Cloudflare emails you when it's active. You can continue with the next steps while waiting.
+
+### Step 3: Add DNS Records in Cloudflare (~1 min)
+
+Once Cloudflare is managing your domain:
+
+1. Go to Cloudflare → `tripweave.app` → **DNS** → **Records**
+2. Add a wildcard CNAME:
+
+   | Type  | Name | Content              | Proxy Status | TTL  |
+   |-------|------|----------------------|--------------|------|
+   | CNAME | `*`  | `ze.zephyrcloud.app` | Proxied ✅   | Auto |
+
+This routes Zephyr's edge URLs through your domain. The per-build URLs (`*.ze.tripweave.app`) won't have SSL on the free plan — that's fine, you don't need them. Only the production environment URL matters.
+
+### Step 4: Get Cloudflare Credentials (~3 min)
+
+**Zone ID:**
+1. Cloudflare → `tripweave.app` → **Overview** tab
+2. Right sidebar → **API** section → copy **Zone ID**
+
+**API Token:**
+1. Near Zone ID, click **Get your API token**
+2. **Create Custom Token** → **Get started**
+3. Name: `zephyr-tripweave`
+4. Permissions:
+
+   | Resource | Type               | Permission |
+   |----------|--------------------|------------|
+   | Account  | Worker KV Storage  | Edit       |
+   | Account  | Worker Scripts     | Edit       |
+   | Account  | Cloudflare Pages   | Edit       |
+   | Zone     | Worker Routes      | Edit       |
+
+5. Zone Resources → **Include** → **Specific zone** → `tripweave.app`
+6. **Continue to summary** → **Create Token** → copy it
+
+### Step 5: Connect Cloudflare in Zephyr Dashboard (~2 min)
+
+1. Go to [app.zephyr-cloud.io](https://app.zephyr-cloud.io)
+2. Select your org → **Settings** → **Deployment Integration**
+3. Under **Available**, find **Cloudflare** → **Add integration**
+4. Fill in:
+
+   | Field                      | Value                          |
+   |----------------------------|--------------------------------|
+   | Integration Name           | `tripweave-cf`                 |
+   | Integration Display Name   | `TripWeave Cloudflare`         |
+   | Delimiter                  | `-`                            |
+   | API Token                  | (from step 4)                  |
+   | Zone ID                    | (from step 4)                  |
+   | Cloudflare Project Name    | `tripweave`                    |
+   | Set as Default             | ✅ Yes                         |
+
+5. Save
+
+This auto-creates Workers, KV namespaces, and routes on your Cloudflare account.
+
+### Step 6: Redeploy to Zephyr (~2 min)
+
+```bash
+cd client
+pnpm build:zephyr
+```
+
+Your builds now deploy through the Cloudflare integration. The per-build URLs will be on `*.zephyrcloud.app` still (since the `*.ze.tripweave.app` wildcard SSL isn't set up — and you don't need it).
+
+### Step 7: Create a Production Tag in Zephyr Dashboard (~2 min)
+
+1. Go to Zephyr Dashboard → your org → `travel-app` project → `shell` application
+2. Go to **Tags** → create a new tag called `production`
+3. Set condition: **branch is `main`**
+4. Save
+
+This tag always points to the latest build from `main`.
+
+### Step 8: Create a Production Environment with Custom Domain (~3 min)
+
+1. In the same `shell` application → **Environments**
+2. Create environment: `production`
+3. Link it to the `production` tag
+4. Add custom domain: `tripweave.app`
+5. Save
+
+### Step 9: Add DNS Record for tripweave.app (~1 min)
+
+Back in Cloudflare DNS, add a record pointing `tripweave.app` to the Zephyr environment. The exact record depends on what Zephyr tells you when you add the custom domain — it'll likely be a CNAME pointing to a Zephyr edge URL. Follow whatever Zephyr shows in the environment settings.
+
+### Step 10: Update Google OAuth (~1 min)
+
+In [Google Cloud Console](https://console.cloud.google.com) → APIs & Services → Credentials → your OAuth client:
+
+1. Add to **Authorized JavaScript origins**: `https://tripweave.app`
+2. Add to **Authorized redirect URIs**: `https://tripweave.app` (and any callback paths your auth flow uses)
+3. Save
+
+### Step 11: Update Supabase Auth Settings (~1 min)
+
+In [Supabase Dashboard](https://supabase.com/dashboard) → your project → Authentication → URL Configuration:
+
+1. Set **Site URL** to `https://tripweave.app`
+2. Add `https://tripweave.app/**` to **Redirect URLs**
+3. Save
+
+---
+
+## How Zephyr Works in This Project
+
+### Plugin Configuration
+
+Each Rsbuild config includes Zephyr conditionally via `USE_ZEPHYR`:
+
+```typescript
+import { withZephyr } from "zephyr-rsbuild-plugin";
+const useZephyr = process.env.USE_ZEPHYR === "true";
+
+export default defineConfig({
+  plugins: [
+    pluginReact(),
+    pluginModuleFederation({ /* ... */ }),
+    ...(useZephyr ? [withZephyr()] : []),
+  ],
+});
+```
+
+- `pnpm dev` → Zephyr off, remotes from localhost
+- `pnpm build:zephyr` → Zephyr on, deploys to edge
+
+### Build Order
+
+Remotes must build before the shell:
+```
+mf_pretrip → mf_itinerary → mf_duringtrip → shell
+```
+
+The `build` script in `client/package.json` handles this.
+
+### Zephyr Dependencies (Shell)
+
+`client/shell/package.json` maps remote aliases to package names:
+```json
+{
+  "zephyr:dependencies": {
+    "pretrip_main": "mf_pretrip@*",
+    "itinerary_main": "mf_itinerary@*",
+    "duringtrip_main": "mf_duringtrip@*"
+  }
+}
+```
+
+### Config Reference
+
+| App         | Package Name    | MF Name         | Port (dev) |
+|-------------|-----------------|-----------------|------------|
+| Shell       | `shell`         | `shell`         | 2000       |
+| Pre-trip    | `mf_pretrip`    | `mf_pretrip`    | 3001       |
+| Itinerary   | `mf_itinerary`  | `mf_itinerary`  | 3002       |
+| During Trip | `mf_duringtrip` | `mf_duringtrip` | 3003       |
+
+---
+
+## Deploying
+
+### Deploy Everything
+
+```bash
+cd client
+pnpm build:zephyr
+```
+
+### Deploy a Single MFE
+
+```bash
+cd client
+USE_ZEPHYR=true pnpm --filter=mf_pretrip build
+USE_ZEPHYR=true pnpm --filter=shell build   # rebuild shell to pick up new remote
+```
+
+### Deploy to Production Environment
+
+```bash
+cd client
+ZE_ENV=production USE_ZEPHYR=true pnpm build
+```
+
+Requires a tag with condition `environment is production` and an environment linked to it.
+
+---
+
+## Backend (Render)
+
+Deployed at `https://trip-weave-jlop.onrender.com`.
+
+### Environment Variables
+
+```env
+PORT=5001
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+OPENAI_API_KEY=your_openai_key
+GOOGLE_MAPS_PLATFORM_API_KEY=your_google_maps_key
+NODE_ENV=production
+```
+
+### Setup
+
+1. Create a **Web Service** on [render.com](https://render.com)
+2. Connect GitHub repo
+3. Root directory: `server`
+4. Build: `pnpm install && pnpm build`
+5. Start: `pnpm start`
+6. Set env vars above
+7. Auto-deploys on push to `main`
+
+### CORS
+
+Update `server/src/app.ts` for production:
+```typescript
+app.use(cors({
+  origin: [
+    "https://tripweave.app",
+    /\.zephyrcloud\.app$/,
+    "http://localhost:2000",
+    "http://localhost:3001",
+  ],
+}));
+```
+
+---
+
+## CI/CD with GitHub Actions (Optional)
+
+### Generate Server Token
+
+Zephyr Dashboard → Org Settings → **Server Tokens** → Generate
+
+### GitHub Secrets
+
+| Secret              | Value                    |
+|---------------------|--------------------------|
+| `ZEPHYR_AUTH_TOKEN` | Zephyr server token      |
+| `ZE_USER_EMAIL`     | Deploying user's email   |
+
+### Workflow: `.github/workflows/deploy-frontend.yml`
+
+```yaml
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [main]
+    paths: ['client/**']
+
+env:
+  ZE_SERVER_TOKEN: ${{ secrets.ZEPHYR_AUTH_TOKEN }}
+  ZE_USER_EMAIL: ${{ secrets.ZE_USER_EMAIL }}
+  USE_ZEPHYR: "true"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install
+        working-directory: client
+      - run: pnpm build
+        working-directory: client
+```
+
+---
+
+## Troubleshooting
+
+### Remote Resolution Errors (ZE40003)
+Remote hasn't been built yet. Fix: `cd client && pnpm build:zephyr` (builds all remotes then shell).
+
+### Authentication Errors
+Token expired. Fix: `rm -rf ~/.zephyr` then rebuild.
+
+### CORS Errors
+Check backend allows `https://tripweave.app` and frontend `.env.local` points to production backend URL.
+
+### Cloudflare Case Sensitivity
+Keep all package names lowercase (they already are: `shell`, `mf_pretrip`, `mf_itinerary`, `mf_duringtrip`).
+
+### Debug Logging
+```bash
+cd client
+DEBUG='zephyr:*' USE_ZEPHYR=true pnpm build
+```
+
+---
+
+## Quick Reference
+
+| Task                      | Command                                                      |
+|---------------------------|--------------------------------------------------------------|
+| Local dev                 | `pnpm dev` (from root)                                      |
+| Deploy frontend           | `cd client && pnpm build:zephyr`                             |
+| Deploy single MFE         | `cd client && USE_ZEPHYR=true pnpm --filter=mf_pretrip build` |
+| Re-authenticate Zephyr    | `rm -rf ~/.zephyr` then rebuild                              |
+| Debug build               | `cd client && DEBUG='zephyr:*' USE_ZEPHYR=true pnpm build`  |
+
+## Dashboards
+
+| Service    | URL                                                    |
+|------------|--------------------------------------------------------|
+| Zephyr     | [app.zephyr-cloud.io](https://app.zephyr-cloud.io)    |
+| Render     | [dashboard.render.com](https://dashboard.render.com)   |
+| Supabase   | [supabase.com/dashboard](https://supabase.com/dashboard)|
+| Cloudflare | [dash.cloudflare.com](https://dash.cloudflare.com)     |
+| Google OAuth | [console.cloud.google.com](https://console.cloud.google.com) |

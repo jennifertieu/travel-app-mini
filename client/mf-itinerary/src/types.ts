@@ -1,8 +1,11 @@
 export type TimeOfDay = "morning" | "afternoon" | "evening";
 
+/** Location from API can be a display string or an object (e.g. { lat, lng, name }). */
+export type ActivityLocation = string | { lat?: number; lng?: number; name?: string; address?: string };
+
 export interface Activity {
   name: string;
-  location: string;
+  location?: ActivityLocation;
   description?: string;
   time_of_day: TimeOfDay;
   duration_minutes: number;

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Plus, Crown, AlertCircle } from "lucide-react";
 import { useTripMembers } from "../hooks/useTripMembers";
 import { useModals } from "../contexts/ModalContext";
@@ -6,6 +7,47 @@ import { Button } from "./ui/button";
 interface TripMembersAvatarsProps {
   tripId: string;
   className?: string;
+}
+
+function MemberAvatar({
+  avatarUrl,
+  displayName,
+  isCreator,
+  className,
+  title,
+  onClick,
+}: {
+  avatarUrl: string | null;
+  displayName: string;
+  isCreator: boolean;
+  className: string;
+  title: string;
+  onClick: () => void;
+}) {
+  const [avatarError, setAvatarError] = useState(false);
+  const initials = displayName.charAt(0)?.toUpperCase() || "?";
+  const showImage = avatarUrl && !avatarError;
+
+  return (
+    <button
+      onClick={onClick}
+      className={className}
+      title={title}
+    >
+      {showImage ? (
+        <img
+          src={avatarUrl}
+          alt={displayName}
+          className="size-full object-cover"
+          onError={() => setAvatarError(true)}
+        />
+      ) : isCreator ? (
+        <Crown className="h-3 w-3" />
+      ) : (
+        initials
+      )}
+    </button>
+  );
 }
 
 /**
@@ -88,36 +130,25 @@ export function TripMembersAvatars({
       {/* Member avatars */}
       <div className="flex items-center -space-x-2">
         {visibleMembers.map((member) => {
-          const isCreator = member.is_creator;
+          const isCreator = member.is_creator ?? false;
           const displayName =
             member.member_profile?.display_name || "Anonymous";
-          const initials = displayName.charAt(0)?.toUpperCase() || "?";
-          const avatarUrl = member.member_profile?.avatar_url;
+          const avatarUrl = member.member_profile?.avatar_url ?? null;
 
           return (
-            <button
+            <MemberAvatar
               key={member.user_id}
-              onClick={handleClick}
+              avatarUrl={avatarUrl}
+              displayName={displayName}
+              isCreator={isCreator}
               className={`relative h-9 w-9 rounded-full border-2 border-background flex items-center justify-center text-xs font-medium transition-transform hover:scale-110 hover:z-10 overflow-hidden ${
                 isCreator
                   ? "bg-primary/10 text-primary"
                   : "bg-secondary text-secondary-foreground"
               }`}
               title={`${displayName} ${isCreator ? "(Owner)" : "(Collaborator)"}`}
-            >
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={displayName}
-                  className="w-full h-full rounded-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              ) : isCreator ? (
-                <Crown className="h-3 w-3" />
-              ) : (
-                initials
-              )}
-            </button>
+              onClick={handleClick}
+            />
           );
         })}
 

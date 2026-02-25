@@ -20,6 +20,7 @@ import { AnnotationList } from "./AnnotationList";
 import { useAllTripReactions } from "../../hooks/useAllTripReactions";
 import { useTripMembers } from "../../hooks/useTripMembers";
 import { useSaveIdea } from "../../hooks/useSaveIdea";
+import { useStartItineraryBuild } from "../../hooks/useStartItineraryBuild";
 import type { Database } from "@travel-app/shared-types";
 import type { Annotation } from "../../hooks/useRealtimeTrip";
 
@@ -85,6 +86,7 @@ export function IdeaSidebar({
   onOpenAddIdea,
 }: IdeaSidebarProps) {
   const { openModal } = useModals();
+  const { startBuild, isStarting } = useStartItineraryBuild();
   const [activeTab, setActiveTab] = useState<Tab>("explore");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -545,12 +547,13 @@ export function IdeaSidebar({
         )}
         <Button
           className="w-full bg-foreground hover:bg-foreground/90 text-background rounded-full h-11 text-sm font-medium"
+          disabled={!tripId || isStarting}
           onClick={() => {
-            /* TODO: wire up itinerary builder */
+            if (tripId) startBuild(tripId);
           }}
         >
           <Sparkles className="h-4 w-4 mr-2" />
-          Build Itinerary
+          {isStarting ? "Starting…" : "Build Itinerary"}
         </Button>
       </div>
     </div>

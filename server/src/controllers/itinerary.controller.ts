@@ -3,11 +3,16 @@ import { IAuthenticatedRequest } from "../types/interface.js";
 import { supabase } from "../config.js";
 import { aiItineraryBuilderAgent } from "../utils/aiItineraryBuilderAgent.js";
 
+const LOG_PREFIX = "[itinerary]";
+
 export const createItinerary = async (
   request: IAuthenticatedRequest,
   response: Response
 ) => {
   const { id: tripId } = request.params;
+  const userId = request.user?.id;
+
+  console.log(`${LOG_PREFIX} POST /itinerary/${tripId} (user: ${userId ?? "unknown"})`);
 
   try {
     const { data: trip, error: tripError } = await supabase
@@ -17,10 +22,13 @@ export const createItinerary = async (
       .single();
 
     if (tripError) {
+      console.log(`${LOG_PREFIX} Trip not found: ${tripId}`, tripError.message);
       return response.status(404).json({ error: tripError.message });
     }
+    console.log(`${LOG_PREFIX} Trip found: ${trip.destination ?? trip.id}, dates: ${trip.start_date} → ${trip.end_date}`);
 
     if (!trip.start_date || !trip.end_date) {
+      console.log(`${LOG_PREFIX} Rejected: missing start_date or end_date`);
       return response
         .status(400)
         .json({ error: "Trip must have both start_date and end_date" });
@@ -41,11 +49,13 @@ export const createItinerary = async (
       .from("trip_reel_ideas")
       .select()
       .eq("trip_id", tripId)
-      .eq("enrichment_status", "finished");
+      .eq("enrichment_status", "DONE");
 
     if (ideaError) {
+      console.log(`${LOG_PREFIX} Ideas fetch error:`, ideaError.message);
       return response.status(400).json({ error: ideaError.message });
     }
+    console.log(`${LOG_PREFIX} Ideas: ${tripIdeas?.length ?? 0} (enrichment_status=DONE)`);
 
     // Fetch all reactions for these ideas
     const ideaIds = tripIdeas.map((idea) => idea.id);
@@ -100,12 +110,14 @@ export const createItinerary = async (
 
     // Check if we have any ideas left after filtering
     if (filteredIdeas.length === 0) {
+      console.log(`${LOG_PREFIX} Rejected: no ideas passed vote filter (had ${tripIdeas.length} total)`);
       return response.status(400).json({
         error: "No suitable ideas found for itinerary generation",
         details:
           "All ideas were filtered out due to negative voting or lack of positive votes",
       });
     }
+    console.log(`${LOG_PREFIX} After filter: ${filteredIdeas.length} ideas (from ${tripIdeas.length})`);
 
     // Sort by fire votes, then down votes
     filteredIdeas.sort((ideaA, ideaB) => {
@@ -116,10 +128,12 @@ export const createItinerary = async (
     });
 
     // Pass filtered, ranked ideas to AI agent
+    console.log(`${LOG_PREFIX} Calling AI itinerary builder...`);
     const itinerary = await aiItineraryBuilderAgent({
       trip,
       tripIdeas: filteredIdeas,
     });
+    console.log(`${LOG_PREFIX} AI builder returned; saving to trip_itineraries...`);
 
     const { error: saveItineraryError } = await supabase
       .from("trip_itineraries")
@@ -129,19 +143,21 @@ export const createItinerary = async (
       });
 
     if (saveItineraryError) {
+      console.log(`${LOG_PREFIX} Save error:`, saveItineraryError.message);
       return response.status(500).json({
         error: "Failed to save itinerary",
         details: saveItineraryError.message,
       });
     }
 
+    console.log(`${LOG_PREFIX} Success: itinerary saved for trip ${trip.id}`);
     return response.json({
       success: true,
       tripId: trip.id,
       activitiesCount: filteredIdeas.length,
     });
   } catch (error: any) {
-    console.error("Itinerary creation error:", error);
+    console.error(`${LOG_PREFIX} Itinerary creation error:`, error);
     return response.status(500).json({
       error: "Failed to generate itinerary",
       details: error.message,

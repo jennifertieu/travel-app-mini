@@ -10,9 +10,9 @@ interface DayTabsProps {
 export function DayTabs({ days, activeDay, onSelectDay }: DayTabsProps) {
   return (
     <div className="flex gap-2 overflow-x-auto pb-2 px-4 scrollbar-hide">
-      {days.map((d) => (
+      {days.map((d, i) => (
         <button
-          key={d.day}
+          key={`day-${d.day}-${i}`}
           type="button"
           onClick={() => onSelectDay(d.day)}
           className={cn(

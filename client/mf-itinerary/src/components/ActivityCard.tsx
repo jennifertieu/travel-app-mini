@@ -1,6 +1,13 @@
 import { MapPin, Clock, Camera } from "lucide-react";
 import { cn, computeDisplayTime, formatDuration } from "../lib/utils";
-import type { Activity, TimeOfDay } from "../types";
+import type { Activity, ActivityLocation, TimeOfDay } from "../types";
+
+/** Location can be a string (display address) or an object from the API (e.g. { lat, lng, name }). */
+function formatLocation(location: ActivityLocation | undefined): string {
+  if (location == null) return "";
+  if (typeof location === "string") return location;
+  return location.name ?? location.address ?? "";
+}
 
 interface ActivityCardProps {
   activity: Activity;
@@ -57,7 +64,7 @@ export function ActivityCard({
           {activity.name}
         </h4>
         <p className="text-xs text-muted-foreground truncate mt-0.5">
-          {activity.location}
+          {formatLocation(activity.location)}
         </p>
         <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
           <Clock className="w-3 h-3" />

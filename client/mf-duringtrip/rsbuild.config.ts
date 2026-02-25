@@ -7,65 +7,53 @@ const useZephyr = process.env.USE_ZEPHYR === "true";
 
 export default defineConfig(() => {
   return {
-  plugins: [
-    pluginReact(),
-    pluginModuleFederation({
-      name: "mf_duringtrip",
-      filename: "remoteEntry.js",
-      exposes: {
-        "./App": "./src/App.tsx",
-      },
-      shared: {
-        react: {
-          singleton: true,
-          requiredVersion: "^19.0.0",
-          eager: false,
-          strictVersion: false,
+    plugins: [
+      pluginReact(),
+      pluginModuleFederation({
+        name: "mf_duringtrip",
+        filename: "remoteEntry.js",
+        exposes: {
+          "./App": "./src/App.tsx",
         },
-        "react-dom": {
-          singleton: true,
-          requiredVersion: "^19.0.0",
-          eager: false,
-          strictVersion: false,
+        shared: {
+          react: {
+            singleton: true,
+            requiredVersion: "^19.0.0",
+            eager: false,
+            strictVersion: false,
+          },
+          "react-dom": {
+            singleton: true,
+            requiredVersion: "^19.0.0",
+            eager: false,
+            strictVersion: false,
+          },
         },
+        dts: false,
+        dev: {
+          disableDts: true,
+        },
+      }),
+      ...(useZephyr ? [withZephyr()] : []),
+    ],
+    server: {
+      port: 3003,
+    },
+    html: {
+      title: "During Trip MFE",
+    },
+    output: {
+      assetPrefix: "auto",
+    },
+    resolve: {
+      alias: {
+        "@": "./src",
       },
-      dts: false,
-      dev: {
-        disableDts: true,
+    },
+    source: {
+      define: {
+        "process.env.DISABLE_DTS": JSON.stringify("true"),
       },
-    }),
-    ...(useZephyr ? [withZephyr()] : []),
-  ],
-  server: {
-    port: 3003,
-  },
-  html: {
-    title: "During Trip MFE",
-  },
-  output: {
-    assetPrefix: "auto",
-  },
-  resolve: {
-    alias: {
-      "@": "./src",
     },
-  },
-  source: {
-    define: {
-      "process.env.DISABLE_DTS": JSON.stringify("true"),
-    },
-  },
-  tools: {
-    rspack: async (
-      config,
-      { addRules, prependPlugins, appendPlugins, mergeConfig },
-    ) => {
-      if (process.env.USE_ZEPHYR === "true") {
-        const zephyrConfig = await withZephyr()(config);
-        return zephyrConfig;
-      }
-      return config;
-    },
-  },
-};
+  };
 });

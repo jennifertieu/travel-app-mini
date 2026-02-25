@@ -8,7 +8,13 @@ export const ProfileMenu = () => {
   const { user, profile, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Reset avatar error when profile/avatar_url changes
+  useEffect(() => {
+    setAvatarError(false);
+  }, [profile?.avatar_url]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -158,7 +164,7 @@ export const ProfileMenu = () => {
           }}
         >
           {/* Avatar */}
-          {profile?.avatar_url ? (
+          {profile?.avatar_url && !avatarError ? (
             <img
               src={profile.avatar_url}
               alt={displayName}
@@ -168,6 +174,7 @@ export const ProfileMenu = () => {
                 borderRadius: "50%",
                 objectFit: "cover",
               }}
+              onError={() => setAvatarError(true)}
             />
           ) : (
             <div
