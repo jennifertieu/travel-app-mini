@@ -10,7 +10,8 @@ import { BuildingState } from '../components/itinerary/BuildingState';
 import { EmptyState } from '../components/itinerary/EmptyState';
 import { ActivityDetailModal } from '../components/itinerary/ActivityDetailModal';
 import { MobileItinerarySheet } from '../components/itinerary/MobileItinerarySheet';
-import { VoiceAssistant } from '../components/voice-assistant';
+import { VoiceAssistantProvider } from '../contexts/VoiceAssistantContext';
+import { ChatPanel } from '../components/chat';
 import { MobileTabBar, type MobileTab } from '../components/MobileTabBar';
 import type { TripContext } from '../types/voice';
 import type { Activity, ItineraryData } from '../types/itinerary';
@@ -153,16 +154,19 @@ export function ActiveTripView() {
       {!isLoading && !itinerary && !isBuilding && <EmptyState />}
 
       {itineraryData && (
-        <>
-          {/* Desktop: 50/50 split */}
+        <VoiceAssistantProvider initialTripContext={tripContext}>
+          {/* Desktop: 3-column layout — chat | itinerary | map */}
           <div className="hidden md:flex flex-1 min-h-0">
-            <div className="w-1/2 overflow-y-auto">
+            <div className="w-[380px] border-r flex flex-col shrink-0">
+              <ChatPanel />
+            </div>
+            <div className="flex-1 overflow-y-auto">
               <ItineraryPanel
                 data={itineraryData}
                 onOpenActivity={setSelectedActivity}
               />
             </div>
-            <div className="w-1/2 relative">
+            <div className="flex-1 relative">
               <MapPanel
                 activities={allActivities}
                 annotations={annotations}
@@ -208,11 +212,7 @@ export function ActiveTripView() {
             {/* Ask AI tab */}
             {activeTab === 'ask-ai' && (
               <div className="flex-1 min-h-0">
-                <VoiceAssistant
-                  tripContext={tripContext}
-                  autoExpand={true}
-                  hideButton={true}
-                />
+                <ChatPanel onClose={() => setActiveTab('map')} />
               </div>
             )}
 
@@ -227,7 +227,7 @@ export function ActiveTripView() {
 
             <MobileTabBar activeTab={activeTab} onChangeTab={setActiveTab} />
           </div>
-        </>
+        </VoiceAssistantProvider>
       )}
 
       {/* Fallback: show raw JSON if data doesn't match expected shape */}
@@ -241,11 +241,6 @@ export function ActiveTripView() {
           </pre>
         </div>
       )}
-
-      {/* Voice assistant floating overlay — desktop only */}
-      <div className="hidden md:block">
-        <VoiceAssistant tripContext={tripContext} />
-      </div>
     </div>
   );
 }

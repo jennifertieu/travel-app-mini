@@ -254,6 +254,25 @@ export function useOpenAIRealtime({
     sendEvent({ type: 'input_audio_buffer.clear' });
   }, [sendEvent]);
 
+  // Send a text message to the API
+  const sendTextMessage = useCallback(
+    (text: string) => {
+      sendEvent({
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text }],
+        },
+      });
+      sendEvent({
+        type: 'response.create',
+        response: { modalities: ['text'] },
+      });
+    },
+    [sendEvent]
+  );
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -269,6 +288,7 @@ export function useOpenAIRealtime({
     sendAudio,
     commitAudio,
     cancelResponse,
+    sendTextMessage,
   };
 }
 

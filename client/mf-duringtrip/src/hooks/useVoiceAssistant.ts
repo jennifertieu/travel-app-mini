@@ -19,6 +19,7 @@ export function useVoiceAssistant(): UseVoiceAssistantReturn {
     appendTranscript,
     finalizeAssistantMessage,
     clearConversation,
+    addUserMessage,
     expand,
     collapse,
     toggleTranscript,
@@ -79,6 +80,7 @@ export function useVoiceAssistant(): UseVoiceAssistantReturn {
     sendAudio,
     commitAudio,
     cancelResponse,
+    sendTextMessage: realtimeSendText,
   } = useOpenAIRealtime({
     tripContext: tripContext || undefined,
     tools: allTools,
@@ -143,6 +145,23 @@ export function useVoiceAssistant(): UseVoiceAssistantReturn {
     commitAudio();
   }, [state, stopCapture, commitAudio, setState]);
 
+  // Send a text message
+  const sendTextMessage = useCallback(
+    async (text: string) => {
+      if (!text.trim()) return;
+
+      // Ensure connected
+      if (!isConnected && !isConnecting) {
+        await connect();
+      }
+
+      addUserMessage(text);
+      realtimeSendText(text);
+      setState('processing');
+    },
+    [isConnected, isConnecting, connect, addUserMessage, realtimeSendText, setState]
+  );
+
   // Interrupt AI response
   const interrupt = useCallback(() => {
     if (state === 'speaking' || state === 'streaming') {
@@ -192,6 +211,7 @@ export function useVoiceAssistant(): UseVoiceAssistantReturn {
     startListening,
     stopListening,
     interrupt,
+    sendTextMessage,
     toggleTranscript,
     clearError,
   };

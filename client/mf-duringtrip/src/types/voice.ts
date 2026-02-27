@@ -77,11 +77,17 @@ export interface FunctionCallOutput {
   output: string;
 }
 
-export interface ConversationItem {
-  type: 'function_call_output';
-  call_id: string;
-  output: string;
-}
+export type ConversationItem =
+  | {
+      type: 'function_call_output';
+      call_id: string;
+      output: string;
+    }
+  | {
+      type: 'message';
+      role: 'user';
+      content: [{ type: 'input_text'; text: string }];
+    };
 
 export interface FunctionCall {
   name: string;
@@ -131,6 +137,7 @@ export interface UseVoiceAssistantReturn {
   interrupt: () => void;
   toggleTranscript: () => void;
   clearError: () => void;
+  sendTextMessage: (text: string) => void;
 
   // Context
   tripContext: TripContext | null;
@@ -187,6 +194,7 @@ export interface UseOpenAIRealtimeReturn {
   sendAudio: (audioData: string) => void;
   commitAudio: () => void;
   cancelResponse: () => void;
+  sendTextMessage: (text: string) => void;
 }
 
 // Avatar expression types for playful animations
