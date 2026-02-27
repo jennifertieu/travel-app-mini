@@ -2,6 +2,7 @@ import express from "express";
 import {
   searchNearbyPlaces,
   getPlaceDetails,
+  getActivityDetails,
 } from "../controllers/places.controller.js";
 
 const router = express.Router();
@@ -11,5 +12,8 @@ router.post("/search", searchNearbyPlaces);
 
 // POST /places/details - Get detailed info about a specific place
 router.post("/details", getPlaceDetails);
+
+// GET /places/activity-details - Get enriched photo + description for an activity
+router.get("/activity-details", getActivityDetails);
 
 export default router;

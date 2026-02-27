@@ -4,6 +4,84 @@ import {
   getPlaceDetails as getPlaceDetailsUtil,
 } from "../utils/placesSearch.js";
 
+/**
+ * Get enriched photo and editorial description for an activity by name + optional coords
+ * GET /places/activity-details?name=...&lat=...&lng=...
+ */
+export const getActivityDetails = async (
+  request: Request,
+  response: Response
+) => {
+  const { name, lat, lng } = request.query as {
+    name?: string;
+    lat?: string;
+    lng?: string;
+  };
+
+  if (!name) {
+    return response.status(400).json({ error: "name is required" });
+  }
+
+  const apiKey = process.env.GOOGLE_MAPS_PLATFORM_API_KEY;
+  if (!apiKey) {
+    return response.json({ photoUrl: null, description: null });
+  }
+
+  try {
+    // Step A: Text Search to get place_id
+    const searchParams = new URLSearchParams({
+      query: name,
+      key: apiKey,
+    });
+    if (lat && lng) {
+      searchParams.set("location", `${lat},${lng}`);
+      searchParams.set("radius", "2000");
+    }
+
+    const searchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?${searchParams}`;
+    const searchRes = await fetch(searchUrl);
+    const searchData = await searchRes.json();
+
+    if (
+      searchData.status !== "OK" ||
+      !searchData.results?.length
+    ) {
+      return response.json({ photoUrl: null, description: null });
+    }
+
+    const placeId = searchData.results[0].place_id as string;
+
+    // Step B: Place Details for editorial_summary and photos
+    const detailsParams = new URLSearchParams({
+      place_id: placeId,
+      fields: "editorial_summary,photos",
+      key: apiKey,
+    });
+
+    const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?${detailsParams}`;
+    const detailsRes = await fetch(detailsUrl);
+    const detailsData = await detailsRes.json();
+
+    if (detailsData.status !== "OK") {
+      return response.json({ photoUrl: null, description: null });
+    }
+
+    const place = detailsData.result;
+
+    const photoRef = place.photos?.[0]?.photo_reference as string | undefined;
+    const photoUrl = photoRef
+      ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photoRef}&key=${apiKey}`
+      : null;
+
+    const description =
+      (place.editorial_summary?.overview as string | undefined) ?? null;
+
+    return response.json({ photoUrl, description });
+  } catch {
+    return response.json({ photoUrl: null, description: null });
+  }
+};
+
 interface SearchNearbyRequest {
   latitude: number;
   longitude: number;

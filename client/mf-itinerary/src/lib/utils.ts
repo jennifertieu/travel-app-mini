@@ -20,8 +20,8 @@ export function computeDisplayTime(
   durationMinutes: number,
 ): { startTime: string; endTime: string } {
   const baseHour = SECTION_START_HOURS[timeOfDay];
-  const startTotalMinutes = baseHour * 60 + precedingMinutes;
-  const endTotalMinutes = startTotalMinutes + durationMinutes;
+  const startTotalMinutes = baseHour * 60 + (precedingMinutes || 0);
+  const endTotalMinutes = startTotalMinutes + (durationMinutes || 60);
 
   return {
     startTime: formatMinutesToTime(startTotalMinutes),
@@ -45,13 +45,34 @@ export function formatDayDate(dateStr: string): string {
   }
 }
 
-export function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes}min`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m > 0 ? `${h}h ${m}min` : `${h}h`;
+/**
+ * Convert a duration_bucket string (e.g. "1-2h", "30min", "2h") into minutes.
+ * Falls back to 60 if the format is unrecognised.
+ */
+export function parseDurationBucket(bucket: string | undefined | null): number {
+  if (!bucket) return 60;
+  const rangeMatch = bucket.match(
+    /^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*h/i,
+  );
+  if (rangeMatch) {
+    const low = parseFloat(rangeMatch[1]);
+    const high = parseFloat(rangeMatch[2]);
+    return Math.round(((low + high) / 2) * 60);
+  }
+  const hourMatch = bucket.match(/^(\d+(?:\.\d+)?)\s*h/i);
+  if (hourMatch) return Math.round(parseFloat(hourMatch[1]) * 60);
+  const minMatch = bucket.match(/^(\d+)\s*min/i);
+  if (minMatch) return parseInt(minMatch[1], 10);
+  return 60;
 }
 
+export function formatDuration(minutes: number): string {
+  const mins = minutes || 60;
+  if (mins < 60) return `${mins}min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h}h ${m}min` : `${h}h`;
+}
 export function groupActivitiesByTimeOfDay(
   activities: Activity[],
 ): Record<TimeOfDay, Activity[]> {

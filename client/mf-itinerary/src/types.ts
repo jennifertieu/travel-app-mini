@@ -9,6 +9,7 @@ export interface Activity {
   name: string;
   location?: ActivityLocation;
   description?: string;
+  summary?: string;
   time_of_day: TimeOfDay;
   duration_minutes: number;
   category?: string;
@@ -16,6 +17,11 @@ export interface Activity {
   image_url?: string;
   latitude?: number | null;
   longitude?: number | null;
+  // Populated from reel idea's Google Places match (pre-trip enrichment)
+  place?: {
+    photoUrl?: string;
+    photos?: string[];
+  };
 }
 
 export interface ItineraryDay {

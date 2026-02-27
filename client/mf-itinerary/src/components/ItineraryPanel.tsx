@@ -4,17 +4,19 @@ import { TimeOfDaySection } from "./TimeOfDaySection";
 import { TopToolbar } from "./TopToolbar";
 import { BottomBar } from "./BottomBar";
 import { groupActivitiesByTimeOfDay } from "../lib/utils";
-import type { ItineraryData, TimeOfDay } from "../types";
+import type { Activity, ItineraryData, TimeOfDay } from "../types";
 
 const TIME_OF_DAY_ORDER: TimeOfDay[] = ["morning", "afternoon", "evening"];
 
 interface ItineraryPanelProps {
   data: ItineraryData;
+  onOpenActivity: (activity: Activity) => void;
 }
 
-export function ItineraryPanel({ data }: ItineraryPanelProps) {
+export function ItineraryPanel({ data, onOpenActivity }: ItineraryPanelProps) {
   const [activeDay, setActiveDay] = useState(data.days[0]?.day ?? 1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   const currentDay = useMemo(
     () => data.days.find((d) => d.day === activeDay) ?? data.days[0],
@@ -63,6 +65,16 @@ export function ItineraryPanel({ data }: ItineraryPanelProps) {
     console.log("Delete selected:", [...selectedIds]);
   }, [selectedIds]);
 
+  const handleToggleSelectionMode = useCallback(() => {
+    setIsSelectionMode((prev) => {
+      if (prev) {
+        // Exiting selection mode — clear selections
+        setSelectedIds(new Set());
+      }
+      return !prev;
+    });
+  }, []);
+
   const handleUndo = useCallback(() => {
     // MVP no-op
     console.log("Undo");
@@ -97,6 +109,8 @@ export function ItineraryPanel({ data }: ItineraryPanelProps) {
       {/* Toolbar */}
       <TopToolbar
         selectedCount={selectedIds.size}
+        isSelectionMode={isSelectionMode}
+        onToggleSelectionMode={handleToggleSelectionMode}
         onSelectAll={handleSelectAll}
         onDelete={handleDelete}
       />
@@ -109,7 +123,9 @@ export function ItineraryPanel({ data }: ItineraryPanelProps) {
             timeOfDay={tod}
             activities={grouped[tod]}
             selectedIds={selectedIds}
+            isSelectionMode={isSelectionMode}
             onToggleSelect={handleToggleSelect}
+            onOpenActivity={onOpenActivity}
           />
         ))}
       </div>

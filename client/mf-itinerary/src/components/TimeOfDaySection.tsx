@@ -2,10 +2,7 @@ import { Sun, Sunset, Moon } from "lucide-react";
 import { ActivityCard } from "./ActivityCard";
 import type { Activity, TimeOfDay } from "../types";
 
-const SECTION_CONFIG: Record<
-  TimeOfDay,
-  { label: string; icon: typeof Sun }
-> = {
+const SECTION_CONFIG: Record<TimeOfDay, { label: string; icon: typeof Sun }> = {
   morning: { label: "Morning", icon: Sun },
   afternoon: { label: "Afternoon", icon: Sunset },
   evening: { label: "Evening", icon: Moon },
@@ -15,14 +12,18 @@ interface TimeOfDaySectionProps {
   timeOfDay: TimeOfDay;
   activities: Activity[];
   selectedIds: Set<string>;
+  isSelectionMode: boolean;
   onToggleSelect: (id: string) => void;
+  onOpenActivity: (activity: Activity) => void;
 }
 
 export function TimeOfDaySection({
   timeOfDay,
   activities,
   selectedIds,
+  isSelectionMode,
   onToggleSelect,
+  onOpenActivity,
 }: TimeOfDaySectionProps) {
   if (activities.length === 0) return null;
 
@@ -42,7 +43,7 @@ export function TimeOfDaySection({
         {activities.map((activity, idx) => {
           const activityId = `${timeOfDay}-${idx}-${activity.name}`;
           const currentPreceding = precedingMinutes;
-          precedingMinutes += activity.duration_minutes;
+          precedingMinutes += activity.duration_minutes ?? 60;
 
           return (
             <ActivityCard
@@ -52,7 +53,9 @@ export function TimeOfDaySection({
               indexInSection={idx}
               precedingMinutes={currentPreceding}
               isSelected={selectedIds.has(activityId)}
+              isSelectionMode={isSelectionMode}
               onToggleSelect={() => onToggleSelect(activityId)}
+              onOpen={() => onOpenActivity(activity)}
             />
           );
         })}
