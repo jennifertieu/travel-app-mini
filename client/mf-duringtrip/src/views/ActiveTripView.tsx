@@ -11,6 +11,7 @@ import { EmptyState } from '../components/itinerary/EmptyState';
 import { ActivityDetailModal } from '../components/itinerary/ActivityDetailModal';
 import { MobileItinerarySheet } from '../components/itinerary/MobileItinerarySheet';
 import { VoiceAssistant } from '../components/voice-assistant';
+import { MobileTabBar, type MobileTab } from '../components/MobileTabBar';
 import type { TripContext } from '../types/voice';
 import type { Activity, ItineraryData } from '../types/itinerary';
 
@@ -40,6 +41,7 @@ export function ActiveTripView() {
   const [isBuilding, setIsBuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  const [activeTab, setActiveTab] = useState<MobileTab>('map');
 
   // Minimal trip context for voice assistant
   const tripContext: TripContext = {
@@ -175,25 +177,55 @@ export function ActiveTripView() {
             </div>
           </div>
 
-          {/* Mobile: full-screen map + bottom sheet */}
-          <div className="flex flex-1 min-h-0 md:hidden relative">
-            <div className="w-full h-full">
-              <MapPanel
-                activities={allActivities}
-                annotations={annotations}
-              />
-            </div>
-            <MobileItinerarySheet
-              itineraryData={itineraryData}
-              onOpenActivity={setSelectedActivity}
-            />
-            {selectedActivity && (
+          {/* Mobile: tab-based layout — reserve space at bottom for tab bar (60px + pb-safe) */}
+          <div className="flex flex-col flex-1 min-h-0 md:hidden relative" style={{ paddingBottom: 'calc(60px + 1.25rem + env(safe-area-inset-bottom, 0px))' }}>
+            {/* Map tab */}
+            {activeTab === 'map' && (
+              <div className="flex-1 min-h-0 relative">
+                <div className="w-full h-full">
+                  <MapPanel
+                    activities={allActivities}
+                    annotations={annotations}
+                  />
+                </div>
+                <MobileItinerarySheet
+                  itineraryData={itineraryData}
+                  onOpenActivity={setSelectedActivity}
+                />
+              </div>
+            )}
+
+            {/* List tab */}
+            {activeTab === 'list' && (
+              <div className="flex-1 min-h-0 flex flex-col">
+                <ItineraryPanel
+                  data={itineraryData}
+                  onOpenActivity={setSelectedActivity}
+                />
+              </div>
+            )}
+
+            {/* Ask AI tab */}
+            {activeTab === 'ask-ai' && (
+              <div className="flex-1 min-h-0">
+                <VoiceAssistant
+                  tripContext={tripContext}
+                  autoExpand={true}
+                  hideButton={true}
+                />
+              </div>
+            )}
+
+            {/* Activity detail works on both map and list tabs */}
+            {selectedActivity && activeTab !== 'ask-ai' && (
               <ActivityDetailModal
                 activity={selectedActivity}
                 enrichment={enrichmentMap.get(selectedActivity.name) ?? null}
                 onClose={() => setSelectedActivity(null)}
               />
             )}
+
+            <MobileTabBar activeTab={activeTab} onChangeTab={setActiveTab} />
           </div>
         </>
       )}
@@ -210,8 +242,10 @@ export function ActiveTripView() {
         </div>
       )}
 
-      {/* Voice assistant floating overlay */}
-      <VoiceAssistant tripContext={tripContext} />
+      {/* Voice assistant floating overlay — desktop only */}
+      <div className="hidden md:block">
+        <VoiceAssistant tripContext={tripContext} />
+      </div>
     </div>
   );
 }

@@ -2,8 +2,8 @@ import { useRef, useState, useCallback, type ReactNode } from "react";
 import { ChevronUp } from "lucide-react";
 import { cn } from "../../lib/utils";
 
-const PEEK_HEIGHT = 300;
-const EXPANDED_HEIGHT_VH = 85;
+const PEEK_HEIGHT = 190;
+const EXPANDED_HEIGHT_VH = 93;
 
 interface MobileBottomSheetProps {
   peekContent: ReactNode;
@@ -17,9 +17,10 @@ export function MobileBottomSheet({ peekContent, expandedContent }: MobileBottom
   const startYRef = useRef(0);
   const currentTranslateRef = useRef(0);
 
+  const TAB_BAR_HEIGHT = 80; // 60px tabs + 20px (1.25rem) pb-safe base
   const expandedHeight =
     typeof window !== "undefined"
-      ? (window.innerHeight * EXPANDED_HEIGHT_VH) / 100
+      ? (window.innerHeight * EXPANDED_HEIGHT_VH) / 100 - TAB_BAR_HEIGHT
       : 600;
 
   const onPointerDown = useCallback(
@@ -67,11 +68,12 @@ export function MobileBottomSheet({ peekContent, expandedContent }: MobileBottom
   return (
     <div
       className={cn(
-        "fixed bottom-0 left-0 right-0 z-[1001] bg-background rounded-t-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.15)]",
+        "fixed left-0 right-0 z-[1001] bg-background rounded-t-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.15)]",
         !dragging && "transition-[height] duration-300 ease-out",
       )}
       style={{
         height: sheetHeight,
+        bottom: 'calc(60px + 1.25rem + env(safe-area-inset-bottom, 0px))',
         transform: dragging ? `translateY(${translateY}px)` : undefined,
         willChange: dragging ? "transform" : undefined,
       }}
@@ -96,8 +98,9 @@ export function MobileBottomSheet({ peekContent, expandedContent }: MobileBottom
       <div
         className={cn(
           "h-[calc(100%-44px)]",
-          expanded ? "overflow-y-auto" : "overflow-hidden",
+          expanded ? "overflow-y-auto overscroll-contain" : "overflow-hidden",
         )}
+        style={{ WebkitOverflowScrolling: "touch", touchAction: expanded ? "pan-y" : "none" }}
       >
         {peekContent}
         {expanded && (

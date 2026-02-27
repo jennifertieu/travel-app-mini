@@ -19,9 +19,10 @@ export function VoiceAssistantButton({
       aria-label="Open voice assistant"
       aria-expanded={isExpanded}
       className={cn(
-        // Position & layout
+        // Position & layout — hidden on mobile (tab bar replaces it)
         'fixed z-[1002]',
-        'bottom-[200px] md:bottom-6 left-1/2 -translate-x-1/2', // Above sheet on mobile, bottom on desktop
+        'hidden md:flex',
+        'bottom-6 left-1/2 -translate-x-1/2',
         'mb-safe', // Safe area for iOS
         // Size
         'w-18 h-18', // 72px (18 * 4)

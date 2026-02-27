@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { VoiceAssistantProvider } from '../../contexts/VoiceAssistantContext';
 import { useVoiceAssistant } from '../../hooks/useVoiceAssistant';
 import { VoiceAssistantButton } from './VoiceAssistantButton';
@@ -7,10 +7,14 @@ import type { TripContext } from '../../types/voice';
 
 interface VoiceAssistantProps {
   tripContext?: TripContext;
+  /** When true, auto-expand the panel (used by mobile tab bar) */
+  autoExpand?: boolean;
+  /** Hide the floating button (mobile uses tab bar instead) */
+  hideButton?: boolean;
 }
 
 // Inner component that uses the context
-function VoiceAssistantContent() {
+function VoiceAssistantContent({ autoExpand, hideButton }: { autoExpand?: boolean; hideButton?: boolean }) {
   const {
     state,
     isExpanded,
@@ -27,13 +31,23 @@ function VoiceAssistantContent() {
     toggleTranscript,
   } = useVoiceAssistant();
 
+  useEffect(() => {
+    if (autoExpand) {
+      expand();
+    } else if (autoExpand === false && isExpanded) {
+      collapse();
+    }
+  }, [autoExpand]);
+
   return (
     <>
       {/* Floating button */}
-      <VoiceAssistantButton
-        onClick={expand}
-        isExpanded={isExpanded}
-      />
+      {!hideButton && (
+        <VoiceAssistantButton
+          onClick={expand}
+          isExpanded={isExpanded}
+        />
+      )}
 
       {/* Expanded panel */}
       <VoiceAssistantPanel
@@ -55,10 +69,10 @@ function VoiceAssistantContent() {
 }
 
 // Main component with provider
-export function VoiceAssistant({ tripContext }: VoiceAssistantProps) {
+export function VoiceAssistant({ tripContext, autoExpand, hideButton }: VoiceAssistantProps) {
   return (
     <VoiceAssistantProvider initialTripContext={tripContext}>
-      <VoiceAssistantContent />
+      <VoiceAssistantContent autoExpand={autoExpand} hideButton={hideButton} />
     </VoiceAssistantProvider>
   );
 }
