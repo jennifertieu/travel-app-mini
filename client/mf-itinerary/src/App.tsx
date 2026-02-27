@@ -5,7 +5,11 @@ import { ItineraryPanel } from "./components/ItineraryPanel";
 import { MapPanel } from "./components/MapPanel";
 import { BuildingState } from "./components/BuildingState";
 import { EmptyState } from "./components/EmptyState";
+import { ChatPanel } from "./components/chat/ChatPanel";
+import { ChatToggleButton } from "./components/chat/ChatToggleButton";
 import { useAnnotations } from "./hooks/useAnnotations";
+import { useChat } from "./hooks/useChat";
+import { cn } from "./lib/utils";
 import type { ItineraryData } from "./types";
 
 type Itinerary = {
@@ -24,6 +28,7 @@ const getTripId = (): string | null => {
 const App = () => {
   const [tripId] = useState<string | null>(getTripId);
   const annotations = useAnnotations(tripId);
+  const { messages, isChatOpen, toggleChat, inputValue, setInputValue, handleSend } = useChat();
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isBuilding, setIsBuilding] = useState(false);
@@ -137,10 +142,25 @@ const App = () => {
 
       {itineraryData && (
         <div className="flex flex-1 min-h-0">
-          <div className="w-1/2 overflow-y-auto">
+          {/* Chat panel — slides in from the left when open */}
+          {isChatOpen && (
+            <div className="w-80 flex-shrink-0">
+              <ChatPanel
+                messages={messages}
+                inputValue={inputValue}
+                onInputChange={setInputValue}
+                onSend={handleSend}
+              />
+            </div>
+          )}
+
+          {/* Itinerary panel — relative for toggle button positioning */}
+          <div className={cn(isChatOpen ? "flex-1" : "w-1/2", "overflow-y-auto relative")}>
+            <ChatToggleButton isOpen={isChatOpen} onClick={toggleChat} />
             <ItineraryPanel data={itineraryData} />
           </div>
-          <div className="w-1/2">
+
+          <div className={isChatOpen ? "flex-1" : "w-1/2"}>
             <MapPanel
               activities={itineraryData.days.flatMap((d) => d.activities)}
               annotations={annotations}

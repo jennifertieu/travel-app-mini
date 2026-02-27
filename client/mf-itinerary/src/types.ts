@@ -29,3 +29,12 @@ export interface ItineraryData {
   destination?: string;
   days: ItineraryDay[];
 }
+
+export type ChatRole = "agent" | "user";
+
+export interface ChatMessage {
+  id: string;
+  role: ChatRole;
+  content: string;
+  timestamp: Date;
+}
