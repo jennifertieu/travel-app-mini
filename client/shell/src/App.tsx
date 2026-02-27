@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState, useRef, useEffect } from "react";
 import {
   createRouter,
   createRootRoute,
@@ -8,7 +8,7 @@ import {
   Outlet,
   useRouterState,
 } from "@tanstack/react-router";
-import { Globe, Calendar, Users, Settings } from "lucide-react";
+import { Globe, Calendar, Users, Settings, Menu, X } from "lucide-react";
 import { AuthProvider } from "./contexts/AuthContext";
 import { AuthNav } from "./components/AuthNav";
 import { AuthGuard } from "./components/AuthGuard";
@@ -104,58 +104,72 @@ const RootLayout = () => {
   const routerState = useRouterState();
   const isLandingPage = routerState.location.pathname === "/";
   const tripSummary = useTripSummary();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [routerState.location.pathname]);
+
+  // Close mobile menu on outside click
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [mobileMenuOpen]);
 
   if (isLandingPage) {
     return <Outlet />;
   }
 
+  const navLinkClass =
+    "no-underline px-2.5 py-1 rounded-md text-xs font-medium transition-colors text-gray-500 hover:text-gray-900 hover:bg-gray-100 [&.active]:text-teal-600 [&.active]:bg-teal-50";
+  const mobileNavLinkClass =
+    "no-underline block px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-gray-700 hover:text-gray-900 hover:bg-gray-100 [&.active]:text-teal-600 [&.active]:bg-teal-50";
+
   return (
     <div className="h-screen flex flex-col">
       <nav className="flex-shrink-0 relative z-[2000] border-b border-gray-200 bg-gray-50 px-4 py-2.5">
         <div className="flex items-center">
-          {/* Left: Logo, Trip switcher, then metadata pills */}
+          {/* Left: Logo + Trip switcher */}
           <Link to="/pretrip" className="flex items-center gap-2 no-underline shrink-0">
             <TripWeaveLogo />
-            <span className="text-base font-bold text-gray-900 tracking-tight">
+            <span className="text-base font-bold text-gray-900 tracking-tight hidden sm:inline">
               TripWeave
             </span>
           </Link>
-          <div className="ml-4 shrink-0">
+          <div className="ml-3 md:ml-4 shrink-0">
             <TripSwitcher />
           </div>
+
+          {/* Desktop: metadata pills */}
           {tripSummary && (
-            <div className="flex items-center gap-2 ml-6 shrink-0">
+            <div className="hidden md:flex items-center gap-2 ml-6 shrink-0">
               <TripMetadata summary={tripSummary} />
             </div>
           )}
 
-          {/* Right: Nav links + Auth */}
+          {/* Desktop: Nav links + trip actions + auth */}
           <div className="ml-auto flex items-center gap-4 shrink-0">
             <div className="hidden md:flex items-center gap-1">
-              <Link
-                to="/pretrip"
-                className="no-underline px-2.5 py-1 rounded-md text-xs font-medium transition-colors text-gray-500 hover:text-gray-900 hover:bg-gray-100 [&.active]:text-blue-600 [&.active]:bg-blue-50"
-                activeProps={{ className: "active" }}
-              >
+              <Link to="/pretrip" className={navLinkClass} activeProps={{ className: "active" }}>
                 Pre-Trip
               </Link>
-              <Link
-                to="/itinerary"
-                className="no-underline px-2.5 py-1 rounded-md text-xs font-medium transition-colors text-gray-500 hover:text-gray-900 hover:bg-gray-100 [&.active]:text-blue-600 [&.active]:bg-blue-50"
-                activeProps={{ className: "active" }}
-              >
+              <Link to="/itinerary" className={navLinkClass} activeProps={{ className: "active" }}>
                 Itinerary
               </Link>
-              <Link
-                to="/duringtrip"
-                className="no-underline px-2.5 py-1 rounded-md text-xs font-medium transition-colors text-gray-500 hover:text-gray-900 hover:bg-gray-100 [&.active]:text-blue-600 [&.active]:bg-blue-50"
-                activeProps={{ className: "active" }}
-              >
+              <Link to="/duringtrip" className={navLinkClass} activeProps={{ className: "active" }}>
                 During Trip
               </Link>
             </div>
             {tripSummary && (
-              <div className="flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-2">
                 <TripMemberAvatars tripId={tripSummary.id} />
                 <button
                   onClick={() =>
@@ -172,9 +186,82 @@ const RootLayout = () => {
                 </button>
               </div>
             )}
-            <AuthNav />
+            <div className="hidden md:block">
+              <AuthNav />
+            </div>
+
+            {/* Mobile: hamburger */}
+            <button
+              className="md:hidden p-1.5 rounded-md hover:bg-gray-200 transition-colors"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? (
+                <X size={20} className="text-gray-700" />
+              ) : (
+                <Menu size={20} className="text-gray-700" />
+              )}
+            </button>
           </div>
         </div>
+
+        {/* Mobile dropdown menu */}
+        {mobileMenuOpen && (
+          <div
+            ref={menuRef}
+            className="md:hidden absolute top-full left-0 right-0 bg-gray-50 border-b border-gray-200 shadow-lg"
+          >
+            <div className="px-4 py-3 space-y-1">
+              <Link to="/pretrip" className={mobileNavLinkClass} activeProps={{ className: "active" }}>
+                Pre-Trip
+              </Link>
+              <Link to="/itinerary" className={mobileNavLinkClass} activeProps={{ className: "active" }}>
+                Itinerary
+              </Link>
+              <Link to="/duringtrip" className={mobileNavLinkClass} activeProps={{ className: "active" }}>
+                During Trip
+              </Link>
+            </div>
+
+            {tripSummary && (
+              <div className="px-4 py-3 border-t border-gray-200 space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  <MetadataPill icon={Globe}>{tripSummary.destination}</MetadataPill>
+                  <MetadataPill icon={Calendar}>
+                    {tripSummary.startDate && tripSummary.endDate
+                      ? formatDateRange(tripSummary.startDate, tripSummary.endDate) ?? "Add dates"
+                      : "Add dates"}
+                  </MetadataPill>
+                  <MetadataPill icon={Users}>
+                    {tripSummary.memberCount}{" "}
+                    {tripSummary.memberCount === 1 ? "Traveler" : "Travelers"}
+                  </MetadataPill>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <TripMemberAvatars tripId={tripSummary.id} />
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      window.dispatchEvent(
+                        new CustomEvent("openTripModal", {
+                          detail: { modal: "tripSettings" },
+                        }),
+                      );
+                    }}
+                    className="p-1.5 rounded-md hover:bg-gray-200 transition-colors"
+                    title="Trip settings"
+                  >
+                    <Settings size={15} className="text-gray-500" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="px-4 py-3 border-t border-gray-200">
+              <AuthNav />
+            </div>
+          </div>
+        )}
       </nav>
       <main className="flex-1 overflow-hidden">
         <Outlet />

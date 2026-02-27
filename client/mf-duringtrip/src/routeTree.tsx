@@ -1,13 +1,11 @@
 import { createRouter, createRootRoute, createRoute, Outlet, createHashHistory } from '@tanstack/react-router';
-import { DuringtripHeader } from './components/DuringtripHeader';
 import { TripsListView } from './views/TripsListView';
 import { ActiveTripView } from './views/ActiveTripView';
 
-// Root layout with header
+// Root layout (shell provides the global nav)
 const rootRoute = createRootRoute({
   component: () => (
     <div className="bg-background" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <DuringtripHeader />
       <div style={{ flex: 1, overflow: 'hidden' }}>
         <Outlet />
       </div>
