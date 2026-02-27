@@ -8,17 +8,24 @@ const rootRoute = createRootRoute({
   component: () => (
     <div className="bg-background" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <DuringtripHeader />
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div style={{ flex: 1, overflow: 'hidden' }}>
         <Outlet />
       </div>
     </div>
   ),
 });
 
-// Home route - trips list
+// Home route - show itinerary directly (reads tripId from localStorage like mf-itinerary)
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
+  component: ActiveTripView,
+});
+
+// Trips list route (accessible if needed)
+const tripsListRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/trips',
   component: TripsListView,
 });
 
@@ -30,7 +37,7 @@ const tripRoute = createRoute({
 });
 
 // Build route tree
-const routeTree = rootRoute.addChildren([indexRoute, tripRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, tripsListRoute, tripRoute]);
 
 // Use hash history to avoid conflicts with HMR/dev server
 const hashHistory = createHashHistory();
