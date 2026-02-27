@@ -21,8 +21,9 @@ build/
 # Kiro files (AI assistant workspace files)
 .kiro/
 
-# Claude local settings file
+# Claude Code local settings file
 settings.local.json
+settings.json
 
 # OS
 .DS_Store
@@ -35,8 +36,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# MCP artifacts
+# Playwright MCP/CLI artifacts
 .playwright-mcp/
+.playwright-cli/
 
 # Misc
 *.zip
