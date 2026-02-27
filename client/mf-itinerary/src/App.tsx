@@ -34,7 +34,14 @@ const DEBUG =
 const App = () => {
   const [tripId] = useState<string | null>(getTripId);
   const annotations = useAnnotations(tripId);
-  const { messages, isChatOpen, toggleChat, inputValue, setInputValue, handleSend } = useChat();
+  const {
+    messages,
+    isChatOpen,
+    toggleChat,
+    inputValue,
+    setInputValue,
+    handleSend,
+  } = useChat();
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isBuilding, setIsBuilding] = useState(false);
@@ -232,9 +239,19 @@ const App = () => {
           )}
 
           {/* Itinerary panel — relative for toggle button positioning */}
-          <div className={cn(isChatOpen ? "flex-1" : "w-1/2", "overflow-y-auto relative")}>
+          <div
+            className={cn(
+              isChatOpen ? "flex-1" : "w-1/2",
+              "overflow-y-auto relative",
+            )}
+          >
             <ChatToggleButton isOpen={isChatOpen} onClick={toggleChat} />
-            <ItineraryPanel data={itineraryData} onOpenActivity={setSelectedActivity} />
+            <ItineraryPanel
+              data={itineraryData}
+              tripId={tripId}
+              itineraryRowId={itinerary!.id}
+              onOpenActivity={setSelectedActivity}
+            />
           </div>
 
           <div className={cn(isChatOpen ? "flex-1" : "w-1/2", "relative")}>

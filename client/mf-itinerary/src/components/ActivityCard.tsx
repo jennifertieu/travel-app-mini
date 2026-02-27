@@ -1,4 +1,4 @@
-import { MapPin, Clock, Camera } from "lucide-react";
+import { MapPin, Clock, Camera, Check } from "lucide-react";
 import { cn, computeDisplayTime, formatDuration } from "../lib/utils";
 import type { Activity, ActivityLocation, TimeOfDay } from "../types";
 
@@ -16,6 +16,7 @@ interface ActivityCardProps {
   precedingMinutes: number;
   isSelected: boolean;
   isSelectionMode: boolean;
+  animationClass?: string;
   onToggleSelect: () => void;
   onOpen: () => void;
 }
@@ -27,6 +28,7 @@ export function ActivityCard({
   precedingMinutes,
   isSelected,
   isSelectionMode,
+  animationClass,
   onToggleSelect,
   onOpen,
 }: ActivityCardProps) {
@@ -55,8 +57,25 @@ export function ActivityCard({
         isSelectionMode && isSelected
           ? "border-teal-500 ring-1 ring-teal-500"
           : "border-border",
+        animationClass,
       )}
     >
+      {/* Selection checkbox */}
+      {isSelectionMode && (
+        <div className="flex-shrink-0 flex items-center">
+          <div
+            className={cn(
+              "w-5 h-5 rounded border flex items-center justify-center transition-colors",
+              isSelected
+                ? "bg-teal-500 border-teal-500 text-white"
+                : "border-muted-foreground/40 bg-transparent",
+            )}
+          >
+            {isSelected && <Check className="w-3.5 h-3.5" />}
+          </div>
+        </div>
+      )}
+
       {/* Thumbnail */}
       <div className="flex-shrink-0 w-16 h-16 rounded-md bg-muted flex items-center justify-center overflow-hidden">
         {(activity.place?.photoUrl ?? activity.image_url) ? (

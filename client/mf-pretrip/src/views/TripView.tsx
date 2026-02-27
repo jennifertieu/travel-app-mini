@@ -60,12 +60,23 @@ export function TripView() {
     return () => window.removeEventListener("openTripModal", handler);
   }, [openModal]);
 
-  // Open create trip modal when navigated from shell (e.g. from itinerary page)
+  // Open modals when navigated from shell (e.g. + invite from itinerary/duringtrip)
   useEffect(() => {
     try {
       if (sessionStorage.getItem("pending-open-create-trip") === "1") {
         sessionStorage.removeItem("pending-open-create-trip");
         openModal("createTrip");
+        return;
+      }
+      const pendingModal = sessionStorage.getItem("pending-open-modal");
+      if (pendingModal === "inviteLink") {
+        const pendingTripId =
+          sessionStorage.getItem("pending-open-modal-tripId") ?? undefined;
+        sessionStorage.removeItem("pending-open-modal");
+        sessionStorage.removeItem("pending-open-modal-tripId");
+        if (pendingTripId) {
+          openModal("inviteLink", { tripId: pendingTripId });
+        }
       }
     } catch {
       // ignore

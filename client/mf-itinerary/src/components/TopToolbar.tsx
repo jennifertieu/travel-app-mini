@@ -1,4 +1,4 @@
-import { CheckSquare, Trash2 } from "lucide-react";
+import { CheckSquare, Trash2, Camera } from "lucide-react";
 
 interface TopToolbarProps {
   selectedCount: number;
@@ -6,6 +6,7 @@ interface TopToolbarProps {
   onToggleSelectionMode: () => void;
   onSelectAll: () => void;
   onDelete: () => void;
+  onOpenPhotoGuide?: () => void;
 }
 
 export function TopToolbar({
@@ -14,18 +15,32 @@ export function TopToolbar({
   onToggleSelectionMode,
   onSelectAll,
   onDelete,
+  onOpenPhotoGuide,
 }: TopToolbarProps) {
   if (!isSelectionMode) {
     return (
-      <div className="flex items-center justify-end px-4 py-2 border-b border-border">
-        <button
-          type="button"
-          onClick={onToggleSelectionMode}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <CheckSquare className="w-3.5 h-3.5" />
-          Select
-        </button>
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onToggleSelectionMode}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <CheckSquare className="w-3.5 h-3.5" />
+            Select
+          </button>
+          {onOpenPhotoGuide && (
+            <button
+              type="button"
+              onClick={onOpenPhotoGuide}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              title="Photo Guide"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              Photo Guide
+            </button>
+          )}
+        </div>
       </div>
     );
   }

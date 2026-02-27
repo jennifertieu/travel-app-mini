@@ -14,6 +14,7 @@ This database supports a collaborative trip planning application where users can
 - `id` (UUID, PK) - Unique profile identifier
 - `user_id` (UUID, FK → auth.users) - Links to Supabase auth user
 - `display_name` (TEXT) - User's display name
+- `avatar_url` (TEXT) - Profile picture URL from Google SSO
 - `dietary` (TEXT[]) - Dietary restrictions/preferences
 - `travel_style` (TEXT) - Travel pace: 'chill', 'balanced', or 'packed'
 - `interests` (TEXT[]) - User interests
@@ -137,6 +138,23 @@ This database supports a collaborative trip planning application where users can
 
 **Current Rows:** 0  
 **RLS Enabled:** Yes ⚠️
+
+---
+
+### 9. **trip_photo_guides**
+**Purpose:** Cached photo guide data (selfie tips, pose ideas, daily challenges) per trip day.
+
+**Key Columns:**
+- `id` (UUID, PK) - Unique record identifier
+- `trip_id` (UUID, FK → trips, ON DELETE CASCADE) - Associated trip
+- `day_number` (INTEGER) - Day of the itinerary (1-based)
+- `guide_data` (JSONB) - Pose of the day + tips per activity (image_url, selfie_tip, pose_idea, best_time, is_group_spot, challenge, etc.)
+- `created_at`, `updated_at` (TIMESTAMPTZ)
+
+**Constraints:** UNIQUE (trip_id, day_number)
+
+**Current Rows:** 0  
+**RLS Enabled:** No
 
 ---
 

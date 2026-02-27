@@ -1,11 +1,17 @@
-import { defineConfig } from "@rsbuild/core";
+import { defineConfig, loadEnv } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
 import { pluginModuleFederation } from "@module-federation/rsbuild-plugin";
 import { withZephyr } from "zephyr-rsbuild-plugin";
 
 const useZephyr = process.env.USE_ZEPHYR === "true";
 
+// Rsbuild only exposes PUBLIC_* by default; we use VITE_* (e.g. VITE_SUPABASE_*) in .env.local
+const { publicVars } = loadEnv({ prefixes: ["PUBLIC_", "VITE_"] });
+
 export default defineConfig({
+  source: {
+    define: publicVars,
+  },
   plugins: [
     pluginReact(),
     pluginModuleFederation({

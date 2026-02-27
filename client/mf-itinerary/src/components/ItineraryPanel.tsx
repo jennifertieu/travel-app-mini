@@ -3,29 +3,71 @@ import { DayTabs } from "./DayTabs";
 import { TimeOfDaySection } from "./TimeOfDaySection";
 import { TopToolbar } from "./TopToolbar";
 import { BottomBar } from "./BottomBar";
+import { PhotoGuideModal } from "./PhotoGuideModal";
 import { groupActivitiesByTimeOfDay } from "../lib/utils";
-import type { Activity, ItineraryData, TimeOfDay } from "../types";
+import { useItineraryDeletion } from "../hooks/useItineraryDeletion";
+import type {
+  Activity,
+  ItineraryData,
+  TimeOfDay,
+  FreeTimeSlot,
+} from "../types";
 
 const TIME_OF_DAY_ORDER: TimeOfDay[] = ["morning", "afternoon", "evening"];
 
 interface ItineraryPanelProps {
   data: ItineraryData;
+  tripId: string | null;
+  itineraryRowId: string;
   onOpenActivity: (activity: Activity) => void;
 }
 
-export function ItineraryPanel({ data, onOpenActivity }: ItineraryPanelProps) {
-  const [activeDay, setActiveDay] = useState(data.days[0]?.day ?? 1);
+export function ItineraryPanel({
+  data,
+  tripId,
+  itineraryRowId,
+  onOpenActivity,
+}: ItineraryPanelProps) {
+  const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [showPhotoGuide, setShowPhotoGuide] = useState(false);
 
+  // --- Deletion hook ---
+  const {
+    localDays,
+    isSaving,
+    saveError,
+    deleteSelected,
+    undo,
+    save,
+    hasUnsavedChanges,
+    canUndo,
+  } = useItineraryDeletion(data);
+
+  // Use index-based day selection for reliability
   const currentDay = useMemo(
+    () => localDays[activeDayIndex] ?? localDays[0],
+    [localDays, activeDayIndex],
+  );
+  const activeDay = currentDay?.day ?? 1;
+
+  // Original day for FreeTimeSlot comparison
+  const originalDay = useMemo(
     () => data.days.find((d) => d.day === activeDay) ?? data.days[0],
     [data.days, activeDay],
   );
 
   const grouped = useMemo(
-    () => (currentDay ? groupActivitiesByTimeOfDay(currentDay.activities) : null),
+    () =>
+      currentDay ? groupActivitiesByTimeOfDay(currentDay.activities) : null,
     [currentDay],
+  );
+
+  const originalGrouped = useMemo(
+    () =>
+      originalDay ? groupActivitiesByTimeOfDay(originalDay.activities) : null,
+    [originalDay],
   );
 
   const allActivityIds = useMemo(() => {
@@ -38,6 +80,45 @@ export function ItineraryPanel({ data, onOpenActivity }: ItineraryPanelProps) {
     }
     return ids;
   }, [grouped]);
+
+  // --- Compute FreeTimeSlots by comparing original vs local activities ---
+  const freeTimeSlotsBySection = useMemo(() => {
+    const result: Record<TimeOfDay, FreeTimeSlot[]> = {
+      morning: [],
+      afternoon: [],
+      evening: [],
+    };
+    if (!originalGrouped || !grouped) return result;
+
+    for (const tod of TIME_OF_DAY_ORDER) {
+      const origActivities = originalGrouped[tod] ?? [];
+      const localActivities = grouped[tod] ?? [];
+      const localNames = new Set(localActivities.map((a) => a.name));
+
+      // Walk through original activities; for each deleted one, create a FreeTimeSlot
+      // at the position it would appear relative to remaining activities
+      let localIdx = 0;
+      for (let origIdx = 0; origIdx < origActivities.length; origIdx++) {
+        const orig = origActivities[origIdx];
+        if (
+          localNames.has(orig.name) &&
+          localIdx < localActivities.length &&
+          localActivities[localIdx]?.name === orig.name
+        ) {
+          // This activity still exists — advance local pointer
+          localIdx++;
+        } else if (!localActivities.some((a) => a.name === orig.name)) {
+          // This activity was deleted — create a free time slot at current localIdx position
+          result[tod].push({
+            timeOfDay: tod,
+            position: localIdx,
+            freedMinutes: orig.duration_minutes ?? 60,
+          });
+        }
+      }
+    }
+    return result;
+  }, [originalGrouped, grouped]);
 
   const handleToggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -61,14 +142,15 @@ export function ItineraryPanel({ data, onOpenActivity }: ItineraryPanelProps) {
   }, [allActivityIds]);
 
   const handleDelete = useCallback(() => {
-    // MVP no-op
-    console.log("Delete selected:", [...selectedIds]);
-  }, [selectedIds]);
+    if (!grouped || selectedIds.size === 0) return;
+    deleteSelected(selectedIds, activeDay, grouped);
+    setSelectedIds(new Set());
+    setIsSelectionMode(false);
+  }, [selectedIds, activeDay, grouped, deleteSelected]);
 
   const handleToggleSelectionMode = useCallback(() => {
     setIsSelectionMode((prev) => {
       if (prev) {
-        // Exiting selection mode — clear selections
         setSelectedIds(new Set());
       }
       return !prev;
@@ -76,14 +158,12 @@ export function ItineraryPanel({ data, onOpenActivity }: ItineraryPanelProps) {
   }, []);
 
   const handleUndo = useCallback(() => {
-    // MVP no-op
-    console.log("Undo");
-  }, []);
+    undo();
+  }, [undo]);
 
   const handleSave = useCallback(() => {
-    // MVP no-op
-    console.log("Save");
-  }, []);
+    save(itineraryRowId);
+  }, [save, itineraryRowId]);
 
   if (!currentDay || !grouped) return null;
 
@@ -97,10 +177,10 @@ export function ItineraryPanel({ data, onOpenActivity }: ItineraryPanelProps) {
           </h1>
         )}
         <DayTabs
-          days={data.days}
-          activeDay={activeDay}
-          onSelectDay={(day) => {
-            setActiveDay(day);
+          days={localDays}
+          activeDayIndex={activeDayIndex}
+          onSelectDay={(index) => {
+            setActiveDayIndex(index);
             setSelectedIds(new Set());
           }}
         />
@@ -113,6 +193,15 @@ export function ItineraryPanel({ data, onOpenActivity }: ItineraryPanelProps) {
         onToggleSelectionMode={handleToggleSelectionMode}
         onSelectAll={handleSelectAll}
         onDelete={handleDelete}
+        onOpenPhotoGuide={() => setShowPhotoGuide(true)}
+      />
+
+      {/* Photo Guide modal */}
+      <PhotoGuideModal
+        open={showPhotoGuide}
+        onClose={() => setShowPhotoGuide(false)}
+        tripId={tripId}
+        dayNumber={activeDay}
       />
 
       {/* Scrollable activities */}
@@ -126,12 +215,19 @@ export function ItineraryPanel({ data, onOpenActivity }: ItineraryPanelProps) {
             isSelectionMode={isSelectionMode}
             onToggleSelect={handleToggleSelect}
             onOpenActivity={onOpenActivity}
+            deletedSlots={freeTimeSlotsBySection[tod]}
           />
         ))}
       </div>
 
       {/* Bottom bar */}
-      <BottomBar onUndo={handleUndo} onSave={handleSave} />
+      <BottomBar
+        onUndo={handleUndo}
+        onSave={handleSave}
+        canUndo={canUndo}
+        isSaving={isSaving}
+        saveError={saveError}
+      />
     </div>
   );
 }
