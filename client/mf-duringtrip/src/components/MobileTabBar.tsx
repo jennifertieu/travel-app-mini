@@ -16,7 +16,7 @@ const tabs: { id: MobileTab; label: string; icon: typeof Sparkles }[] = [
 
 export function MobileTabBar({ activeTab, onChangeTab }: MobileTabBarProps) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[1002] bg-white border-t border-gray-200 md:hidden pb-safe">
+    <div className="fixed bottom-0 left-0 right-0 z-[1002] bg-white border-t border-gray-200 md:hidden">
       <div className="flex h-[60px]">
         {tabs.map(({ id, label, icon: Icon }) => {
           const isActive = activeTab === id;

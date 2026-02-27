@@ -220,7 +220,7 @@ export function MobileItinerarySheet({
       />
 
       {grouped && (
-        <div className="px-4 pt-3 pb-safe">
+        <div className="px-4 pt-3">
           {TIME_OF_DAY_ORDER.map((tod) => (
             <TimeOfDaySection
               key={tod}

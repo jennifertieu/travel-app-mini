@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, type ReactNode } from "react";
 import { ChevronUp } from "lucide-react";
 import { cn } from "../../lib/utils";
 
-const PEEK_HEIGHT = 190;
+const PEEK_HEIGHT = 160;
 const EXPANDED_HEIGHT_VH = 93;
 
 interface MobileBottomSheetProps {

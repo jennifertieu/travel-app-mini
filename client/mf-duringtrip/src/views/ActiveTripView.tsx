@@ -12,6 +12,7 @@ import { ActivityDetailModal } from '../components/itinerary/ActivityDetailModal
 import { MobileItinerarySheet } from '../components/itinerary/MobileItinerarySheet';
 import { VoiceAssistantProvider } from '../contexts/VoiceAssistantContext';
 import { ChatPanel } from '../components/chat';
+import { AiMapAssistant } from '../components/map/AiMapAssistant';
 import { MobileTabBar, type MobileTab } from '../components/MobileTabBar';
 import type { TripContext } from '../types/voice';
 import type { Activity, ItineraryData } from '../types/itinerary';
@@ -171,6 +172,7 @@ export function ActiveTripView() {
                 activities={allActivities}
                 annotations={annotations}
               />
+              <AiMapAssistant onAskPress={() => {/* desktop chat is always visible */}} />
               {selectedActivity && (
                 <ActivityDetailModal
                   activity={selectedActivity}
@@ -192,6 +194,7 @@ export function ActiveTripView() {
                     annotations={annotations}
                   />
                 </div>
+                <AiMapAssistant onAskPress={() => setActiveTab('ask-ai')} />
                 <MobileItinerarySheet
                   itineraryData={itineraryData}
                   onOpenActivity={setSelectedActivity}
