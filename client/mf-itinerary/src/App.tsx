@@ -1,12 +1,14 @@
 import "./globals.css";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "./lib/supabase";
 import { ItineraryPanel } from "./components/ItineraryPanel";
 import { MapPanel } from "./components/MapPanel";
 import { BuildingState } from "./components/BuildingState";
 import { EmptyState } from "./components/EmptyState";
+import { ActivityDetailModal } from "./components/ActivityDetailModal";
 import { useAnnotations } from "./hooks/useAnnotations";
-import type { ItineraryData } from "./types";
+import { usePlacesEnrichment } from "./hooks/usePlacesEnrichment";
+import type { Activity, ItineraryData } from "./types";
 
 type Itinerary = {
   id: string;
@@ -28,6 +30,7 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isBuilding, setIsBuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
 
   const fetchItinerary = useCallback(async (id: string) => {
     setIsLoading(true);
@@ -107,6 +110,12 @@ const App = () => {
     }
   })();
 
+  const allActivities = useMemo(
+    () => itineraryData?.days.flatMap((d) => d.activities) ?? [],
+    [itineraryData]
+  );
+  const enrichmentMap = usePlacesEnrichment(allActivities);
+
   if (!tripId) {
     return (
       <div className="flex flex-col items-center justify-center h-full py-20 text-center">
@@ -138,13 +147,23 @@ const App = () => {
       {itineraryData && (
         <div className="flex flex-1 min-h-0">
           <div className="w-1/2 overflow-y-auto">
-            <ItineraryPanel data={itineraryData} />
+            <ItineraryPanel
+              data={itineraryData}
+              onOpenActivity={setSelectedActivity}
+            />
           </div>
-          <div className="w-1/2">
+          <div className="w-1/2 relative">
             <MapPanel
               activities={itineraryData.days.flatMap((d) => d.activities)}
               annotations={annotations}
             />
+            {selectedActivity && (
+              <ActivityDetailModal
+                activity={selectedActivity}
+                enrichment={enrichmentMap.get(selectedActivity.name) ?? null}
+                onClose={() => setSelectedActivity(null)}
+              />
+            )}
           </div>
         </div>
       )}

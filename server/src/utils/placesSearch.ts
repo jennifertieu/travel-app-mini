@@ -90,7 +90,7 @@ function getPlacePhotoUrl(
   photoReference: string,
   maxWidth: number = 400
 ): string | null {
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  const apiKey = process.env.GOOGLE_MAPS_PLATFORM_API_KEY;
   if (!apiKey) {
     return null;
   }
@@ -133,7 +133,7 @@ function mapToCategory(types: string[]): string {
 export async function searchNearbyPlaces(
   params: SearchNearbyParams
 ): Promise<NearbyPlace[]> {
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  const apiKey = process.env.GOOGLE_MAPS_PLATFORM_API_KEY;
   const {
     latitude,
     longitude,
@@ -151,7 +151,7 @@ export async function searchNearbyPlaces(
   console.log(`   API Key configured: ${!!apiKey}`);
 
   if (!apiKey) {
-    console.warn("⚠️ [Places Search] GOOGLE_PLACES_API_KEY not configured");
+    console.warn("⚠️ [Places Search] GOOGLE_MAPS_PLATFORM_API_KEY not configured");
     throw new Error("Google Places API key not configured");
   }
 
@@ -251,14 +251,14 @@ export async function searchNearbyPlaces(
 export async function getPlaceDetails(
   placeId: string
 ): Promise<PlaceDetails | null> {
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  const apiKey = process.env.GOOGLE_MAPS_PLATFORM_API_KEY;
 
   console.log("\n📋 [Place Details] ========== FETCHING DETAILS ==========");
   console.log(`   Place ID: ${placeId}`);
   console.log(`   API Key configured: ${!!apiKey}`);
 
   if (!apiKey) {
-    console.warn("⚠️ [Place Details] GOOGLE_PLACES_API_KEY not configured");
+    console.warn("⚠️ [Place Details] GOOGLE_MAPS_PLATFORM_API_KEY not configured");
     throw new Error("Google Places API key not configured");
   }
 

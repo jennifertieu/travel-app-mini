@@ -15,14 +15,18 @@ interface TimeOfDaySectionProps {
   timeOfDay: TimeOfDay;
   activities: Activity[];
   selectedIds: Set<string>;
+  isSelectionMode: boolean;
   onToggleSelect: (id: string) => void;
+  onOpenActivity: (activity: Activity) => void;
 }
 
 export function TimeOfDaySection({
   timeOfDay,
   activities,
   selectedIds,
+  isSelectionMode,
   onToggleSelect,
+  onOpenActivity,
 }: TimeOfDaySectionProps) {
   if (activities.length === 0) return null;
 
@@ -52,7 +56,9 @@ export function TimeOfDaySection({
               indexInSection={idx}
               precedingMinutes={currentPreceding}
               isSelected={selectedIds.has(activityId)}
+              isSelectionMode={isSelectionMode}
               onToggleSelect={() => onToggleSelect(activityId)}
+              onOpen={() => onOpenActivity(activity)}
             />
           );
         })}

@@ -15,7 +15,9 @@ interface ActivityCardProps {
   indexInSection: number;
   precedingMinutes: number;
   isSelected: boolean;
+  isSelectionMode: boolean;
   onToggleSelect: () => void;
+  onOpen: () => void;
 }
 
 export function ActivityCard({
@@ -24,7 +26,9 @@ export function ActivityCard({
   indexInSection,
   precedingMinutes,
   isSelected,
+  isSelectionMode,
   onToggleSelect,
+  onOpen,
 }: ActivityCardProps) {
   const { startTime, endTime } = computeDisplayTime(
     timeOfDay,
@@ -33,23 +37,31 @@ export function ActivityCard({
     activity.duration_minutes,
   );
 
+  const handleClick = () => {
+    if (isSelectionMode) {
+      onToggleSelect();
+    } else {
+      onOpen();
+    }
+  };
+
   return (
     <button
       type="button"
-      onClick={onToggleSelect}
+      onClick={handleClick}
       className={cn(
         "w-full flex gap-3 rounded-lg border p-3 text-left transition-colors",
         "bg-card hover:bg-accent/50",
-        isSelected
+        isSelectionMode && isSelected
           ? "border-teal-500 ring-1 ring-teal-500"
           : "border-border",
       )}
     >
       {/* Thumbnail */}
       <div className="flex-shrink-0 w-16 h-16 rounded-md bg-muted flex items-center justify-center overflow-hidden">
-        {activity.image_url ? (
+        {(activity.place?.photoUrl ?? activity.image_url) ? (
           <img
-            src={activity.image_url}
+            src={(activity.place?.photoUrl ?? activity.image_url)!}
             alt={activity.name}
             className="w-full h-full object-cover"
           />
