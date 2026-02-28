@@ -232,7 +232,7 @@ export const buildTripContext = async (
     const { data: trip, error: tripError } = await supabase
       .from("trips")
       .select(
-        "id, destination, destination_lat, destination_lng, start_date, end_date, timezone"
+        "id, destination, destination_lat, destination_lng, start_date, end_date"
       )
       .eq("id", tripId)
       .single();
@@ -257,7 +257,8 @@ export const buildTripContext = async (
 
     // Build current time context
     const now = new Date();
-    const timezone = trip.timezone || "UTC";
+    // TODO: Add timezone column to trips table. Hardcoded to UTC for now.
+    const timezone = "UTC";
     
     // Get current hour in trip timezone
     const formatter = new Intl.DateTimeFormat("en-US", {

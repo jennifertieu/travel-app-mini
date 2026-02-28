@@ -1,32 +1,36 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { Sparkles } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { useVoiceAssistant } from '../../hooks/useVoiceAssistant';
+import { useDuringTripChat } from '../../hooks/useDuringTripChat';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
+import { QuickActions } from './QuickActions';
+import type { SuggestionCardData, FoodCardData } from '../../services/duringTripService';
 
 interface ChatPanelProps {
+  tripId: string;
+  location?: { lat: number; lng: number; accuracy_meters?: number } | null;
   onClose?: () => void;
   className?: string;
 }
 
-export function ChatPanel({ onClose, className }: ChatPanelProps) {
+function getCurrentTimeOfDay(): 'morning' | 'afternoon' | 'evening' {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'morning';
+  if (hour < 17) return 'afternoon';
+  return 'evening';
+}
+
+export function ChatPanel({ tripId, location, onClose, className }: ChatPanelProps) {
   const {
     state,
-    transcript,
-    conversationHistory,
-    startListening,
-    stopListening,
-    sendTextMessage,
-    expand,
-  } = useVoiceAssistant();
+    messages,
+    contextSummary,
+    sendMessage,
+    acceptSuggestion,
+  } = useDuringTripChat({ tripId, location });
 
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Auto-expand on mount so the connection is established
-  useEffect(() => {
-    expand();
-  }, [expand]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -34,10 +38,22 @@ export function ChatPanel({ onClose, className }: ChatPanelProps) {
     if (el) {
       el.scrollTop = el.scrollHeight;
     }
-  }, [conversationHistory, transcript]);
+  }, [messages, state]);
 
-  const isProcessing = state === 'processing' || state === 'streaming';
-  const isListening = state === 'listening';
+  const isSending = state === 'sending';
+
+  const handleAcceptSuggestion = useCallback((data: SuggestionCardData) => {
+    acceptSuggestion(data, getCurrentTimeOfDay(), data.time_required_minutes || 60);
+  }, [acceptSuggestion]);
+
+  const handleAcceptFood = useCallback((data: FoodCardData) => {
+    acceptSuggestion(data, getCurrentTimeOfDay(), 60);
+  }, [acceptSuggestion]);
+
+  const handleDirections = useCallback((coords: { lat: number; lng: number }, name: string) => {
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lng}&destination_place_id=${encodeURIComponent(name)}`;
+    window.open(url, '_blank');
+  }, []);
 
   return (
     <div className={cn('flex flex-col h-full', className)}>
@@ -49,37 +65,43 @@ export function ChatPanel({ onClose, className }: ChatPanelProps) {
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-        {conversationHistory.length === 0 && !transcript && (
+        {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center px-6">
             <Sparkles className="w-10 h-10 text-primary/30 mb-3" />
-            <p className="text-sm text-muted-foreground">
-              Ask me anything about your trip — restaurants, directions, local tips, and more.
+            <p className="text-sm font-medium text-foreground mb-1">
+              {contextSummary || 'Your AI trip assistant'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Ask me anything — restaurants, directions, local tips, or what to do next.
             </p>
           </div>
         )}
 
-        {conversationHistory.map((msg, i) => (
-          <ChatMessage key={i} role={msg.role} content={msg.content} />
+        {messages.map((msg) => (
+          <ChatMessage
+            key={msg.id}
+            role={msg.role}
+            content={msg.text}
+            cards={msg.cards}
+            onAcceptSuggestion={handleAcceptSuggestion}
+            onAcceptFood={handleAcceptFood}
+            onDirections={handleDirections}
+          />
         ))}
 
-        {/* Streaming assistant response */}
-        {transcript && (
-          <ChatMessage role="assistant" content={transcript} isStreaming />
-        )}
-
-        {/* Processing indicator (no transcript yet) */}
-        {isProcessing && !transcript && (
+        {/* Sending indicator */}
+        {isSending && (
           <ChatMessage role="assistant" content="" isStreaming />
         )}
       </div>
 
+      {/* Quick actions */}
+      <QuickActions onAction={sendMessage} disabled={isSending} />
+
       {/* Input */}
       <ChatInput
-        onSendText={sendTextMessage}
-        onStartVoice={startListening}
-        onStopVoice={stopListening}
-        isListening={isListening}
-        isSending={isProcessing}
+        onSendText={sendMessage}
+        isSending={isSending}
       />
     </div>
   );

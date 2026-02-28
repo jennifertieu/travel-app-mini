@@ -15,11 +15,13 @@ import {
   contextRequestSchema,
   decideRequestSchema,
   foodRequestSchema,
+  chatRequestSchema,
   mapIntelligenceRequestSchema,
   activityStatusRequestSchema,
   acceptSuggestionRequestSchema,
   validateRequest,
 } from "../utils/validationSchemas.js";
+import { runChatAgent } from "../utils/chatAgent.js";
 
 /**
  * POST /during-trip/context
@@ -504,6 +506,53 @@ export const acceptSuggestion = async (
     console.error("[acceptSuggestion] Error:", errorMessage);
     return response.status(500).json({
       error: "Failed to accept suggestion",
+      details: errorMessage,
+    });
+  }
+};
+
+/**
+ * POST /during-trip/chat
+ * Conversational AI chat backed by the Decision Agent
+ */
+export const chat = async (
+  request: IAuthenticatedRequest,
+  response: Response
+) => {
+  try {
+    const { id: userId } = request.user!;
+
+    const validation = validateRequest(chatRequestSchema, request.body);
+    if (!validation.success) {
+      return response.status(400).json({ error: validation.error });
+    }
+
+    const { trip_id, location, message } = validation.data;
+
+    const { context, error: contextError } = await buildTripContext({
+      tripId: trip_id,
+      userId,
+      location,
+      supabase,
+    });
+
+    if (contextError || !context) {
+      return response
+        .status(404)
+        .json({ error: contextError || "Trip not found" });
+    }
+
+    const chatResponse = await runChatAgent(context, message);
+
+    return response.status(200).json({
+      ...chatResponse,
+      location_approximate: context.user.location.is_approximate,
+    });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("[chat] Error:", errorMessage);
+    return response.status(500).json({
+      error: "Failed to process chat message",
       details: errorMessage,
     });
   }

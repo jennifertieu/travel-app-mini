@@ -10,11 +10,9 @@ import { BuildingState } from '../components/itinerary/BuildingState';
 import { EmptyState } from '../components/itinerary/EmptyState';
 import { ActivityDetailModal } from '../components/itinerary/ActivityDetailModal';
 import { MobileItinerarySheet } from '../components/itinerary/MobileItinerarySheet';
-import { VoiceAssistantProvider } from '../contexts/VoiceAssistantContext';
 import { ChatPanel } from '../components/chat';
 import { AiMapAssistant } from '../components/map/AiMapAssistant';
 import { MobileTabBar, type MobileTab } from '../components/MobileTabBar';
-import type { TripContext } from '../types/voice';
 import type { Activity, ItineraryData } from '../types/itinerary';
 
 type Itinerary = {
@@ -45,13 +43,10 @@ export function ActiveTripView() {
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [activeTab, setActiveTab] = useState<MobileTab>('map');
 
-  // Minimal trip context for voice assistant
-  const tripContext: TripContext = {
-    tripId,
-    currentLocation: position
-      ? { latitude: position.latitude, longitude: position.longitude }
-      : undefined,
-  };
+  // Location payload for chat
+  const chatLocation = position
+    ? { lat: position.latitude, lng: position.longitude, accuracy_meters: position.accuracy }
+    : null;
 
   const fetchItinerary = useCallback(async (id: string) => {
     setIsLoading(true);
@@ -155,11 +150,11 @@ export function ActiveTripView() {
       {!isLoading && !itinerary && !isBuilding && <EmptyState />}
 
       {itineraryData && (
-        <VoiceAssistantProvider initialTripContext={tripContext}>
+        <>
           {/* Desktop: 3-column layout — chat | itinerary | map */}
           <div className="hidden md:flex flex-1 min-h-0">
             <div className="w-[380px] border-r flex flex-col shrink-0">
-              <ChatPanel />
+              <ChatPanel tripId={tripId} location={chatLocation} />
             </div>
             <div className="flex-1 overflow-y-auto">
               <ItineraryPanel
@@ -215,7 +210,7 @@ export function ActiveTripView() {
             {/* Ask AI tab */}
             {activeTab === 'ask-ai' && (
               <div className="flex-1 min-h-0">
-                <ChatPanel onClose={() => setActiveTab('map')} />
+                <ChatPanel tripId={tripId} location={chatLocation} onClose={() => setActiveTab('map')} />
               </div>
             )}
 
@@ -230,7 +225,7 @@ export function ActiveTripView() {
 
             <MobileTabBar activeTab={activeTab} onChangeTab={setActiveTab} />
           </div>
-        </VoiceAssistantProvider>
+        </>
       )}
 
       {/* Fallback: show raw JSON if data doesn't match expected shape */}
