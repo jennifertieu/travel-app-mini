@@ -17,6 +17,7 @@ import { CategoryFilterBar } from "../filters/CategoryFilterBar";
 import { EmptyStateStays } from "../EmptyStateStays";
 import type { Database } from "@travel-app/shared-types";
 import type { Annotation } from "../../hooks/useRealtimeTrip";
+import type { TripSuggestionInput } from "../../hooks/useStreamingSuggestions";
 
 type Idea = Database["public"]["Tables"]["trip_reel_ideas"]["Row"];
 
@@ -46,17 +47,10 @@ export interface IdeaSidebarProps {
   onAnnotationDelete?: (annotationId: string) => void;
   onDrawModeToggle?: (enabled: boolean) => void;
   onOpenAddIdea?: () => void;
-  startHotelStreaming?: (input: {
-    tripId: string;
-    destination: string;
-    interests?: string[];
-    budget_level?: string;
-    duration_days?: number;
-  }) => void;
+  startHotelStreaming?: (tripData: TripSuggestionInput) => Promise<void>;
   isHotelStreaming?: boolean;
   homeBaseId?: string | null;
   onSetHomeBase?: (ideaId: string) => void;
-  tripDurationDays?: number | null;
 }
 
 export function IdeaSidebar({
@@ -79,7 +73,6 @@ export function IdeaSidebar({
   isHotelStreaming,
   homeBaseId,
   onSetHomeBase,
-  tripDurationDays,
 }: IdeaSidebarProps) {
   const { openModal } = useModals();
   const { startBuild, isStarting } = useStartItineraryBuild();
@@ -122,7 +115,7 @@ export function IdeaSidebar({
     // Category filter
     if (activeCategory) {
       result = result.filter(
-        (idea) => idea.category?.trim().toLowerCase() === activeCategory,
+        (idea) => idea.category?.toLowerCase() === activeCategory,
       );
     }
 
@@ -134,6 +127,25 @@ export function IdeaSidebar({
     [filteredIdeas, savedIdeaIds],
   );
 
+  // Count stay ideas for empty state detection
+  const stayCount = useMemo(
+    () => ideas.filter((i) => i.category?.toLowerCase() === "stay").length,
+    [ideas],
+  );
+
+  const handleFindHotels = () => {
+    if (startHotelStreaming && trip) {
+      startHotelStreaming({
+        tripId: tripId || "",
+        destination: trip.destination || "",
+        durationDays: trip.duration_days || null,
+        budgetLevel: trip.budget_level || null,
+        interests: trip.interests || null,
+        createdBy: memberId || "",
+      });
+    }
+  };
+
   const handleAddClick = () => {
     if (activeTab === "notes") {
       onDrawModeToggle?.(true);
@@ -143,13 +155,6 @@ export function IdeaSidebar({
   };
 
   const displayIdeas = activeTab === "saved" ? savedIdeas : filteredIdeas;
-
-  // Check if we're filtering to stays with no results (for EmptyStateStays)
-  const isStaysCategoryEmpty =
-    activeCategory === "stay" &&
-    displayIdeas.length === 0 &&
-    !showSkeletons &&
-    !showStreaming;
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "explore", label: "Explore", count: filteredIdeas.length },
@@ -165,6 +170,9 @@ export function IdeaSidebar({
         members={members}
         isSaved={savedIdeaIds.has(idea.id)}
         onToggleSave={toggleSave}
+        tripDurationDays={trip?.duration_days}
+        homeBaseId={homeBaseId}
+        onSetHomeBase={onSetHomeBase}
       />
     );
     if (animate) {
@@ -293,54 +301,48 @@ export function IdeaSidebar({
                     <IdeaCardSkeleton key={`streaming-skeleton-${index}`} />
                   ))}
               </>
-            ) : isStaysCategoryEmpty && activeTab === "explore" ? (
-              <EmptyStateStays
-                onFindHotels={() => {
-                  if (startHotelStreaming && tripId && trip?.destination) {
-                    startHotelStreaming({
-                      tripId,
-                      destination: trip.destination,
-                      interests: trip.interests ?? undefined,
-                      budget_level: trip.budget_level ?? undefined,
-                      duration_days: trip.duration_days ?? undefined,
-                    });
-                  }
-                }}
-                isSearching={isHotelStreaming ?? false}
-              />
             ) : displayIdeas.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="text-4xl mb-3">
-                  {activeTab === "saved" ? "❤️" : "💡"}
+              activeCategory === "stay" && stayCount === 0 ? (
+                <EmptyStateStays
+                  onFindHotels={handleFindHotels}
+                  isSearching={isHotelStreaming || false}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="text-4xl mb-3">
+                    {activeTab === "saved" ? "❤️" : "💡"}
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {activeTab === "saved"
+                      ? "No saved ideas yet"
+                      : activeCategory
+                        ? "No ideas in this category"
+                        : searchQuery
+                          ? "No ideas match your search"
+                          : "No ideas yet"}
+                  </p>
+                  {activeTab === "explore" && activeCategory && (
+                    <Button
+                      onClick={() => setActiveCategory(null)}
+                      size="sm"
+                      variant="outline"
+                    >
+                      Show all ideas
+                    </Button>
+                  )}
+                  {activeTab === "explore" &&
+                    !searchQuery &&
+                    !activeCategory && (
+                      <Button
+                        onClick={() => openModal("addIdea")}
+                        size="sm"
+                        variant="outline"
+                      >
+                        Add your first idea
+                      </Button>
+                    )}
                 </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {activeTab === "saved"
-                    ? "No saved ideas yet"
-                    : activeCategory
-                      ? "No ideas in this category"
-                      : searchQuery
-                        ? "No ideas match your search"
-                        : "No ideas yet"}
-                </p>
-                {activeTab === "explore" && activeCategory && (
-                  <Button
-                    onClick={() => setActiveCategory(null)}
-                    size="sm"
-                    variant="outline"
-                  >
-                    Show all ideas
-                  </Button>
-                )}
-                {activeTab === "explore" && !searchQuery && !activeCategory && (
-                  <Button
-                    onClick={() => openModal("addIdea")}
-                    size="sm"
-                    variant="outline"
-                  >
-                    Add your first idea
-                  </Button>
-                )}
-              </div>
+              )
             ) : (
               displayIdeas.map((idea) => renderIdeaCard(idea))
             )}

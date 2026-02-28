@@ -7,15 +7,15 @@ import type { ChatMessage, ChatStatus, IItineraryChange } from "../../types";
 
 interface ChatPanelProps {
   messages: ChatMessage[];
-  status: ChatStatus;
-  pendingChanges: IItineraryChange[];
-  error: string | null;
+  status?: ChatStatus;
+  pendingChanges?: IItineraryChange[];
+  error?: string | null;
   inputValue: string;
   onInputChange: (value: string) => void;
   onSend: () => void;
-  onConfirm: () => void;
-  onReject: () => void;
-  onDismissError: () => void;
+  onConfirm?: () => void;
+  onReject?: () => void;
+  onDismissError?: () => void;
 }
 
 const MIN_HISTORY_HEIGHT = 80;
@@ -27,9 +27,9 @@ const MAX_TEXTAREA_HEIGHT = 240;
 
 export function ChatPanel({
   messages,
-  status,
-  pendingChanges,
-  error,
+  status = "idle",
+  pendingChanges = [],
+  error = null,
   inputValue,
   onInputChange,
   onSend,
@@ -63,7 +63,11 @@ export function ChatPanel({
   // Set initial history height to 2/3 of panel (leaving 1/3 for the textarea)
   useEffect(() => {
     if (panelRef.current && historyHeight === null) {
-      setHistoryHeight(clampedHistoryHeight(Math.round(panelRef.current.offsetHeight * (2 / 3))));
+      setHistoryHeight(
+        clampedHistoryHeight(
+          Math.round(panelRef.current.offsetHeight * (2 / 3)),
+        ),
+      );
     }
   }, [historyHeight, clampedHistoryHeight]);
 
@@ -102,20 +106,26 @@ export function ChatPanel({
     }
   }, [messages]);
 
-  const startDrag = useCallback((clientY: number) => {
-    isDragging.current = true;
-    dragStartY.current = clientY;
-    dragStartHeight.current = historyHeight ?? 0;
-    document.body.style.cursor = "row-resize";
-    document.body.style.userSelect = "none";
-  }, [historyHeight]);
+  const startDrag = useCallback(
+    (clientY: number) => {
+      isDragging.current = true;
+      dragStartY.current = clientY;
+      dragStartHeight.current = historyHeight ?? 0;
+      document.body.style.cursor = "row-resize";
+      document.body.style.userSelect = "none";
+    },
+    [historyHeight],
+  );
 
-  const moveDrag = useCallback((clientY: number) => {
-    if (!isDragging.current) return;
-    const delta = clientY - dragStartY.current;
-    const raw = Math.max(MIN_HISTORY_HEIGHT, dragStartHeight.current + delta);
-    setHistoryHeight(clampedHistoryHeight(raw));
-  }, [clampedHistoryHeight]);
+  const moveDrag = useCallback(
+    (clientY: number) => {
+      if (!isDragging.current) return;
+      const delta = clientY - dragStartY.current;
+      const raw = Math.max(MIN_HISTORY_HEIGHT, dragStartHeight.current + delta);
+      setHistoryHeight(clampedHistoryHeight(raw));
+    },
+    [clampedHistoryHeight],
+  );
 
   const endDrag = useCallback(() => {
     if (!isDragging.current) return;
@@ -124,20 +134,30 @@ export function ChatPanel({
     document.body.style.userSelect = "";
   }, []);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    startDrag(e.clientY);
-  }, [startDrag]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      startDrag(e.clientY);
+    },
+    [startDrag],
+  );
 
   const resetHistoryHeight = useCallback(() => {
     if (panelRef.current) {
-      setHistoryHeight(clampedHistoryHeight(Math.round(panelRef.current.offsetHeight * (2 / 3))));
+      setHistoryHeight(
+        clampedHistoryHeight(
+          Math.round(panelRef.current.offsetHeight * (2 / 3)),
+        ),
+      );
     }
   }, [clampedHistoryHeight]);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    startDrag(e.touches[0].clientY);
-  }, [startDrag]);
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      startDrag(e.touches[0].clientY);
+    },
+    [startDrag],
+  );
 
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => moveDrag(e.clientY);
@@ -207,13 +227,20 @@ export function ChatPanel({
   };
 
   return (
-    <div ref={panelRef} className="flex flex-col h-full border-r border-border bg-background">
+    <div
+      ref={panelRef}
+      className="flex flex-col h-full border-r border-border bg-background"
+    >
       {/* Header */}
       <div className="flex-shrink-0 flex items-center gap-2 px-4 py-3 border-b border-border">
         <Sparkles className="w-4 h-4 text-teal-600" />
-        <span className="text-sm font-semibold text-foreground">Itinerary Assistant</span>
+        <span className="text-sm font-semibold text-foreground">
+          Itinerary Assistant
+        </span>
         {status === "streaming" && (
-          <span className="ml-auto text-[10px] text-teal-500 animate-pulse">thinking...</span>
+          <span className="ml-auto text-[10px] text-teal-500 animate-pulse">
+            thinking...
+          </span>
         )}
       </div>
 
@@ -230,7 +257,8 @@ export function ChatPanel({
           <div className="flex flex-col items-center justify-center h-full text-center gap-3">
             <MessageSquare className="w-10 h-10 text-muted-foreground/30" />
             <p className="text-sm text-muted-foreground px-4">
-              Ask me to modify your itinerary. I can move, swap, or remove activities.
+              Ask me to modify your itinerary. I can move, swap, or remove
+              activities.
             </p>
           </div>
         ) : (
@@ -246,7 +274,13 @@ export function ChatPanel({
         className="flex-shrink-0 flex items-center justify-center h-3 border-y border-border bg-muted/50 hover:bg-muted cursor-row-resize group"
       >
         {/* Three horizontal dots — universally recognized drag indicator */}
-        <svg width="16" height="6" viewBox="0 0 16 6" className="text-muted-foreground/40 group-hover:text-muted-foreground/70 transition-colors" fill="currentColor">
+        <svg
+          width="16"
+          height="6"
+          viewBox="0 0 16 6"
+          className="text-muted-foreground/40 group-hover:text-muted-foreground/70 transition-colors"
+          fill="currentColor"
+        >
           <circle cx="2" cy="3" r="1.5" />
           <circle cx="8" cy="3" r="1.5" />
           <circle cx="14" cy="3" r="1.5" />
@@ -254,7 +288,7 @@ export function ChatPanel({
       </div>
 
       {/* Changes preview — shown between drag handle and input when agent made changes */}
-      {pendingChanges.length > 0 && (
+      {pendingChanges.length > 0 && onConfirm && onReject && (
         <div className="flex-shrink-0 pt-2">
           <ChangesPreview
             changes={pendingChanges}

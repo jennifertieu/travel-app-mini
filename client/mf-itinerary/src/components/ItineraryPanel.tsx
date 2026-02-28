@@ -106,8 +106,6 @@ export function ItineraryPanel({
       const localActivities = grouped[tod] ?? [];
       const localNames = new Set(localActivities.map((a) => a.name));
 
-      // Walk through original activities; for each deleted one, create a FreeTimeSlot
-      // at the position it would appear relative to remaining activities
       let localIdx = 0;
       for (let origIdx = 0; origIdx < origActivities.length; origIdx++) {
         const orig = origActivities[origIdx];
@@ -116,10 +114,8 @@ export function ItineraryPanel({
           localIdx < localActivities.length &&
           localActivities[localIdx]?.name === orig.name
         ) {
-          // This activity still exists — advance local pointer
           localIdx++;
         } else if (!localActivities.some((a) => a.name === orig.name)) {
-          // This activity was deleted — create a free time slot at current localIdx position
           result[tod].push({
             timeOfDay: tod,
             position: localIdx,

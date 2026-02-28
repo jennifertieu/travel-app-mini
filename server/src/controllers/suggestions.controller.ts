@@ -516,3 +516,259 @@ export const generateSuggestionsStream = async (
     endSSE(response);
   }
 };
+
+import {
+  generateHotelSuggestions,
+  getNightlyRate,
+} from "../utils/aiService.js";
+
+export const generateHotelSuggestionsStream = async (
+  request: Request,
+  response: Response,
+) => {
+  console.log(
+    "\n🏨 [Hotel API] ========== NEW HOTEL STREAMING REQUEST ==========",
+  );
+  const requestStartTime = Date.now();
+
+  try {
+    const body: GenerateSuggestionsRequest = request.body;
+
+    if (!body.tripId || !body.destination) {
+      return response.status(400).json({
+        error: "tripId and destination are required",
+      });
+    }
+
+    initSSE(response);
+
+    // Check if hotel suggestions already exist for this trip
+    const { data: existingIdeas, error: checkError } = await supabase
+      .from("trip_reel_ideas")
+      .select("id")
+      .eq("trip_id", body.tripId)
+      .eq("source_platform", "ai_generated")
+      .eq("category", "stay");
+
+    if (checkError) {
+      console.error(
+        "❌ [Hotel API] Error checking existing ideas:",
+        checkError,
+      );
+    }
+
+    if (existingIdeas && existingIdeas.length > 0) {
+      console.log(
+        `⚠️ [Hotel API] ${existingIdeas.length} hotel suggestions already exist, skipping`,
+      );
+      sendSSEEvent(response, "complete", {
+        success: true,
+        suggestionIds: existingIdeas.map((idea) => idea.id),
+        message: "Hotel suggestions already generated",
+      });
+      endSSE(response);
+      return;
+    }
+
+    sendSSEEvent(response, "progress", {
+      step: "generating",
+      message: "Finding hotels...",
+    });
+
+    // Step 1: Generate hotel suggestions via OpenAI
+    console.log(
+      `🏨 [Hotel API] Generating hotels for destination="${body.destination}", budget="${body.budgetLevel}", duration=${body.durationDays}, interests=${JSON.stringify(body.interests)}`,
+    );
+    let suggestions: ActivitySuggestion[];
+    try {
+      suggestions = await withRateLimit(() =>
+        generateHotelSuggestions({
+          destination: body.destination,
+          durationDays: body.durationDays,
+          budgetLevel: body.budgetLevel,
+          interests: body.interests,
+        }),
+      );
+      console.log(
+        `✅ [Hotel API] Generated ${suggestions.length} hotel suggestions`,
+      );
+    } catch (aiError) {
+      console.error("❌ [Hotel API] AI generation failed:", aiError);
+      sendSSEEvent(response, "error", {
+        error: "Failed to generate hotel suggestions",
+        details: aiError instanceof Error ? aiError.message : String(aiError),
+      });
+      endSSE(response);
+      return;
+    }
+
+    // Step 2: Save all suggestions to DB immediately and stream them
+    console.log(
+      `🏨 [Hotel API] Step 2: Saving ${suggestions.length} hotels to DB for tripId=${body.tripId}`,
+    );
+    const suggestionIds: string[] = [];
+    const ideaIds: string[] = [];
+    const errors: Array<{ name: string; error: unknown }> = [];
+
+    for (let i = 0; i < suggestions.length; i++) {
+      const suggestion = suggestions[i];
+      const ideaId = uuidv4();
+      ideaIds.push(ideaId);
+
+      try {
+        const { error: insertError } = await supabase
+          .from("trip_reel_ideas")
+          .insert({
+            id: ideaId,
+            trip_id: body.tripId,
+            created_by: body.createdBy,
+            source_platform: "ai_generated",
+            source_url: `ai-hotel-${ideaId}`,
+            source_video_id: ideaId,
+            title: suggestion.name,
+            summary: suggestion.summary,
+            category: "stay",
+            cost_bucket: suggestion.costGuess,
+            duration_bucket: "overnight",
+            tags: suggestion.tags,
+            icon_type: suggestion.iconType,
+            enrichment_status: "CREATED",
+          });
+
+        if (insertError) {
+          console.error(
+            `❌ [Hotel API] DB insert failed for "${suggestion.name}":`,
+            JSON.stringify(insertError),
+          );
+          errors.push({ name: suggestion.name, error: insertError });
+        } else {
+          suggestionIds.push(ideaId);
+          sendSSEEvent(response, "suggestion", {
+            suggestion: {
+              id: ideaId,
+              trip_id: body.tripId,
+              created_by: body.createdBy,
+              source_platform: "ai_generated",
+              title: suggestion.name,
+              summary: suggestion.summary,
+              category: "stay",
+              cost_bucket: suggestion.costGuess,
+              duration_bucket: "overnight",
+              tags: suggestion.tags,
+              icon_type: suggestion.iconType,
+              enrichment_status: "ENRICHING",
+            },
+            progress: i + 1,
+            total: suggestions.length,
+          });
+        }
+      } catch (saveError) {
+        console.error(
+          `❌ [Hotel API] Exception saving "${suggestion.name}":`,
+          saveError,
+        );
+        errors.push({ name: suggestion.name, error: saveError });
+      }
+    }
+
+    // Step 3: Enrich each with Google Places (lodging preference)
+    for (let i = 0; i < suggestions.length; i++) {
+      const suggestion = suggestions[i];
+      const ideaId = ideaIds[i];
+      if (!suggestionIds.includes(ideaId)) continue;
+
+      let placeData = null;
+      if (suggestion.placeQuery) {
+        try {
+          placeData = await matchPlace(suggestion.placeQuery, body.destination);
+        } catch (placeError) {
+          console.error(
+            `   ❌ [Hotel API] Place matching failed for ${suggestion.name}:`,
+            placeError,
+          );
+        }
+      }
+
+      const updateData: Record<string, unknown> = {
+        enrichment_status: "DONE",
+      };
+
+      if (placeData) {
+        const nightlyRate = getNightlyRate(placeData.priceLevel);
+        updateData.latitude = placeData.lat;
+        updateData.longitude = placeData.lng;
+        updateData.place = {
+          provider: placeData.provider,
+          placeId: placeData.placeId,
+          name: placeData.name,
+          address: placeData.address,
+          rating: placeData.rating,
+          reviewCount: placeData.reviewCount,
+          priceLevel: placeData.priceLevel,
+          photoUrl: placeData.photoUrl,
+          photos: placeData.photos,
+          reviews: placeData.reviews,
+          ...(nightlyRate != null && { nightlyRate }),
+        };
+        updateData.location = {
+          lat: placeData.lat,
+          lng: placeData.lng,
+          name: placeData.name,
+        };
+      }
+
+      await supabase
+        .from("trip_reel_ideas")
+        .update(updateData)
+        .eq("id", ideaId);
+
+      sendSSEEvent(response, "enriched", {
+        id: ideaId,
+        enrichment_status: "DONE",
+        ...(placeData && {
+          latitude: placeData.lat,
+          longitude: placeData.lng,
+          place: {
+            provider: placeData.provider,
+            placeId: placeData.placeId,
+            name: placeData.name,
+            address: placeData.address,
+            rating: placeData.rating,
+            reviewCount: placeData.reviewCount,
+            priceLevel: placeData.priceLevel,
+            photoUrl: placeData.photoUrl,
+            photos: placeData.photos,
+            nightlyRate: getNightlyRate(placeData.priceLevel),
+          },
+          location: {
+            lat: placeData.lat,
+            lng: placeData.lng,
+            name: placeData.name,
+          },
+        }),
+        progress: i + 1,
+        total: suggestions.length,
+      });
+    }
+
+    console.log(
+      `✅ [Hotel API] Complete: ${suggestionIds.length} saved in ${Date.now() - requestStartTime}ms`,
+    );
+
+    sendSSEEvent(response, "complete", {
+      success: true,
+      suggestionIds,
+      total: suggestions.length,
+      saved: suggestionIds.length,
+      failed: errors.length,
+    });
+    endSSE(response);
+  } catch (error) {
+    console.error("❌ [Hotel API] Unexpected error:", error);
+    sendSSEEvent(response, "error", {
+      error: "Internal server error",
+      details: error instanceof Error ? error.message : String(error),
+    });
+    endSSE(response);
+  }
+};

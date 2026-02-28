@@ -1,4 +1,11 @@
-import { CheckSquare, Trash2, Camera, Sparkles, PanelLeftOpen, PanelLeftClose } from "lucide-react";
+import {
+  CheckSquare,
+  Trash2,
+  Camera,
+  Sparkles,
+  PanelLeftOpen,
+  PanelLeftClose,
+} from "lucide-react";
 import { cn } from "../lib/utils";
 
 interface TopToolbarProps {
@@ -25,7 +32,7 @@ export function TopToolbar({
   if (!isSelectionMode) {
     return (
       <div className="flex items-center gap-3 px-3 py-2 border-b border-border">
-        {/* Chat agent toggle — solid button with clear panel-open affordance */}
+        {/* Chat agent toggle */}
         {onToggleChatPanel && (
           <button
             type="button"
@@ -39,15 +46,18 @@ export function TopToolbar({
           >
             <Sparkles className="w-4 h-4 flex-shrink-0" />
             <span>AI Chat</span>
-            {isChatOpen
-              ? <PanelLeftClose className="w-4 h-4 flex-shrink-0" />
-              : <PanelLeftOpen className="w-4 h-4 flex-shrink-0" />
-            }
+            {isChatOpen ? (
+              <PanelLeftClose className="w-4 h-4 flex-shrink-0" />
+            ) : (
+              <PanelLeftOpen className="w-4 h-4 flex-shrink-0" />
+            )}
           </button>
         )}
 
         {/* Separator */}
-        {onToggleChatPanel && <div className="w-px h-4 bg-border flex-shrink-0" />}
+        {onToggleChatPanel && (
+          <div className="w-px h-4 bg-border flex-shrink-0" />
+        )}
 
         {/* Utility actions */}
         <button
