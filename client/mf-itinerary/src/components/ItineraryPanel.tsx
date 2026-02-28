@@ -4,8 +4,12 @@ import { TimeOfDaySection } from "./TimeOfDaySection";
 import { TopToolbar } from "./TopToolbar";
 import { BottomBar } from "./BottomBar";
 import { PhotoGuideModal } from "./PhotoGuideModal";
+import { BudgetSummary } from "./BudgetSummary";
+import { DayTotalBar } from "./DayTotalBar";
 import { groupActivitiesByTimeOfDay } from "../lib/utils";
+import { calculateBudgetFromDays } from "../lib/budget-utils";
 import { useItineraryDeletion } from "../hooks/useItineraryDeletion";
+import { useTripMembers } from "../hooks/useTripMembers";
 import type {
   Activity,
   ItineraryData,
@@ -33,9 +37,12 @@ export function ItineraryPanel({
   onToggleChat,
 }: ItineraryPanelProps) {
   const [activeDayIndex, setActiveDayIndex] = useState(0);
+  const [budgetTabActive, setBudgetTabActive] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [showPhotoGuide, setShowPhotoGuide] = useState(false);
+
+  const { count: memberCount } = useTripMembers(tripId);
 
   // --- Deletion hook ---
   const {
@@ -171,69 +178,110 @@ export function ItineraryPanel({
 
   if (!currentDay || !grouped) return null;
 
+  const budget = data.budget ?? calculateBudgetFromDays(data.days);
+
+  // Day cost subtotals
+  const dayActivityTotal = currentDay.activities.reduce(
+    (sum, a) => sum + (a.cost_type !== "food" ? (a.cost_estimate ?? 0) : 0),
+    0,
+  );
+  const dayFoodTotal = currentDay.activities.reduce(
+    (sum, a) => sum + (a.cost_type === "food" ? (a.cost_estimate ?? 0) : 0),
+    0,
+  );
+  const dayTransportTotal = currentDay.transport_estimate ?? 0;
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex-shrink-0 pt-4 pb-2">
         {data.destination && (
-          <h1 className="text-lg font-bold text-foreground px-4 mb-3">
+          <h1 className="text-lg font-bold text-gray-900 dark:text-white px-4 mb-3">
             {data.trip_name || data.destination}
           </h1>
         )}
         <DayTabs
           days={localDays}
           activeDayIndex={activeDayIndex}
+          budgetTabActive={budgetTabActive}
           onSelectDay={(index) => {
             setActiveDayIndex(index);
+            setBudgetTabActive(false);
             setSelectedIds(new Set());
+          }}
+          onSelectBudget={() => {
+            setBudgetTabActive(true);
+            setSelectedIds(new Set());
+            setIsSelectionMode(false);
           }}
         />
       </div>
 
-      {/* Toolbar */}
-      <TopToolbar
-        selectedCount={selectedIds.size}
-        isSelectionMode={isSelectionMode}
-        onToggleSelectionMode={handleToggleSelectionMode}
-        onSelectAll={handleSelectAll}
-        onDelete={handleDelete}
-        onOpenPhotoGuide={() => setShowPhotoGuide(true)}
-        isChatOpen={isChatOpen}
-        onToggleChatPanel={onToggleChat}
-      />
-
-      {/* Photo Guide modal */}
-      <PhotoGuideModal
-        open={showPhotoGuide}
-        onClose={() => setShowPhotoGuide(false)}
-        tripId={tripId}
-        dayNumber={activeDay}
-      />
-
-      {/* Scrollable activities */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        {TIME_OF_DAY_ORDER.map((tod) => (
-          <TimeOfDaySection
-            key={tod}
-            timeOfDay={tod}
-            activities={grouped[tod]}
-            selectedIds={selectedIds}
-            isSelectionMode={isSelectionMode}
-            onToggleSelect={handleToggleSelect}
-            onOpenActivity={onOpenActivity}
-            deletedSlots={freeTimeSlotsBySection[tod]}
+      {budgetTabActive ? (
+        /* Budget tab content */
+        <div className="flex-1 overflow-y-auto">
+          <BudgetSummary
+            budget={budget}
+            memberCount={memberCount}
+            destination={data.destination}
+            tripDays={data.days.length}
+            tripId={tripId}
+            days={data.days}
           />
-        ))}
-      </div>
+        </div>
+      ) : (
+        <>
+          {/* Toolbar */}
+          <TopToolbar
+            selectedCount={selectedIds.size}
+            isSelectionMode={isSelectionMode}
+            onToggleSelectionMode={handleToggleSelectionMode}
+            onSelectAll={handleSelectAll}
+            onDelete={handleDelete}
+            onOpenPhotoGuide={() => setShowPhotoGuide(true)}
+            isChatOpen={isChatOpen}
+            onToggleChatPanel={onToggleChat}
+          />
 
-      {/* Bottom bar */}
-      <BottomBar
-        onUndo={handleUndo}
-        onSave={handleSave}
-        canUndo={canUndo}
-        isSaving={isSaving}
-        saveError={saveError}
-      />
+          {/* Photo Guide modal */}
+          <PhotoGuideModal
+            open={showPhotoGuide}
+            onClose={() => setShowPhotoGuide(false)}
+            tripId={tripId}
+            dayNumber={activeDay}
+          />
+
+          {/* Scrollable activities */}
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            {TIME_OF_DAY_ORDER.map((tod) => (
+              <TimeOfDaySection
+                key={tod}
+                timeOfDay={tod}
+                activities={grouped[tod]}
+                selectedIds={selectedIds}
+                isSelectionMode={isSelectionMode}
+                onToggleSelect={handleToggleSelect}
+                onOpenActivity={onOpenActivity}
+                deletedSlots={freeTimeSlotsBySection[tod]}
+              />
+            ))}
+            <DayTotalBar
+              activityTotal={dayActivityTotal}
+              transportTotal={dayTransportTotal}
+              foodTotal={dayFoodTotal}
+            />
+          </div>
+
+          {/* Bottom bar */}
+          <BottomBar
+            onUndo={handleUndo}
+            onSave={handleSave}
+            canUndo={canUndo}
+            isSaving={isSaving}
+            saveError={saveError}
+          />
+        </>
+      )}
     </div>
   );
 }
