@@ -1,6 +1,11 @@
 import "./globals.css";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { supabase, isUsingFallbackSupabase } from "./lib/supabase";
+
+interface UserProfile {
+  display_name: string | null;
+  avatar_url: string | null;
+}
 import { ItineraryPanel } from "./components/ItineraryPanel";
 import { MapPanel } from "./components/MapPanel";
 import { BuildingState } from "./components/BuildingState";
@@ -32,10 +37,13 @@ const DEBUG =
 
 const App = () => {
   const [tripId] = useState<string | null>(getTripId);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   // Bootstrap the Supabase session from the shell's window.__TRIPWEAVE_SESSION__.
   // mf-itinerary runs on a different port (3002) so it has its own empty localStorage —
   // the shell exposes its session via the window object so MFEs can hydrate their clients.
+  // After hydrating, fetch the user profile once via getUser() — a single shot call
+  // with no subscription, so it won't cause repeated re-renders.
   useEffect(() => {
     const shellSession = (
       window as unknown as {
@@ -46,6 +54,15 @@ const App = () => {
       supabase.auth.setSession({
         access_token: shellSession.access_token,
         refresh_token: shellSession.refresh_token,
+      }).then(async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase
+          .from("member_profiles")
+          .select("display_name, avatar_url")
+          .eq("user_id", user.id)
+          .single();
+        if (data) setUserProfile(data);
       });
     }
   }, []);
@@ -327,6 +344,7 @@ const App = () => {
                 onConfirm={confirmChanges}
                 onReject={rejectChanges}
                 onDismissError={clearChatError}
+                userProfile={userProfile}
               />
             </div>
           </div>

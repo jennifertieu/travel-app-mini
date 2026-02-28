@@ -53,7 +53,7 @@ export interface ItineraryData {
   budget?: BudgetSummary;
 }
 
-export type ChatRole = "agent" | "user";
+export type ChatRole = "agent" | "user" | "system";
 
 export interface IItineraryChange {
   type: "add" | "remove" | "move" | "swap" | "add_travel" | "remove_travel";
@@ -84,6 +84,8 @@ export interface ChatMessage {
   isStreaming?: boolean;
   /** Tool names called by the agent while generating this message */
   toolCalls?: string[];
+  /** Visual variant for system messages */
+  variant?: "default" | "danger";
 }
 
 /** Describes a free time slot to render where deleted activities were */

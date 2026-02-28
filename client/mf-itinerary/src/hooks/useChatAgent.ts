@@ -56,16 +56,53 @@ export function useChatAgent({
       fetch(getApiUrl(`/itinerary/${tripId}/chat/session`), { headers })
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
-          if (!data?.active || !data.messages?.length) return;
-          const restored: ChatMessage[] = data.messages.map(
-            (m: { role: ChatRole; content: string }) => ({
+          if (!data?.active) return;
+          // Each system event carries archivedMessages from its conversation turn.
+          // Expand them just before their pill, using the event timestamp as an anchor.
+          const allMessages: ChatMessage[] = [];
+
+          for (const e of (data.systemEvents ?? []) as Array<{
+            content: string;
+            variant?: "default" | "danger";
+            timestamp: number;
+            archivedMessages?: Array<{ role: "user" | "agent"; content: string }>;
+          }>) {
+            (e.archivedMessages ?? []).forEach((m, i) => {
+              allMessages.push({
+                id: crypto.randomUUID(),
+                role: m.role as ChatRole,
+                content: m.content,
+                // Place archived messages just before the event timestamp
+                timestamp: new Date(e.timestamp - 1000 + i),
+              });
+            });
+            allMessages.push({
               id: crypto.randomUUID(),
-              role: m.role,
-              content: m.content,
-              timestamp: new Date(data.createdAt),
-            })
+              role: "system" as ChatRole,
+              content: e.content,
+              variant: e.variant,
+              timestamp: new Date(e.timestamp),
+            });
+          }
+
+          // Append live messages (since the last event) after all archived history
+          const lastEventTs = allMessages.length > 0
+            ? allMessages[allMessages.length - 1].timestamp.getTime()
+            : data.createdAt;
+          (data.messages ?? []).forEach(
+            (m: { role: ChatRole; content: string }, i: number) => {
+              allMessages.push({
+                id: crypto.randomUUID(),
+                role: m.role,
+                content: m.content,
+                timestamp: new Date(lastEventTs + 1 + i),
+              });
+            }
           );
-          setMessages([WELCOME_MESSAGE, ...restored]);
+
+          if (allMessages.length > 0) {
+            setMessages([WELCOME_MESSAGE, ...allMessages]);
+          }
           if (data.pendingChanges?.length) {
             setPendingChanges(data.pendingChanges);
             setStatus("awaiting_confirmation");
@@ -242,7 +279,7 @@ export function useChatAgent({
     } catch (err: any) {
       setError(err.message ?? "Failed to confirm changes");
     }
-  }, [tripId, onItineraryUpdated]);
+  }, [tripId, pendingChanges.length, onItineraryUpdated]);
 
   const rejectChanges = useCallback(async () => {
     if (!tripId) return;
@@ -257,7 +294,7 @@ export function useChatAgent({
     } catch {
       // Silently ignore — UI is already reset
     }
-  }, [tripId]);
+  }, [tripId, pendingChanges.length]);
 
   return {
     messages,

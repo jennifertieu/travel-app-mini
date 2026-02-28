@@ -16,12 +16,27 @@ export interface IItineraryChange {
   };
 }
 
+export interface IDisplayMessage {
+  role: "user" | "agent";
+  content: string;
+}
+
+export interface ISystemEvent {
+  content: string;
+  variant?: "default" | "danger";
+  timestamp: number;
+  /** Conversation messages that led to this event, archived for UI display after reset */
+  archivedMessages?: IDisplayMessage[];
+}
+
 export interface IChatSession {
   tripId: string;
   userId: string;
   originalItinerary: IItinerary;
   draftItinerary: IItinerary;
   messages: ChatCompletionMessageParam[];
+  /** UI-only events (confirm/reject acknowledgments) kept separate from LLM messages */
+  systemEvents: ISystemEvent[];
   createdAt: number;
   lastActivityAt: number;
 }
@@ -56,6 +71,7 @@ export const getOrCreateSession = async (
     originalItinerary: structuredClone(savedItinerary),
     draftItinerary: structuredClone(savedItinerary),
     messages: [],
+    systemEvents: [],
     createdAt: Date.now(),
     lastActivityAt: Date.now(),
   };

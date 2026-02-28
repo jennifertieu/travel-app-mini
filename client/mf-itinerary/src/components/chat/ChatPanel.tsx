@@ -5,6 +5,11 @@ import { MessageBubble } from "./MessageBubble";
 import { ChangesPreview } from "./ChangesPreview";
 import type { ChatMessage, ChatStatus, IItineraryChange } from "../../types";
 
+interface UserProfile {
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
 interface ChatPanelProps {
   messages: ChatMessage[];
   status?: ChatStatus;
@@ -16,6 +21,7 @@ interface ChatPanelProps {
   onConfirm?: () => void;
   onReject?: () => void;
   onDismissError?: () => void;
+  userProfile?: UserProfile | null;
 }
 
 const MIN_HISTORY_HEIGHT = 80;
@@ -36,6 +42,7 @@ export function ChatPanel({
   onConfirm,
   onReject,
   onDismissError,
+  userProfile,
 }: ChatPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -262,7 +269,7 @@ export function ChatPanel({
             </p>
           </div>
         ) : (
-          messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)
+          messages.map((msg) => <MessageBubble key={msg.id} message={msg} userProfile={userProfile} />)
         )}
       </div>
 

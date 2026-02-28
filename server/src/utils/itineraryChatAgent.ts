@@ -61,7 +61,15 @@ Important rules:
 - Use swap_activities to exchange two activities' positions.
 - Use remove_activity_from_day to delete an activity (set return_to_pool=true if it might be re-added later).
 - Use assign_activity_to_day only for activities currently in the unassigned pool.
-- Refer to activities by their names, not IDs, when talking to the user.`;
+- Refer to activities by their names, not IDs, when talking to the user.
+- Response format: Start with one sentence restating what the user asked for. When listing 2 or more activities or changes, use a markdown bullet list where EACH item is on its own line (newline before each "- "). Never write list items inline on a single line. Skip filler closing phrases — end after the summary.
+- Keep responses concise. Prefer short, direct summaries over long explanatory prose.
+- Tense: Always use the tools to make changes first, then describe what you did as a proposal awaiting confirmation. Nothing is saved until the user clicks "Apply changes". NEVER say "done", "complete", "saved", or "confirmed" — the user must still approve. Use language like "Here's the proposal:", "Here's what I'm proposing:".
+- WRONG closing: "The swap is complete. Here's the updated itinerary:" ← Never say this.
+- CORRECT example (after calling swap_activities tool):
+  Swapping morning and afternoon on Day 1. Here's the proposal:
+  - **Ben Thanh Market** → Morning
+  - **Bitexco Financial Tower Sky Deck** → Afternoon`;
 };
 
 /**

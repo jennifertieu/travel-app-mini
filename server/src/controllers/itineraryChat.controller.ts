@@ -6,6 +6,8 @@ import {
   getOrCreateSession,
   getSession,
   computeChanges,
+  ISystemEvent,
+  IDisplayMessage,
 } from "../utils/chatSessionManager.js";
 import { streamItineraryChatAgent } from "../utils/itineraryChatAgent.js";
 
@@ -86,8 +88,29 @@ export const confirmChanges = async (
     return response.status(500).json({ error: "Failed to save changes" });
   }
 
+  // Snapshot conversation for UI display before resetting baseline
+  const archivedMessages: IDisplayMessage[] = session.messages
+    .filter(
+      (m) =>
+        (m.role === "user" || m.role === "assistant") &&
+        m.content &&
+        typeof m.content === "string"
+    )
+    .map((m) => ({
+      role: m.role === "assistant" ? "agent" : "user",
+      content: m.content as string,
+    }));
+
   // Reset: draft becomes the new baseline
   session.originalItinerary = structuredClone(session.draftItinerary);
+
+  const event: ISystemEvent = {
+    content: `✓ ${changes.length} change${changes.length !== 1 ? "s" : ""} applied`,
+    timestamp: Date.now(),
+    archivedMessages,
+  };
+  session.systemEvents.push(event);
+  session.messages = [];
 
   return response.json({
     success: true,
@@ -108,8 +131,33 @@ export const rejectChanges = async (
     return response.status(404).json({ error: "No active chat session" });
   }
 
-  // Revert draft to original
+  const changes = computeChanges(session);
+
+  // Snapshot conversation for UI display before clearing LLM history
+  const archivedMessages: IDisplayMessage[] = session.messages
+    .filter(
+      (m) =>
+        (m.role === "user" || m.role === "assistant") &&
+        m.content &&
+        typeof m.content === "string"
+    )
+    .map((m) => ({
+      role: m.role === "assistant" ? "agent" : "user",
+      content: m.content as string,
+    }));
+
+  // Revert draft to original and clear message history so the LLM
+  // doesn't see stale "I already did X" messages from the rejected turn
   session.draftItinerary = structuredClone(session.originalItinerary);
+  session.messages = [];
+
+  const event: ISystemEvent = {
+    content: `✕ ${changes.length} change${changes.length !== 1 ? "s" : ""} discarded`,
+    variant: "danger",
+    timestamp: Date.now(),
+    archivedMessages,
+  };
+  session.systemEvents.push(event);
 
   return response.json({ success: true, message: "Changes reverted" });
 };
@@ -126,20 +174,24 @@ export const getSessionStatus = async (
     return response.json({ active: false });
   }
 
+  // Current live messages (since last confirm/reject)
+  const liveMessages = session.messages
+    .filter(
+      (m) =>
+        (m.role === "user" || m.role === "assistant") &&
+        m.content &&
+        typeof m.content === "string"
+    )
+    .map((m) => ({
+      role: m.role === "assistant" ? "agent" : "user",
+      content: m.content as string,
+    }));
+
   return response.json({
     active: true,
     pendingChanges: computeChanges(session),
-    messages: session.messages
-      .filter(
-        (m) =>
-          (m.role === "user" || m.role === "assistant") &&
-          m.content &&
-          typeof m.content === "string"
-      )
-      .map((m) => ({
-        role: m.role === "assistant" ? "agent" : "user",
-        content: m.content as string,
-      })),
+    messages: liveMessages,
+    systemEvents: session.systemEvents,
     createdAt: session.createdAt,
   });
 };
