@@ -188,9 +188,9 @@ export function ItineraryPanel({
   const dayTransportTotal = currentDay.transport_estimate ?? 0;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="@container flex flex-col h-full">
       {/* Header */}
-      <div className="flex-shrink-0 pt-4 pb-2">
+      <div className="flex-shrink-0 pt-4 pb-1">
         {data.destination && (
           <h1 className="text-lg font-bold text-gray-900 dark:text-white px-4 mb-3">
             {data.trip_name || data.destination}

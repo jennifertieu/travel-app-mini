@@ -38,7 +38,7 @@ export function TopToolbar({
             type="button"
             onClick={onToggleChatPanel}
             className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-semibold transition-all duration-200 whitespace-nowrap",
+              "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-semibold transition-all duration-200 whitespace-nowrap flex-shrink-0",
               isChatOpen
                 ? "bg-teal-600 text-white hover:bg-teal-700"
                 : "bg-teal-600 text-white hover:bg-teal-700 shadow-md shadow-teal-600/40",
@@ -54,31 +54,29 @@ export function TopToolbar({
           </button>
         )}
 
-        {/* Separator */}
-        {onToggleChatPanel && (
-          <div className="w-px h-4 bg-border flex-shrink-0" />
-        )}
-
         {/* Utility actions */}
-        <button
-          type="button"
-          onClick={onToggleSelectionMode}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <CheckSquare className="w-3.5 h-3.5" />
-          Select
-        </button>
-        {onOpenPhotoGuide && (
+        <div className="flex items-center gap-3 ml-1">
           <button
             type="button"
-            onClick={onOpenPhotoGuide}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            title="Photo Guide"
+            onClick={onToggleSelectionMode}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            title="Select"
           >
-            <Camera className="w-3.5 h-3.5" />
-            Photo Guide
+            <CheckSquare className="w-5 h-5 flex-shrink-0" />
+            <span className="hidden @[360px]:inline">Select</span>
           </button>
-        )}
+          {onOpenPhotoGuide && (
+            <button
+              type="button"
+              onClick={onOpenPhotoGuide}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              title="Photo Guide"
+            >
+              <Camera className="w-5 h-5 flex-shrink-0" />
+              <span className="hidden @[360px]:inline">Photo Guide</span>
+            </button>
+          )}
+        </div>
       </div>
     );
   }
