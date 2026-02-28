@@ -1,12 +1,11 @@
 import "./globals.css";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { supabase, isUsingFallbackSupabase } from "./lib/supabase";
 import { ItineraryPanel } from "./components/ItineraryPanel";
 import { MapPanel } from "./components/MapPanel";
 import { BuildingState } from "./components/BuildingState";
 import { EmptyState } from "./components/EmptyState";
 import { ChatPanel } from "./components/chat/ChatPanel";
-import { ChatToggleButton } from "./components/chat/ChatToggleButton";
 import { ActivityDetailModal } from "./components/ActivityDetailModal";
 import { useAnnotations } from "./hooks/useAnnotations";
 import { useChat } from "./hooks/useChat";
@@ -42,6 +41,48 @@ const App = () => {
     setInputValue,
     handleSend,
   } = useChat();
+
+  // --- Chat panel resize drag state ---
+  const CHAT_MIN_WIDTH = 200;
+  const CHAT_DEFAULT_WIDTH = 320;
+  const [chatWidth, setChatWidth] = useState(CHAT_DEFAULT_WIDTH);
+  const [isDraggingHandle, setIsDraggingHandle] = useState(false);
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragStartWidth = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleDragStart = useCallback((clientX: number) => {
+    isDragging.current = true;
+    dragStartX.current = clientX;
+    dragStartWidth.current = chatWidth;
+    setIsDraggingHandle(true);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, [chatWidth]);
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current) return;
+      const delta = e.clientX - dragStartX.current;
+      const containerWidth = containerRef.current?.offsetWidth ?? window.innerWidth;
+      const maxWidth = Math.floor(containerWidth * 0.5);
+      setChatWidth(Math.max(CHAT_MIN_WIDTH, Math.min(dragStartWidth.current + delta, maxWidth)));
+    };
+    const onMouseUp = () => {
+      if (!isDragging.current) return;
+      isDragging.current = false;
+      setIsDraggingHandle(false);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, []);
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isBuilding, setIsBuilding] = useState(false);
@@ -225,10 +266,16 @@ const App = () => {
         })()}
 
       {itineraryData && (
-        <div className="flex flex-1 min-h-0">
+        <div ref={containerRef} className="flex flex-1 min-h-0">
           {/* Chat panel — slides in from the left when open */}
-          {isChatOpen && (
-            <div className="w-80 flex-shrink-0">
+          <div
+            className={cn(
+              "flex-shrink-0 overflow-hidden",
+              !isDraggingHandle && "transition-[width] duration-300 ease-in-out",
+            )}
+            style={{ width: isChatOpen ? chatWidth : 0 }}
+          >
+            <div style={{ width: chatWidth }} className="h-full">
               <ChatPanel
                 messages={messages}
                 inputValue={inputValue}
@@ -236,21 +283,39 @@ const App = () => {
                 onSend={handleSend}
               />
             </div>
+          </div>
+
+          {/* Drag handle between chat and itinerary — only visible when chat is open */}
+          {isChatOpen && (
+            <div
+              onMouseDown={(e) => { e.preventDefault(); handleDragStart(e.clientX); }}
+              onDoubleClick={() => setChatWidth(CHAT_DEFAULT_WIDTH)}
+              className="flex-shrink-0 flex items-center justify-center w-3 cursor-col-resize group relative bg-border/40 hover:bg-teal-500/15 transition-colors duration-150 border-x border-border"
+            >
+              {/* Three-dot indicator */}
+              <svg
+                width="6"
+                height="24"
+                viewBox="0 0 6 24"
+                className="text-muted-foreground/60 group-hover:text-teal-500 transition-colors duration-150"
+                fill="currentColor"
+              >
+                <circle cx="3" cy="5" r="1.75" />
+                <circle cx="3" cy="12" r="1.75" />
+                <circle cx="3" cy="19" r="1.75" />
+              </svg>
+            </div>
           )}
 
-          {/* Itinerary panel — relative for toggle button positioning */}
-          <div
-            className={cn(
-              isChatOpen ? "flex-1" : "w-1/2",
-              "overflow-y-auto relative",
-            )}
-          >
-            <ChatToggleButton isOpen={isChatOpen} onClick={toggleChat} />
+          {/* Itinerary panel */}
+          <div className={cn(isChatOpen ? "flex-1" : "w-1/2", "overflow-y-auto")}>
             <ItineraryPanel
               data={itineraryData}
               tripId={tripId}
               itineraryRowId={itinerary!.id}
               onOpenActivity={setSelectedActivity}
+              isChatOpen={isChatOpen}
+              onToggleChat={toggleChat}
             />
           </div>
 

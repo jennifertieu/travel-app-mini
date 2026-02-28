@@ -97,12 +97,12 @@ export function ActivityCard({
         <p className="text-xs text-muted-foreground truncate mt-0.5">
           {formatLocation(activity.location)}
         </p>
-        <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
-          <Clock className="w-3 h-3" />
-          <span>
+        <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground flex-nowrap min-w-0">
+          <Clock className="w-3 h-3 flex-shrink-0" />
+          <span className="whitespace-nowrap">
             {startTime} – {endTime}
           </span>
-          <span className="text-muted-foreground/60">
+          <span className="text-muted-foreground/60 whitespace-nowrap">
             ({formatDuration(activity.duration_minutes)})
           </span>
         </div>

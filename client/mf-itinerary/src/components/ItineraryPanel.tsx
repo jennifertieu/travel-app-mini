@@ -20,6 +20,8 @@ interface ItineraryPanelProps {
   tripId: string | null;
   itineraryRowId: string;
   onOpenActivity: (activity: Activity) => void;
+  isChatOpen?: boolean;
+  onToggleChat?: () => void;
 }
 
 export function ItineraryPanel({
@@ -27,6 +29,8 @@ export function ItineraryPanel({
   tripId,
   itineraryRowId,
   onOpenActivity,
+  isChatOpen,
+  onToggleChat,
 }: ItineraryPanelProps) {
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -194,6 +198,8 @@ export function ItineraryPanel({
         onSelectAll={handleSelectAll}
         onDelete={handleDelete}
         onOpenPhotoGuide={() => setShowPhotoGuide(true)}
+        isChatOpen={isChatOpen}
+        onToggleChatPanel={onToggleChat}
       />
 
       {/* Photo Guide modal */}

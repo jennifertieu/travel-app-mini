@@ -1,4 +1,5 @@
-import { CheckSquare, Trash2, Camera } from "lucide-react";
+import { CheckSquare, Trash2, Camera, Sparkles, PanelLeftOpen, PanelLeftClose } from "lucide-react";
+import { cn } from "../lib/utils";
 
 interface TopToolbarProps {
   selectedCount: number;
@@ -7,6 +8,8 @@ interface TopToolbarProps {
   onSelectAll: () => void;
   onDelete: () => void;
   onOpenPhotoGuide?: () => void;
+  isChatOpen?: boolean;
+  onToggleChatPanel?: () => void;
 }
 
 export function TopToolbar({
@@ -16,31 +19,56 @@ export function TopToolbar({
   onSelectAll,
   onDelete,
   onOpenPhotoGuide,
+  isChatOpen,
+  onToggleChatPanel,
 }: TopToolbarProps) {
   if (!isSelectionMode) {
     return (
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3 px-3 py-2 border-b border-border">
+        {/* Chat agent toggle — solid button with clear panel-open affordance */}
+        {onToggleChatPanel && (
           <button
             type="button"
-            onClick={onToggleSelectionMode}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            onClick={onToggleChatPanel}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-semibold transition-all duration-200 whitespace-nowrap",
+              isChatOpen
+                ? "bg-teal-600 text-white hover:bg-teal-700"
+                : "bg-teal-600 text-white hover:bg-teal-700 shadow-md shadow-teal-600/40",
+            )}
           >
-            <CheckSquare className="w-3.5 h-3.5" />
-            Select
+            <Sparkles className="w-4 h-4 flex-shrink-0" />
+            <span>AI Chat</span>
+            {isChatOpen
+              ? <PanelLeftClose className="w-4 h-4 flex-shrink-0" />
+              : <PanelLeftOpen className="w-4 h-4 flex-shrink-0" />
+            }
           </button>
-          {onOpenPhotoGuide && (
-            <button
-              type="button"
-              onClick={onOpenPhotoGuide}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              title="Photo Guide"
-            >
-              <Camera className="w-3.5 h-3.5" />
-              Photo Guide
-            </button>
-          )}
-        </div>
+        )}
+
+        {/* Separator */}
+        {onToggleChatPanel && <div className="w-px h-4 bg-border flex-shrink-0" />}
+
+        {/* Utility actions */}
+        <button
+          type="button"
+          onClick={onToggleSelectionMode}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <CheckSquare className="w-3.5 h-3.5" />
+          Select
+        </button>
+        {onOpenPhotoGuide && (
+          <button
+            type="button"
+            onClick={onOpenPhotoGuide}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            title="Photo Guide"
+          >
+            <Camera className="w-3.5 h-3.5" />
+            Photo Guide
+          </button>
+        )}
       </div>
     );
   }

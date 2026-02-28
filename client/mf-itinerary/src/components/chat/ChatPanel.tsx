@@ -12,6 +12,8 @@ interface ChatPanelProps {
 }
 
 const MIN_HISTORY_HEIGHT = 80;
+// Minimum px to reserve for the input area (drag handle + padding + textarea + hint)
+const MIN_INPUT_AREA_HEIGHT = 110;
 
 export function ChatPanel({ messages, inputValue, onInputChange, onSend }: ChatPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -23,12 +25,32 @@ export function ChatPanel({ messages, inputValue, onInputChange, onSend }: ChatP
   // Start uninitialized — set to 2/3 of panel height on mount
   const [historyHeight, setHistoryHeight] = useState<number | null>(null);
 
+  // Clamp so the input area always has at least MIN_INPUT_AREA_HEIGHT px.
+  const clampedHistoryHeight = useCallback((raw: number): number => {
+    const panelH = panelRef.current?.offsetHeight ?? window.innerHeight;
+    return Math.min(raw, panelH - MIN_INPUT_AREA_HEIGHT);
+  }, []);
+
   // Set initial history height to 2/3 of panel (leaving 1/3 for the textarea)
   useEffect(() => {
     if (panelRef.current && historyHeight === null) {
-      setHistoryHeight(Math.round(panelRef.current.offsetHeight * (2 / 3)));
+      setHistoryHeight(clampedHistoryHeight(Math.round(panelRef.current.offsetHeight * (2 / 3))));
     }
-  }, [historyHeight]);
+  }, [historyHeight, clampedHistoryHeight]);
+
+  // Re-clamp when panel resizes (browser zoom, window resize, drag handle)
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const observer = new ResizeObserver(() => {
+      setHistoryHeight((prev) => {
+        if (prev === null) return prev;
+        return clampedHistoryHeight(prev);
+      });
+    });
+    observer.observe(panel);
+    return () => observer.disconnect();
+  }, [clampedHistoryHeight]);
 
   // Auto-scroll to bottom whenever messages change
   useEffect(() => {
@@ -48,14 +70,9 @@ export function ChatPanel({ messages, inputValue, onInputChange, onSend }: ChatP
   const moveDrag = useCallback((clientY: number) => {
     if (!isDragging.current) return;
     const delta = clientY - dragStartY.current;
-    const newHeight = Math.max(MIN_HISTORY_HEIGHT, dragStartHeight.current + delta);
-    if (panelRef.current) {
-      const maxHeight = panelRef.current.offsetHeight - 100;
-      setHistoryHeight(Math.min(newHeight, maxHeight));
-    } else {
-      setHistoryHeight(newHeight);
-    }
-  }, []);
+    const raw = Math.max(MIN_HISTORY_HEIGHT, dragStartHeight.current + delta);
+    setHistoryHeight(clampedHistoryHeight(raw));
+  }, [clampedHistoryHeight]);
 
   const endDrag = useCallback(() => {
     if (!isDragging.current) return;
@@ -68,6 +85,12 @@ export function ChatPanel({ messages, inputValue, onInputChange, onSend }: ChatP
     e.preventDefault();
     startDrag(e.clientY);
   }, [startDrag]);
+
+  const resetHistoryHeight = useCallback(() => {
+    if (panelRef.current) {
+      setHistoryHeight(clampedHistoryHeight(Math.round(panelRef.current.offsetHeight * (2 / 3))));
+    }
+  }, [clampedHistoryHeight]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     startDrag(e.touches[0].clientY);
@@ -134,6 +157,7 @@ export function ChatPanel({ messages, inputValue, onInputChange, onSend }: ChatP
       <div
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
+        onDoubleClick={resetHistoryHeight}
         className="flex-shrink-0 flex items-center justify-center h-3 border-y border-border bg-muted/50 hover:bg-muted cursor-row-resize group"
       >
         {/* Three horizontal dots — universally recognized drag indicator */}
