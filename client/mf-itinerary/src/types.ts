@@ -55,11 +55,33 @@ export interface ItineraryData {
 
 export type ChatRole = "agent" | "user";
 
+export interface IItineraryChange {
+  type: "add" | "remove" | "move" | "swap" | "add_travel" | "remove_travel";
+  description: string;
+  before?: {
+    day_number: number;
+    time_of_day: string;
+    activity_name: string;
+  };
+  after?: {
+    day_number: number;
+    time_of_day: string;
+    activity_name: string;
+  };
+}
+
+export type ChatStatus =
+  | "idle"
+  | "streaming"
+  | "awaiting_confirmation"
+  | "error";
+
 export interface ChatMessage {
   id: string;
   role: ChatRole;
   content: string;
   timestamp: Date;
+  isStreaming?: boolean;
 }
 
 /** Describes a free time slot to render where deleted activities were */
