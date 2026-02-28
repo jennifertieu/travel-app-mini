@@ -8,7 +8,7 @@ import { EmptyState } from "./components/EmptyState";
 import { ChatPanel } from "./components/chat/ChatPanel";
 import { ActivityDetailModal } from "./components/ActivityDetailModal";
 import { useAnnotations } from "./hooks/useAnnotations";
-import { useChat } from "./hooks/useChat";
+import { useChatAgent } from "./hooks/useChatAgent";
 import { usePlacesEnrichment } from "./hooks/usePlacesEnrichment";
 import { cn } from "./lib/utils";
 import type { Activity, ItineraryData } from "./types";
@@ -33,14 +33,25 @@ const DEBUG =
 const App = () => {
   const [tripId] = useState<string | null>(getTripId);
   const annotations = useAnnotations(tripId);
+  // Stable ref so useChatAgent can call fetchItinerary even though it's defined below
+  const fetchItineraryRef = useRef<((id: string) => void) | null>(null);
   const {
     messages,
+    status: chatStatus,
+    pendingChanges,
+    error: chatError,
     isChatOpen,
     toggleChat,
     inputValue,
     setInputValue,
-    handleSend,
-  } = useChat();
+    sendMessage,
+    confirmChanges,
+    rejectChanges,
+    clearError: clearChatError,
+  } = useChatAgent({
+    tripId,
+    onItineraryUpdated: () => tripId && fetchItineraryRef.current?.(tripId),
+  });
 
   // --- Chat panel resize drag state ---
   const CHAT_MIN_WIDTH = 200;
@@ -130,6 +141,9 @@ const App = () => {
 
     setIsLoading(false);
   }, []);
+
+  // Keep ref in sync so the chat agent can trigger a refetch after confirm
+  fetchItineraryRef.current = fetchItinerary;
 
   useEffect(() => {
     if (!tripId) {
@@ -286,9 +300,15 @@ const App = () => {
             <div style={{ width: chatWidth }} className="h-full">
               <ChatPanel
                 messages={messages}
+                status={chatStatus}
+                pendingChanges={pendingChanges}
+                error={chatError}
                 inputValue={inputValue}
                 onInputChange={setInputValue}
-                onSend={handleSend}
+                onSend={sendMessage}
+                onConfirm={confirmChanges}
+                onReject={rejectChanges}
+                onDismissError={clearChatError}
               />
             </div>
           </div>

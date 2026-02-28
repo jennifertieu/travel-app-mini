@@ -21,6 +21,9 @@ interface ChatPanelProps {
 const MIN_HISTORY_HEIGHT = 80;
 // Minimum px to reserve for the input area (drag handle + padding + textarea + hint)
 const MIN_INPUT_AREA_HEIGHT = 110;
+const DEFAULT_TEXTAREA_HEIGHT = 90;
+const MIN_TEXTAREA_HEIGHT = 48;
+const MAX_TEXTAREA_HEIGHT = 240;
 
 export function ChatPanel({
   messages,
@@ -42,6 +45,14 @@ export function ChatPanel({
   const dragStartHeight = useRef(0);
   // Start uninitialized — set to 2/3 of panel height on mount
   const [historyHeight, setHistoryHeight] = useState<number | null>(null);
+
+  // Textarea resize gripper state
+  const [textareaHeight, setTextareaHeight] = useState(DEFAULT_TEXTAREA_HEIGHT);
+  // Whether the user has manually dragged the gripper — disables auto-grow when true
+  const [hasManuallyResized, setHasManuallyResized] = useState(false);
+  const isTextareaDragging = useRef(false);
+  const textareaDragStartY = useRef(0);
+  const textareaDragStartHeight = useRef(0);
 
   // Clamp so the input area always has at least MIN_INPUT_AREA_HEIGHT px.
   const clampedHistoryHeight = useCallback((raw: number): number => {
@@ -69,6 +80,20 @@ export function ChatPanel({
     observer.observe(panel);
     return () => observer.disconnect();
   }, [clampedHistoryHeight]);
+
+  // Auto-grow textarea to content height, unless user has manually dragged the gripper
+  useEffect(() => {
+    if (hasManuallyResized) return;
+    const el = textareaRef.current;
+    if (!el) return;
+    // Reset to 'auto' first so scrollHeight reflects actual content, not the previous height
+    el.style.height = "auto";
+    const clamped = Math.min(MAX_TEXTAREA_HEIGHT, Math.max(MIN_TEXTAREA_HEIGHT, el.scrollHeight));
+    // Set the inline style directly — don't clear it, or the textarea collapses before
+    // React's async re-render can apply the updated textareaHeight state value
+    el.style.height = `${clamped}px`;
+    setTextareaHeight(clamped);
+  }, [inputValue, hasManuallyResized]);
 
   // Auto-scroll to bottom whenever messages change
   useEffect(() => {
@@ -134,6 +159,43 @@ export function ChatPanel({
       document.removeEventListener("touchend", onTouchEnd);
     };
   }, [moveDrag, endDrag]);
+
+  // Textarea gripper drag handlers
+  const handleTextareaGripMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isTextareaDragging.current = true;
+    textareaDragStartY.current = e.clientY;
+    textareaDragStartHeight.current = textareaHeight;
+    document.body.style.cursor = "se-resize";
+    document.body.style.userSelect = "none";
+  }, [textareaHeight]);
+
+  const resetTextareaHeight = useCallback(() => {
+    setTextareaHeight(DEFAULT_TEXTAREA_HEIGHT);
+    setHasManuallyResized(false); // Re-enable auto-grow
+  }, []);
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isTextareaDragging.current) return;
+      setHasManuallyResized(true); // Lock to manual mode on first actual drag move
+      const delta = e.clientY - textareaDragStartY.current;
+      const raw = textareaDragStartHeight.current + delta;
+      setTextareaHeight(Math.min(MAX_TEXTAREA_HEIGHT, Math.max(MIN_TEXTAREA_HEIGHT, raw)));
+    };
+    const onMouseUp = () => {
+      if (!isTextareaDragging.current) return;
+      isTextareaDragging.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, []);
 
   const isInputDisabled = status === "streaming";
 
@@ -221,25 +283,39 @@ export function ChatPanel({
       {/* Input area — takes remaining space, textarea fills it */}
       <div className="flex-1 border-border p-3 flex flex-col min-h-0">
         <div className="flex items-stretch gap-2 flex-1 min-h-0">
-          <textarea
-            ref={textareaRef}
-            value={inputValue}
-            onChange={(e) => onInputChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={isInputDisabled}
-            placeholder={
-              isInputDisabled
-                ? "Agent is thinking..."
-                : "Ask to change your itinerary..."
-            }
-            className={cn(
-              "flex-1 resize-none rounded-lg border border-border bg-muted",
-              "px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground",
-              "focus:outline-none focus:ring-1 focus:ring-teal-500 focus:border-teal-500",
-              "transition-colors min-h-[2.25rem] overflow-y-auto",
-              isInputDisabled && "opacity-50 cursor-not-allowed",
-            )}
-          />
+          <div className="relative flex-1" style={{ height: textareaHeight }}>
+            <textarea
+              ref={textareaRef}
+              value={inputValue}
+              onChange={(e) => onInputChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isInputDisabled}
+              placeholder={
+                isInputDisabled
+                  ? "Agent is thinking..."
+                  : "Ask to change your itinerary..."
+              }
+              style={{ height: textareaHeight }}
+              className={cn(
+                "w-full resize-none rounded-lg border border-border bg-muted",
+                "px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground",
+                "focus:outline-none focus:ring-1 focus:ring-teal-500 focus:border-teal-500",
+                "transition-colors overflow-y-auto",
+                isInputDisabled && "opacity-50 cursor-not-allowed",
+              )}
+            />
+            {/* Resize gripper — bottom-right corner */}
+            <div
+              onMouseDown={handleTextareaGripMouseDown}
+              onDoubleClick={resetTextareaHeight}
+              className="absolute bottom-1 right-1 w-5 h-5 cursor-se-resize flex items-end justify-end text-muted-foreground/60 hover:text-muted-foreground/90 transition-colors"
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                <line x1="2" y1="9" x2="9" y2="2" />
+                <line x1="5.5" y1="9" x2="9" y2="5.5" />
+              </svg>
+            </div>
+          </div>
           <button
             type="button"
             onClick={onSend}

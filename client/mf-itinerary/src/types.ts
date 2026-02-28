@@ -82,6 +82,8 @@ export interface ChatMessage {
   content: string;
   timestamp: Date;
   isStreaming?: boolean;
+  /** Tool names called by the agent while generating this message */
+  toolCalls?: string[];
 }
 
 /** Describes a free time slot to render where deleted activities were */
