@@ -10,10 +10,11 @@ import { BuildingState } from '../components/itinerary/BuildingState';
 import { EmptyState } from '../components/itinerary/EmptyState';
 import { ActivityDetailModal } from '../components/itinerary/ActivityDetailModal';
 import { MobileItinerarySheet } from '../components/itinerary/MobileItinerarySheet';
-import { ChatPanel } from '../components/chat';
-import { AiMapAssistant } from '../components/map/AiMapAssistant';
+import { ChatPanel, type InitialSuggestions } from '../components/chat';
+import { AiTripAssistant } from '../components/map/AiTripAssistant';
 import { MobileTabBar, type MobileTab } from '../components/MobileTabBar';
 import type { Activity, ItineraryData } from '../types/itinerary';
+import type { SuggestionCardData } from '../services/duringTripService';
 
 type Itinerary = {
   id: string;
@@ -42,6 +43,16 @@ export function ActiveTripView() {
   const [error, setError] = useState<string | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [activeTab, setActiveTab] = useState<MobileTab>('map');
+  const [initialSuggestions, setInitialSuggestions] = useState<InitialSuggestions | null>(null);
+
+  const handleAskWithSuggestions = useCallback((suggestions: SuggestionCardData[], contextSummary: string | null) => {
+    setInitialSuggestions({ suggestions, contextSummary });
+  }, []);
+
+  const handleMobileAskWithSuggestions = useCallback((suggestions: SuggestionCardData[], contextSummary: string | null) => {
+    setInitialSuggestions({ suggestions, contextSummary });
+    setActiveTab('ask-ai');
+  }, []);
 
   // Location payload for chat
   const chatLocation = position
@@ -154,7 +165,7 @@ export function ActiveTripView() {
           {/* Desktop: 3-column layout — chat | itinerary | map */}
           <div className="hidden md:flex flex-1 min-h-0">
             <div className="w-[380px] border-r flex flex-col shrink-0">
-              <ChatPanel tripId={tripId} location={chatLocation} />
+              <ChatPanel tripId={tripId} location={chatLocation} initialSuggestions={initialSuggestions} />
             </div>
             <div className="flex-1 overflow-y-auto">
               <ItineraryPanel
@@ -167,7 +178,7 @@ export function ActiveTripView() {
                 activities={allActivities}
                 annotations={annotations}
               />
-              <AiMapAssistant onAskPress={() => {/* desktop chat is always visible */}} />
+              <AiTripAssistant tripId={tripId} location={chatLocation} onAskPress={handleAskWithSuggestions} />
               {selectedActivity && (
                 <ActivityDetailModal
                   activity={selectedActivity}
@@ -179,7 +190,7 @@ export function ActiveTripView() {
           </div>
 
           {/* Mobile: tab-based layout — reserve space at bottom for tab bar (60px + pb-safe) */}
-          <div className="flex flex-col flex-1 min-h-0 md:hidden relative" style={{ paddingBottom: 'calc(60px + 1.25rem + env(safe-area-inset-bottom, 0px))' }}>
+          <div className="flex flex-col flex-1 min-h-0 md:hidden relative" style={{ paddingBottom: 'calc(60px)' }}>
             {/* Map tab */}
             {activeTab === 'map' && (
               <div className="flex-1 min-h-0 relative">
@@ -189,7 +200,7 @@ export function ActiveTripView() {
                     annotations={annotations}
                   />
                 </div>
-                <AiMapAssistant onAskPress={() => setActiveTab('ask-ai')} />
+                <AiTripAssistant tripId={tripId} location={chatLocation} onAskPress={handleMobileAskWithSuggestions} />
                 <MobileItinerarySheet
                   itineraryData={itineraryData}
                   onOpenActivity={setSelectedActivity}
@@ -210,7 +221,7 @@ export function ActiveTripView() {
             {/* Ask AI tab */}
             {activeTab === 'ask-ai' && (
               <div className="flex-1 min-h-0">
-                <ChatPanel tripId={tripId} location={chatLocation} onClose={() => setActiveTab('map')} />
+                <ChatPanel tripId={tripId} location={chatLocation} onClose={() => setActiveTab('map')} initialSuggestions={initialSuggestions} />
               </div>
             )}
 

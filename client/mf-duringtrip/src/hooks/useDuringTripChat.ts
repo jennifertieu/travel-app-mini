@@ -140,6 +140,13 @@ export function useDuringTripChat({ tripId, location }: UseDuringTripChatOptions
     setContextSummary(null);
   }, []);
 
+  const injectMessage = useCallback((msg: Omit<ChatMessage, 'id'>) => {
+    setMessages(prev => [...prev, { ...msg, id: nextId() }]);
+    if ('cards' in msg && msg.text) {
+      setContextSummary(msg.text);
+    }
+  }, []);
+
   return {
     state,
     messages,
@@ -150,5 +157,6 @@ export function useDuringTripChat({ tripId, location }: UseDuringTripChatOptions
     updateActivity: handleUpdateActivity,
     clearError,
     clearMessages,
+    injectMessage,
   };
 }

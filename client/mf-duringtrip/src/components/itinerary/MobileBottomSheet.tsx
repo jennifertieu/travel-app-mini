@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, type ReactNode } from "react";
 import { ChevronUp } from "lucide-react";
 import { cn } from "../../lib/utils";
 
-const PEEK_HEIGHT = 160;
+const PEEK_HEIGHT = 130;
 const EXPANDED_HEIGHT_VH = 93;
 
 interface MobileBottomSheetProps {
@@ -73,7 +73,7 @@ export function MobileBottomSheet({ peekContent, expandedContent }: MobileBottom
       )}
       style={{
         height: sheetHeight,
-        bottom: 'calc(60px + 1.25rem + env(safe-area-inset-bottom, 0px))',
+        bottom: 'calc(50px)',
         transform: dragging ? `translateY(${translateY}px)` : undefined,
         willChange: dragging ? "transform" : undefined,
       }}

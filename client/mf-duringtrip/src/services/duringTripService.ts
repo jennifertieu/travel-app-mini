@@ -173,6 +173,36 @@ export async function updateActivityStatus(
   return response.json();
 }
 
+export interface DecisionResponse {
+  options: SuggestionCardData[];
+  context_summary: string;
+  fallback_used?: boolean;
+  location_approximate?: boolean;
+}
+
+export async function getDecision(
+  tripId: string,
+  location?: { lat: number; lng: number; accuracy_meters?: number } | null
+): Promise<DecisionResponse> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_BASE_URL}/during-trip/decide`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      trip_id: tripId,
+      location: location ?? undefined,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Decision request failed' }));
+    throw new Error(error.error || 'Failed to get suggestions');
+  }
+
+  return response.json();
+}
+
 export async function getTripContext(
   tripId: string,
   location?: { lat: number; lng: number; accuracy_meters?: number }

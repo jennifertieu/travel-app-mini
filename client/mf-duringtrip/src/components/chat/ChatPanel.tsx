@@ -5,13 +5,19 @@ import { useDuringTripChat } from '../../hooks/useDuringTripChat';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { QuickActions } from './QuickActions';
-import type { SuggestionCardData, FoodCardData } from '../../services/duringTripService';
+import type { SuggestionCardData, FoodCardData, ChatCard } from '../../services/duringTripService';
+
+export interface InitialSuggestions {
+  suggestions: SuggestionCardData[];
+  contextSummary: string | null;
+}
 
 interface ChatPanelProps {
   tripId: string;
   location?: { lat: number; lng: number; accuracy_meters?: number } | null;
   onClose?: () => void;
   className?: string;
+  initialSuggestions?: InitialSuggestions | null;
 }
 
 function getCurrentTimeOfDay(): 'morning' | 'afternoon' | 'evening' {
@@ -21,16 +27,38 @@ function getCurrentTimeOfDay(): 'morning' | 'afternoon' | 'evening' {
   return 'evening';
 }
 
-export function ChatPanel({ tripId, location, onClose, className }: ChatPanelProps) {
+export function ChatPanel({ tripId, location, onClose, className, initialSuggestions }: ChatPanelProps) {
   const {
     state,
     messages,
     contextSummary,
     sendMessage,
     acceptSuggestion,
+    injectMessage,
   } = useDuringTripChat({ tripId, location });
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const injectedRef = useRef<SuggestionCardData[] | null>(null);
+
+  // Inject initial suggestions from AiTripAssistant
+  useEffect(() => {
+    if (
+      initialSuggestions?.suggestions?.length &&
+      injectedRef.current !== initialSuggestions.suggestions
+    ) {
+      injectedRef.current = initialSuggestions.suggestions;
+      const cards: ChatCard[] = initialSuggestions.suggestions.map((s) => ({
+        type: 'suggestion' as const,
+        data: s,
+      }));
+      injectMessage({
+        role: 'assistant',
+        text: initialSuggestions.contextSummary || 'Here are some suggestions for you:',
+        cards,
+        timestamp: Date.now(),
+      });
+    }
+  }, [initialSuggestions, injectMessage]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
