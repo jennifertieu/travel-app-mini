@@ -38,7 +38,9 @@ export const chatWithAgent = async (
         .from("trip_itineraries")
         .select("itinerary")
         .eq("trip_id", tripId)
-        .single();
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (error || !data) {
         throw new Error("Itinerary not found for this trip");
@@ -127,7 +129,17 @@ export const getSessionStatus = async (
   return response.json({
     active: true,
     pendingChanges: computeChanges(session),
-    messageCount: session.messages.filter((m) => m.role !== "system").length,
+    messages: session.messages
+      .filter(
+        (m) =>
+          (m.role === "user" || m.role === "assistant") &&
+          m.content &&
+          typeof m.content === "string"
+      )
+      .map((m) => ({
+        role: m.role === "assistant" ? "agent" : "user",
+        content: m.content as string,
+      })),
     createdAt: session.createdAt,
   });
 };

@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { getApiUrl, buildAuthHeaders } from "../lib/api";
-import type { ChatMessage, IItineraryChange, ChatStatus } from "../types";
+import type { ChatMessage, IItineraryChange, ChatStatus, ChatRole } from "../types";
 
 interface UseChatAgentOptions {
   tripId: string | null;
@@ -48,6 +48,32 @@ export function useChatAgent({
       abortRef.current?.abort();
     };
   }, []);
+
+  // Restore session history from the server on mount (if an active session exists)
+  useEffect(() => {
+    if (!tripId) return;
+    buildAuthHeaders().then((headers) =>
+      fetch(getApiUrl(`/itinerary/${tripId}/chat/session`), { headers })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (!data?.active || !data.messages?.length) return;
+          const restored: ChatMessage[] = data.messages.map(
+            (m: { role: ChatRole; content: string }) => ({
+              id: crypto.randomUUID(),
+              role: m.role,
+              content: m.content,
+              timestamp: new Date(data.createdAt),
+            })
+          );
+          setMessages([WELCOME_MESSAGE, ...restored]);
+          if (data.pendingChanges?.length) {
+            setPendingChanges(data.pendingChanges);
+            setStatus("awaiting_confirmation");
+          }
+        })
+        .catch(() => {}) // silently ignore — fresh session is fine
+    );
+  }, [tripId]);
 
   const toggleChat = useCallback(() => setIsChatOpen((prev) => !prev), []);
 

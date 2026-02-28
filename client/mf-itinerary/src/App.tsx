@@ -32,6 +32,24 @@ const DEBUG =
 
 const App = () => {
   const [tripId] = useState<string | null>(getTripId);
+
+  // Bootstrap the Supabase session from the shell's window.__TRIPWEAVE_SESSION__.
+  // mf-itinerary runs on a different port (3002) so it has its own empty localStorage —
+  // the shell exposes its session via the window object so MFEs can hydrate their clients.
+  useEffect(() => {
+    const shellSession = (
+      window as unknown as {
+        __TRIPWEAVE_SESSION__?: { access_token: string; refresh_token: string } | null;
+      }
+    ).__TRIPWEAVE_SESSION__;
+    if (shellSession?.access_token && shellSession?.refresh_token) {
+      supabase.auth.setSession({
+        access_token: shellSession.access_token,
+        refresh_token: shellSession.refresh_token,
+      });
+    }
+  }, []);
+
   const annotations = useAnnotations(tripId);
   // Stable ref so useChatAgent can call fetchItinerary even though it's defined below
   const fetchItineraryRef = useRef<((id: string) => void) | null>(null);
