@@ -157,9 +157,17 @@ const App = () => {
       const inner = (raw.itinerary ?? raw) as Record<string, unknown>;
       if (inner.days && Array.isArray(inner.days)) {
         const parsed = inner as unknown as ItineraryData;
-        // Normalise: convert duration_bucket → duration_minutes when missing
+        // Normalise fields coming from the server
         for (const day of parsed.days) {
+          // Server uses day_number, client expects day
+          if (!day.day && (day as any).day_number) {
+            day.day = (day as any).day_number;
+          }
           for (const act of day.activities) {
+            // Server uses title, client expects name
+            if (!act.name && (act as any).title) {
+              act.name = (act as any).title;
+            }
             if (!act.duration_minutes || isNaN(act.duration_minutes)) {
               act.duration_minutes = parseDurationBucket(
                 (act as unknown as Record<string, unknown>)

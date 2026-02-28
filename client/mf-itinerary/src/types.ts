@@ -17,6 +17,8 @@ export interface Activity {
   image_url?: string;
   latitude?: number | null;
   longitude?: number | null;
+  cost_estimate?: number;
+  cost_type?: "food" | "activity";
   // Populated from reel idea's Google Places match (pre-trip enrichment)
   place?: {
     photoUrl?: string;
@@ -28,12 +30,27 @@ export interface ItineraryDay {
   day: number;
   date: string;
   activities: Activity[];
+  transport_estimate?: number;
+  transport_note?: string;
+}
+
+export interface BudgetSummary {
+  flights: number;
+  hotel: number;
+  activities: number;
+  food: number;
+  transport: number;
+  total: number;
+  per_day_average: number;
+  group_total?: number;
+  travelers?: number;
 }
 
 export interface ItineraryData {
   trip_name?: string;
   destination?: string;
   days: ItineraryDay[];
+  budget?: BudgetSummary;
 }
 
 export type ChatRole = "agent" | "user";

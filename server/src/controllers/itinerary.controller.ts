@@ -2,17 +2,20 @@ import { Response } from "express";
 import { IAuthenticatedRequest } from "../types/interface.js";
 import { supabase } from "../config.js";
 import { aiItineraryBuilderAgent } from "../utils/aiItineraryBuilderAgent.js";
+import { enrichItineraryWithCosts } from "../utils/costEnrichment.js";
 
 const LOG_PREFIX = "[itinerary]";
 
 export const createItinerary = async (
   request: IAuthenticatedRequest,
-  response: Response
+  response: Response,
 ) => {
   const { id: tripId } = request.params;
   const userId = request.user?.id;
 
-  console.log(`${LOG_PREFIX} POST /itinerary/${tripId} (user: ${userId ?? "unknown"})`);
+  console.log(
+    `${LOG_PREFIX} POST /itinerary/${tripId} (user: ${userId ?? "unknown"})`,
+  );
 
   try {
     const { data: trip, error: tripError } = await supabase
@@ -25,7 +28,9 @@ export const createItinerary = async (
       console.log(`${LOG_PREFIX} Trip not found: ${tripId}`, tripError.message);
       return response.status(404).json({ error: tripError.message });
     }
-    console.log(`${LOG_PREFIX} Trip found: ${trip.destination ?? trip.id}, dates: ${trip.start_date} → ${trip.end_date}`);
+    console.log(
+      `${LOG_PREFIX} Trip found: ${trip.destination ?? trip.id}, dates: ${trip.start_date} → ${trip.end_date}`,
+    );
 
     if (!trip.start_date || !trip.end_date) {
       console.log(`${LOG_PREFIX} Rejected: missing start_date or end_date`);
@@ -55,7 +60,9 @@ export const createItinerary = async (
       console.log(`${LOG_PREFIX} Ideas fetch error:`, ideaError.message);
       return response.status(400).json({ error: ideaError.message });
     }
-    console.log(`${LOG_PREFIX} Ideas: ${tripIdeas?.length ?? 0} (enrichment_status=DONE)`);
+    console.log(
+      `${LOG_PREFIX} Ideas: ${tripIdeas?.length ?? 0} (enrichment_status=DONE)`,
+    );
 
     // Fetch all reactions for these ideas
     const ideaIds = tripIdeas.map((idea) => idea.id);
@@ -110,14 +117,18 @@ export const createItinerary = async (
 
     // Check if we have any ideas left after filtering
     if (filteredIdeas.length === 0) {
-      console.log(`${LOG_PREFIX} Rejected: no ideas passed vote filter (had ${tripIdeas.length} total)`);
+      console.log(
+        `${LOG_PREFIX} Rejected: no ideas passed vote filter (had ${tripIdeas.length} total)`,
+      );
       return response.status(400).json({
         error: "No suitable ideas found for itinerary generation",
         details:
           "All ideas were filtered out due to negative voting or lack of positive votes",
       });
     }
-    console.log(`${LOG_PREFIX} After filter: ${filteredIdeas.length} ideas (from ${tripIdeas.length})`);
+    console.log(
+      `${LOG_PREFIX} After filter: ${filteredIdeas.length} ideas (from ${tripIdeas.length})`,
+    );
 
     // Sort by fire votes, then down votes
     filteredIdeas.sort((ideaA, ideaB) => {
@@ -133,13 +144,32 @@ export const createItinerary = async (
       trip,
       tripIdeas: filteredIdeas,
     });
-    console.log(`${LOG_PREFIX} AI builder returned; saving to trip_itineraries...`);
+    console.log(`${LOG_PREFIX} AI builder returned; enriching with costs...`);
+
+    // Enrich with cost estimates (failure won't block save)
+    const tripDays = Math.ceil(
+      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    let enrichedItinerary = itinerary;
+    try {
+      enrichedItinerary = await enrichItineraryWithCosts(
+        itinerary,
+        trip.destination,
+        tripDays,
+      );
+      console.log(`${LOG_PREFIX} Cost enrichment complete`);
+    } catch (costError: any) {
+      console.warn(
+        `${LOG_PREFIX} Cost enrichment failed, saving without costs:`,
+        costError.message,
+      );
+    }
 
     const { error: saveItineraryError } = await supabase
       .from("trip_itineraries")
       .upsert({
         trip_id: trip.id,
-        itinerary,
+        itinerary: enrichedItinerary,
       });
 
     if (saveItineraryError) {
@@ -162,5 +192,75 @@ export const createItinerary = async (
       error: "Failed to generate itinerary",
       details: error.message,
     });
+  }
+};
+
+export const recalculateBudget = async (
+  request: IAuthenticatedRequest,
+  response: Response,
+) => {
+  const { id: tripId } = request.params;
+  console.log(`${LOG_PREFIX} POST /itinerary/${tripId}/recalculate-budget`);
+
+  try {
+    // Fetch existing itinerary
+    const { data: row, error: fetchError } = await supabase
+      .from("trip_itineraries")
+      .select("*")
+      .eq("trip_id", tripId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (fetchError || !row) {
+      return response.status(404).json({ error: "Itinerary not found" });
+    }
+
+    // Fetch trip for destination
+    const { data: trip, error: tripError } = await supabase
+      .from("trips")
+      .select("destination, start_date, end_date")
+      .eq("id", tripId)
+      .single();
+
+    if (tripError || !trip) {
+      return response.status(404).json({ error: "Trip not found" });
+    }
+
+    const startDate = new Date(trip.start_date);
+    const endDate = new Date(trip.end_date);
+    const tripDays = Math.ceil(
+      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
+    );
+
+    // Parse itinerary — handle nested shape
+    const rawItinerary = row.itinerary as any;
+    const itinerary = rawItinerary?.itinerary ?? rawItinerary;
+
+    const enriched = await enrichItineraryWithCosts(
+      itinerary,
+      trip.destination,
+      tripDays,
+    );
+
+    // Save back — preserve the original wrapper shape
+    const toSave = rawItinerary?.itinerary
+      ? { ...rawItinerary, itinerary: enriched }
+      : enriched;
+
+    const { error: saveError } = await supabase
+      .from("trip_itineraries")
+      .update({ itinerary: toSave })
+      .eq("id", row.id);
+
+    if (saveError) {
+      return response.status(500).json({ error: saveError.message });
+    }
+
+    console.log(`${LOG_PREFIX} Budget recalculated for trip ${tripId}`);
+    return response.json({ success: true });
+  } catch (error: any) {
+    console.error(`${LOG_PREFIX} Recalculate budget error:`, error);
+    return response.status(500).json({ error: error.message });
   }
 };
