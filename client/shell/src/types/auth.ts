@@ -13,6 +13,7 @@ export interface MemberProfile {
   travel_style: string | null;
   walking_tolerance: string | null;
   avatar_url: string | null;
+  hometown: string | null;
   created_at: string;
   updated_at: string;
 }

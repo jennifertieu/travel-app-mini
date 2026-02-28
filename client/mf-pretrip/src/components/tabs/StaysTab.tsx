@@ -358,16 +358,28 @@ export function IdeaSidebar({
             <span>Generating...</span>
           </div>
         )}
-        <Button
-          className="w-full bg-foreground hover:bg-foreground/90 text-background rounded-full h-11 text-sm font-medium"
-          disabled={!tripId || isStarting}
-          onClick={() => {
-            if (tripId) startBuild(tripId);
-          }}
-        >
-          <Sparkles className="h-4 w-4 mr-2" />
-          {isStarting ? "Starting…" : "Build Itinerary"}
-        </Button>
+        <div className="flex items-center gap-2">
+          {onOpenRating && (
+            <Button
+              variant="outline"
+              className="rounded-full h-11 px-4 text-sm font-medium text-muted-foreground border-border bg-muted hover:bg-muted/80 shrink-0"
+              onClick={onOpenRating}
+            >
+              <Vote className="h-4 w-4 mr-2" />
+              Rate
+            </Button>
+          )}
+          <Button
+            className="flex-1 bg-foreground hover:bg-foreground/90 text-background rounded-full h-11 text-sm font-medium"
+            disabled={!tripId || isStarting}
+            onClick={() => {
+              if (tripId) startBuild(tripId);
+            }}
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            {isStarting ? "Starting…" : "Build Itinerary"}
+          </Button>
+        </div>
       </div>
     </div>
   );

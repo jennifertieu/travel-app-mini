@@ -9,6 +9,7 @@ import { useCurrentTrip } from "../../hooks/useCurrentTrip";
 import { mapBudgetLevelToDatabase } from "../../lib/utils";
 import { X, MapPin, Users, DollarSign } from "lucide-react";
 import { DateRangePicker } from "../DateRangePicker";
+import { searchPlaces, PlaceSearchResult } from "../../lib/place-search";
 
 export function CreateTripModal() {
   const { isOpen, closeModal } = useModals();
@@ -25,6 +26,16 @@ export function CreateTripModal() {
     interests: [] as string[],
   });
 
+  const [selectedPlace, setSelectedPlace] = useState<PlaceSearchResult | null>(
+    null,
+  );
+  const [searchResults, setSearchResults] = useState<PlaceSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [searchTimeout, setSearchTimeout] = useState<ReturnType<
+    typeof setTimeout
+  > | null>(null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,7 +45,9 @@ export function CreateTripModal() {
     setIsSubmitting(true);
     try {
       const tripData = {
-        destination: formData.destination.trim(),
+        destination: selectedPlace?.displayName || formData.destination.trim(),
+        destination_lat: selectedPlace?.lat || null,
+        destination_lng: selectedPlace?.lng || null,
         title: formData.title.trim() || null,
         start_date: formData.startDate || null,
         end_date: formData.endDate || null,
@@ -91,7 +104,40 @@ export function CreateTripModal() {
       budgetLevel: "medium",
       interests: [],
     });
+    setSelectedPlace(null);
+    setSearchResults([]);
+    setShowResults(false);
     setIsSubmitting(false);
+  };
+
+  const handleDestinationChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, destination: value }));
+    setSelectedPlace(null);
+
+    if (searchTimeout) clearTimeout(searchTimeout);
+
+    if (value.trim().length > 2) {
+      const timeout = setTimeout(() => {
+        setIsSearching(true);
+        searchPlaces(value)
+          .then((results) => {
+            setSearchResults(results);
+            setShowResults(true);
+          })
+          .catch(() => setSearchResults([]))
+          .finally(() => setIsSearching(false));
+      }, 300);
+      setSearchTimeout(timeout);
+    } else {
+      setSearchResults([]);
+      setShowResults(false);
+    }
+  };
+
+  const handleSelectPlace = (result: PlaceSearchResult) => {
+    setSelectedPlace(result);
+    setFormData((prev) => ({ ...prev, destination: result.displayName }));
+    setShowResults(false);
   };
 
   const handleInterestToggle = (interest: string) => {
@@ -155,20 +201,54 @@ export function CreateTripModal() {
                 <MapPin className="h-4 w-4" />
                 Destination *
               </label>
-              <input
-                type="text"
-                placeholder="Where are you going?"
-                value={formData.destination}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    destination: e.target.value,
-                  }))
-                }
-                className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-[border-color,box-shadow]"
-                required
-                autoFocus
-              />
+              <div className="relative">
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Where are you going?"
+                    value={formData.destination}
+                    onChange={(e) => handleDestinationChange(e.target.value)}
+                    onFocus={() => {
+                      if (searchResults.length > 0 && !selectedPlace)
+                        setShowResults(true);
+                    }}
+                    onBlur={() => setTimeout(() => setShowResults(false), 200)}
+                    className="w-full pl-9 pr-10 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-[border-color,box-shadow]"
+                    required
+                    autoFocus
+                  />
+                  {isSearching && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.3s]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.15s]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" />
+                    </div>
+                  )}
+                </div>
+                {showResults && searchResults.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {searchResults.map((result, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => handleSelectPlace(result)}
+                        className="w-full text-left px-3 py-2 hover:bg-accent/50 transition-colors border-b last:border-b-0 flex items-start gap-2 text-sm"
+                      >
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">
+                            {result.name}
+                          </div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {result.displayName}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Trip Title */}

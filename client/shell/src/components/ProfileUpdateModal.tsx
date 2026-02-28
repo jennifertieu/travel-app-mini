@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { X, Save } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { X, Save, MapPin } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import type { MemberProfile } from "../types/auth";
@@ -49,14 +49,26 @@ const DIETARY_OPTIONS = [
   "Low-Carb",
 ];
 
+interface NominatimResult {
+  display_name: string;
+  place_id: number;
+}
+
 export const ProfileUpdateModal: React.FC<ProfileUpdateModalProps> = ({
   isOpen,
   onClose,
 }) => {
   const { profile, user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [hometownSuggestions, setHometownSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const hometownDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const suggestionsRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState({
     display_name: "",
+    hometown: "",
     travel_style: "",
     walking_tolerance: "",
     interests: [] as string[],
@@ -68,6 +80,7 @@ export const ProfileUpdateModal: React.FC<ProfileUpdateModalProps> = ({
     if (isOpen && profile) {
       setFormData({
         display_name: profile.display_name || "",
+        hometown: profile.hometown || "",
         travel_style: profile.travel_style || "",
         walking_tolerance: profile.walking_tolerance || "",
         interests: profile.interests || [],
@@ -75,6 +88,28 @@ export const ProfileUpdateModal: React.FC<ProfileUpdateModalProps> = ({
       });
     }
   }, [isOpen, profile]);
+
+  const searchHometown = (query: string) => {
+    if (hometownDebounceRef.current) clearTimeout(hometownDebounceRef.current);
+    if (!query || query.length < 2) {
+      setHometownSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    hometownDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&featuretype=city`,
+          { headers: { "Accept-Language": "en" } },
+        );
+        const data: NominatimResult[] = await res.json();
+        setHometownSuggestions(data.map((r) => r.display_name));
+        setShowSuggestions(true);
+      } catch {
+        setHometownSuggestions([]);
+      }
+    }, 300);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,6 +121,7 @@ export const ProfileUpdateModal: React.FC<ProfileUpdateModalProps> = ({
         .from("member_profiles")
         .update({
           display_name: formData.display_name,
+          hometown: formData.hometown || null,
           travel_style: formData.travel_style || null,
           walking_tolerance: formData.walking_tolerance || null,
           interests: formData.interests,
@@ -214,6 +250,121 @@ export const ProfileUpdateModal: React.FC<ProfileUpdateModalProps> = ({
               }}
               placeholder="Enter your display name"
             />
+          </div>
+
+          {/* Hometown */}
+          <div style={{ marginBottom: "1.5rem" }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: "0.875rem",
+                fontWeight: "500",
+                color: "#374151",
+                marginBottom: "0.5rem",
+              }}
+            >
+              Hometown
+            </label>
+            <div style={{ position: "relative" }} ref={suggestionsRef}>
+              <MapPin
+                size={16}
+                style={{
+                  position: "absolute",
+                  left: "0.75rem",
+                  top: "0.875rem",
+                  color: "#9ca3af",
+                  zIndex: 1,
+                }}
+              />
+              <input
+                type="text"
+                value={formData.hometown}
+                onChange={(e) => {
+                  setFormData({ ...formData, hometown: e.target.value });
+                  searchHometown(e.target.value);
+                }}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                onFocus={() => {
+                  if (hometownSuggestions.length > 0) setShowSuggestions(true);
+                }}
+                style={{
+                  width: "100%",
+                  padding: "0.75rem",
+                  paddingLeft: "2.25rem",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "0.5rem",
+                  fontSize: "0.875rem",
+                  boxSizing: "border-box",
+                }}
+                placeholder="e.g. San Francisco, New York, London"
+              />
+              {showSuggestions && hometownSuggestions.length > 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "100%",
+                    left: 0,
+                    right: 0,
+                    backgroundColor: "white",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "0.5rem",
+                    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
+                    zIndex: 50,
+                    marginTop: "0.25rem",
+                    overflow: "hidden",
+                  }}
+                >
+                  {hometownSuggestions.map((suggestion, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onMouseDown={() => {
+                        setFormData({ ...formData, hometown: suggestion });
+                        setShowSuggestions(false);
+                        setHometownSuggestions([]);
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        width: "100%",
+                        padding: "0.625rem 0.75rem",
+                        backgroundColor: "transparent",
+                        border: "none",
+                        borderBottom:
+                          i < hometownSuggestions.length - 1
+                            ? "1px solid #f3f4f6"
+                            : "none",
+                        cursor: "pointer",
+                        fontSize: "0.8125rem",
+                        color: "#374151",
+                        textAlign: "left",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#f9fafb")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.backgroundColor = "transparent")
+                      }
+                    >
+                      <MapPin
+                        size={12}
+                        style={{ color: "#9ca3af", flexShrink: 0 }}
+                      />
+                      <span
+                        style={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {suggestion}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Travel Style */}

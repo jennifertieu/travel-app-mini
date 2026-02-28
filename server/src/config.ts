@@ -31,3 +31,9 @@ export const openai = new OpenAI({
 });
 
 export const gemini = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+
+// Amadeus Flight Search Configuration
+export const AMADEUS_API_KEY = process.env.AMADEUS_API_KEY || "";
+export const AMADEUS_API_SECRET = process.env.AMADEUS_API_SECRET || "";
+export const AMADEUS_BASE_URL =
+  process.env.AMADEUS_BASE_URL || "https://test.api.amadeus.com";

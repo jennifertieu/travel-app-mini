@@ -1,4 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
+import { RefreshCw } from "lucide-react";
+import { getApiUrl } from "../lib/api";
+import { supabase } from "../lib/supabase";
 import { DayTabs } from "./DayTabs";
 import { TimeOfDaySection } from "./TimeOfDaySection";
 import { TopToolbar } from "./TopToolbar";
@@ -6,6 +9,8 @@ import { BottomBar } from "./BottomBar";
 import { PhotoGuideModal } from "./PhotoGuideModal";
 import { BudgetSummary } from "./BudgetSummary";
 import { DayTotalBar } from "./DayTotalBar";
+import { FlightCard } from "./FlightCard";
+import { HotelCard } from "./HotelCard";
 import { groupActivitiesByTimeOfDay } from "../lib/utils";
 import { calculateBudgetFromDays } from "../lib/budget-utils";
 import { useItineraryDeletion } from "../hooks/useItineraryDeletion";
@@ -38,6 +43,7 @@ export function ItineraryPanel({
 }: ItineraryPanelProps) {
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [budgetTabActive, setBudgetTabActive] = useState(false);
+  const [travelTabActive, setTravelTabActive] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [showPhotoGuide, setShowPhotoGuide] = useState(false);
@@ -172,6 +178,45 @@ export function ItineraryPanel({
     save(itineraryRowId);
   }, [save, itineraryRowId]);
 
+  const handleFlightSwap = useCallback((_direction: string, _index: number) => {
+    // FlightCard already PATCHed the server — next data refetch picks up the change
+  }, []);
+
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenError, setRegenError] = useState<string | null>(null);
+
+  const handleRegenerateFlights = useCallback(async () => {
+    if (!tripId || regenerating) return;
+    setRegenerating(true);
+    setRegenError(null);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch(
+        getApiUrl(`/itinerary/${tripId}/flights/regenerate`),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        },
+      );
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || "Failed to regenerate flights");
+      }
+      // Reload the page to pick up new flight data
+      window.location.reload();
+    } catch (err: any) {
+      setRegenError(err.message);
+    } finally {
+      setRegenerating(false);
+    }
+  }, [tripId, regenerating]);
+
   if (!currentDay || !grouped) return null;
 
   const budget = data.budget ?? calculateBudgetFromDays(data.days);
@@ -200,13 +245,23 @@ export function ItineraryPanel({
           days={localDays}
           activeDayIndex={activeDayIndex}
           budgetTabActive={budgetTabActive}
+          travelTabActive={travelTabActive}
+          hasFlights={!!data.flights}
           onSelectDay={(index) => {
             setActiveDayIndex(index);
             setBudgetTabActive(false);
+            setTravelTabActive(false);
             setSelectedIds(new Set());
           }}
           onSelectBudget={() => {
             setBudgetTabActive(true);
+            setTravelTabActive(false);
+            setSelectedIds(new Set());
+            setIsSelectionMode(false);
+          }}
+          onSelectTravel={() => {
+            setTravelTabActive(true);
+            setBudgetTabActive(false);
             setSelectedIds(new Set());
             setIsSelectionMode(false);
           }}
@@ -224,6 +279,69 @@ export function ItineraryPanel({
             tripId={tripId}
             days={data.days}
           />
+        </div>
+      ) : travelTabActive ? (
+        /* Travel tab content */
+        <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
+          <div className="text-center space-y-1 mb-2">
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-widest">
+              Travel overview
+            </p>
+            <p className="text-lg font-bold text-gray-900 dark:text-white">
+              Flights & Logistics
+            </p>
+          </div>
+
+          {data.flights ? (
+            <>
+              <FlightCard
+                direction="outbound"
+                flights={data.flights}
+                tripId={tripId}
+                onFlightSwap={handleFlightSwap}
+              />
+              <FlightCard
+                direction="return"
+                flights={data.flights}
+                tripId={tripId}
+                onFlightSwap={handleFlightSwap}
+              />
+            </>
+          ) : (
+            <div className="text-center py-8 text-sm text-gray-400">
+              No flight data available
+            </div>
+          )}
+
+          {/* Regenerate button */}
+          <button
+            type="button"
+            onClick={handleRegenerateFlights}
+            disabled={regenerating}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-200 dark:border-zinc-700 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-50 transition-colors"
+          >
+            <RefreshCw
+              className={`w-4 h-4 ${regenerating ? "animate-spin" : ""}`}
+            />
+            {regenerating ? "Searching flights…" : "Regenerate flights"}
+          </button>
+          {regenError && (
+            <p className="text-xs text-red-500 text-center">{regenError}</p>
+          )}
+
+          {/* Hotel */}
+          {data.hotel ? (
+            <HotelCard hotel={data.hotel} />
+          ) : (
+            <div className="rounded-xl border border-dashed border-gray-300 dark:border-zinc-600 bg-gray-50 dark:bg-zinc-800/40 p-4 text-center space-y-1">
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                🏨 Hotel info coming soon
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">
+                Hotel search and booking details will appear here
+              </p>
+            </div>
+          )}
         </div>
       ) : (
         <>
@@ -249,6 +367,16 @@ export function ItineraryPanel({
 
           {/* Scrollable activities */}
           <div className="flex-1 overflow-y-auto px-4 py-4">
+            {activeDayIndex === 0 && data.flights && (
+              <div className="mb-4">
+                <FlightCard
+                  direction="outbound"
+                  flights={data.flights}
+                  tripId={tripId}
+                  onFlightSwap={handleFlightSwap}
+                />
+              </div>
+            )}
             {TIME_OF_DAY_ORDER.map((tod) => (
               <TimeOfDaySection
                 key={tod}
@@ -261,6 +389,16 @@ export function ItineraryPanel({
                 deletedSlots={freeTimeSlotsBySection[tod]}
               />
             ))}
+            {activeDayIndex === localDays.length - 1 && data.flights && (
+              <div className="mt-4">
+                <FlightCard
+                  direction="return"
+                  flights={data.flights}
+                  tripId={tripId}
+                  onFlightSwap={handleFlightSwap}
+                />
+              </div>
+            )}
             <DayTotalBar
               activityTotal={dayActivityTotal}
               transportTotal={dayTransportTotal}
