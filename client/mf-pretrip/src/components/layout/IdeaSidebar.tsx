@@ -6,7 +6,7 @@ import { IdeaCard } from "../cards/IdeaCard";
 import { IdeaCardSkeleton } from "../cards/IdeaCardSkeleton";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import { Search, Sparkles, Vote } from "lucide-react";
+import { Search, Sparkles, Vote, PlusCircle, Hotel } from "lucide-react";
 import { useModals } from "../../contexts/ModalContext";
 import { AnnotationList } from "./AnnotationList";
 import { useAllTripReactions } from "../../hooks/useAllTripReactions";
@@ -57,6 +57,8 @@ export interface IdeaSidebarProps {
   homeBaseId?: string | null;
   onSetHomeBase?: (ideaId: string) => void;
   tripDurationDays?: number | null;
+  onMoreIdeas?: () => void;
+  onMoreHotels?: () => void;
 }
 
 export function IdeaSidebar({
@@ -80,6 +82,8 @@ export function IdeaSidebar({
   homeBaseId,
   onSetHomeBase,
   tripDurationDays,
+  onMoreIdeas,
+  onMoreHotels,
 }: IdeaSidebarProps) {
   const { openModal } = useModals();
   const { startBuild, isStarting } = useStartItineraryBuild();
@@ -354,6 +358,35 @@ export function IdeaSidebar({
           <div className="flex items-center gap-1.5 text-xs text-primary">
             <Sparkles className="h-3.5 w-3.5 animate-pulse" />
             <span>Generating...</span>
+          </div>
+        )}
+        {/* More Ideas / More Hotels row */}
+        {(onMoreIdeas || onMoreHotels) && (
+          <div className="flex items-center gap-2">
+            {onMoreIdeas && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 h-8 text-xs font-medium"
+                disabled={isGenerating}
+                onClick={onMoreIdeas}
+              >
+                <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+                More Ideas
+              </Button>
+            )}
+            {onMoreHotels && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 h-8 text-xs font-medium"
+                disabled={isHotelStreaming}
+                onClick={onMoreHotels}
+              >
+                <Hotel className="h-3.5 w-3.5 mr-1.5" />
+                {isHotelStreaming ? "Searching…" : "More Hotels"}
+              </Button>
+            )}
           </div>
         )}
         <div className="flex items-center gap-2">

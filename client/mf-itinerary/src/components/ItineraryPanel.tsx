@@ -186,6 +186,36 @@ export function ItineraryPanel({
 
   const [regenerating, setRegenerating] = useState(false);
   const [regenError, setRegenError] = useState<string | null>(null);
+  const [isRebuilding, setIsRebuilding] = useState(false);
+  const [rebuildError, setRebuildError] = useState<string | null>(null);
+
+  const handleRebuildItinerary = useCallback(async () => {
+    if (!tripId || isRebuilding) return;
+    setIsRebuilding(true);
+    setRebuildError(null);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch(getApiUrl(`/itinerary/${tripId}`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || "Failed to rebuild itinerary");
+      }
+      // Realtime subscription in App.tsx will pick up the new itinerary
+    } catch (err: any) {
+      setRebuildError(err.message);
+    } finally {
+      setIsRebuilding(false);
+    }
+  }, [tripId, isRebuilding]);
 
   const handleRegenerateFlights = useCallback(async () => {
     if (!tripId || regenerating) return;
@@ -373,7 +403,12 @@ export function ItineraryPanel({
             onOpenPhotoGuide={() => setShowPhotoGuide(true)}
             isChatOpen={isChatOpen}
             onToggleChatPanel={onToggleChat}
+            onRebuildItinerary={handleRebuildItinerary}
+            isRebuilding={isRebuilding}
           />
+          {rebuildError && (
+            <p className="text-xs text-red-500 px-4 py-1">{rebuildError}</p>
+          )}
 
           {/* Photo Guide modal */}
           <PhotoGuideModal

@@ -111,6 +111,30 @@ export function TripView() {
 
   const { homeBaseId, setHomeBase } = useHomeBase(tripId);
 
+  const handleMoreIdeas = useCallback(() => {
+    if (!tripId || !trip || !member) return;
+    startStreaming({
+      tripId,
+      destination: trip.destination,
+      durationDays: trip.duration_days ?? null,
+      budgetLevel: trip.budget_level ?? null,
+      interests: trip.interests ?? null,
+      createdBy: member.id,
+    });
+  }, [tripId, trip, member, startStreaming]);
+
+  const handleMoreHotels = useCallback(() => {
+    if (!tripId || !trip || !member) return;
+    startHotelStreaming({
+      tripId,
+      destination: trip.destination,
+      interests: trip.interests ?? null,
+      budgetLevel: trip.budget_level ?? null,
+      durationDays: trip.duration_days ?? null,
+      createdBy: member.id,
+    });
+  }, [tripId, trip, member, startHotelStreaming]);
+
   const { data: members = [] } = useTripMembers(tripId);
   useBroadcastTripSummary(trip, members.length);
 
@@ -368,6 +392,8 @@ export function TripView() {
             isHotelStreaming={isHotelStreaming}
             homeBaseId={homeBaseId}
             onSetHomeBase={setHomeBase}
+            onMoreIdeas={handleMoreIdeas}
+            onMoreHotels={handleMoreHotels}
           />
         </div>
       )}

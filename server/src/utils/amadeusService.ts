@@ -403,13 +403,20 @@ function fallbackRanking(flights: {
 export async function searchAndRankFlights(
   params: SearchAndRankParams,
 ): Promise<FlightSearchResult | null> {
-  const {
-    originCity,
-    destinationCity,
-    departureDate,
-    returnDate,
-    tripContext,
-  } = params;
+  const { originCity, destinationCity, tripContext } = params;
+
+  // Clamp dates to be at least tomorrow — Amadeus rejects past dates
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().split("T")[0];
+
+  const clampDate = (d: string) => (d < tomorrowStr ? tomorrowStr : d);
+  const departureDate = clampDate(params.departureDate);
+  // Return must be >= departure
+  const returnDate =
+    clampDate(params.returnDate) < departureDate
+      ? departureDate
+      : clampDate(params.returnDate);
 
   // 1. Resolve airport codes
   const [originCode, destCode] = await Promise.all([

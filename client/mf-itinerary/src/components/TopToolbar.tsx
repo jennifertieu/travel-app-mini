@@ -5,6 +5,7 @@ import {
   Sparkles,
   PanelLeftOpen,
   PanelLeftClose,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 
@@ -17,6 +18,8 @@ interface TopToolbarProps {
   onOpenPhotoGuide?: () => void;
   isChatOpen?: boolean;
   onToggleChatPanel?: () => void;
+  onRebuildItinerary?: () => void;
+  isRebuilding?: boolean;
 }
 
 export function TopToolbar({
@@ -28,6 +31,8 @@ export function TopToolbar({
   onOpenPhotoGuide,
   isChatOpen,
   onToggleChatPanel,
+  onRebuildItinerary,
+  isRebuilding,
 }: TopToolbarProps) {
   if (!isSelectionMode) {
     return (
@@ -74,6 +79,22 @@ export function TopToolbar({
             >
               <Camera className="w-5 h-5 flex-shrink-0" />
               <span className="hidden @[360px]:inline">Photo Guide</span>
+            </button>
+          )}
+          {onRebuildItinerary && (
+            <button
+              type="button"
+              onClick={onRebuildItinerary}
+              disabled={isRebuilding}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+              title="Rebuild itinerary"
+            >
+              <RefreshCw
+                className={`w-5 h-5 flex-shrink-0 ${isRebuilding ? "animate-spin" : ""}`}
+              />
+              <span className="hidden @[360px]:inline">
+                {isRebuilding ? "Rebuilding…" : "Rebuild"}
+              </span>
             </button>
           )}
         </div>
