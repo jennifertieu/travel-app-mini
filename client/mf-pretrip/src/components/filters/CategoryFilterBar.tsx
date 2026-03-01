@@ -1,18 +1,35 @@
 import { useMemo } from "react";
+import { Sparkles, UtensilsCrossed, Hotel, Compass } from "lucide-react";
 import { CategoryChip } from "./CategoryChip";
 import type { Database } from "@travel-app/shared-types";
+import type { LucideIcon } from "lucide-react";
 
 type Idea = Database["public"]["Tables"]["trip_reel_ideas"]["Row"];
 
-const CATEGORY_CHIPS: { key: string | null; emoji: string; label: string }[] = [
-  { key: null, emoji: "✨", label: "All" },
-  { key: "food", emoji: "🍽️", label: "Food" },
-  { key: "sightseeing", emoji: "🏛️", label: "Sights" },
-  { key: "stay", emoji: "🏨", label: "Stays" },
-  { key: "activity", emoji: "🎯", label: "Activities" },
-  { key: "nature", emoji: "🌿", label: "Nature" },
-  { key: "shopping", emoji: "🛍️", label: "Shopping" },
-  { key: "nightlife", emoji: "🌙", label: "Nightlife" },
+// Consolidated categories: All, Food, Stays, Activities (merges sightseeing/nature/shopping/nightlife/activity)
+const ACTIVITY_CATEGORIES = new Set([
+  "sightseeing",
+  "activity",
+  "nature",
+  "shopping",
+  "nightlife",
+]);
+
+const CATEGORY_CHIPS: {
+  key: string | null;
+  icon: LucideIcon;
+  label: string;
+  matchKeys?: Set<string>;
+}[] = [
+  { key: null, icon: Sparkles, label: "All" },
+  { key: "food", icon: UtensilsCrossed, label: "Food" },
+  { key: "stay", icon: Hotel, label: "Stays" },
+  {
+    key: "activities",
+    icon: Compass,
+    label: "Activities",
+    matchKeys: ACTIVITY_CATEGORIES,
+  },
 ];
 
 interface CategoryFilterBarProps {
@@ -40,13 +57,24 @@ export function CategoryFilterBar({
   return (
     <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide scroll-snap-x py-1">
       {CATEGORY_CHIPS.map((chip) => {
-        const count = chip.key === null ? totalCount : counts[chip.key] || 0;
+        let count: number;
+        if (chip.key === null) {
+          count = totalCount;
+        } else if (chip.matchKeys) {
+          // Sum counts for all merged categories
+          count = Array.from(chip.matchKeys).reduce(
+            (sum, k) => sum + (counts[k] || 0),
+            0,
+          );
+        } else {
+          count = counts[chip.key] || 0;
+        }
         // Only show chips that have ideas (All is always visible)
         if (chip.key !== null && count === 0) return null;
         return (
           <CategoryChip
             key={chip.key ?? "all"}
-            emoji={chip.emoji}
+            icon={chip.icon}
             label={chip.label}
             count={count}
             isActive={activeCategory === chip.key}

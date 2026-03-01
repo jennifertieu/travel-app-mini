@@ -34,7 +34,7 @@ function App() {
         <ModalProvider>
           {isJoinMode ? <JoinTripPage /> : <TripView />}
           <ModalManager />
-          <Toaster position="bottom-left" closeButton />
+          <Toaster position="bottom-right" closeButton />
         </ModalProvider>
       </MemberProvider>
       {/* 

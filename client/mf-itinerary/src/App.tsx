@@ -1,5 +1,6 @@
 import "./globals.css";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { Toaster } from "sonner";
 import { supabase, isUsingFallbackSupabase } from "./lib/supabase";
 
 interface UserProfile {
@@ -47,23 +48,30 @@ const App = () => {
   useEffect(() => {
     const shellSession = (
       window as unknown as {
-        __TRIPWEAVE_SESSION__?: { access_token: string; refresh_token: string } | null;
+        __TRIPWEAVE_SESSION__?: {
+          access_token: string;
+          refresh_token: string;
+        } | null;
       }
     ).__TRIPWEAVE_SESSION__;
     if (shellSession?.access_token && shellSession?.refresh_token) {
-      supabase.auth.setSession({
-        access_token: shellSession.access_token,
-        refresh_token: shellSession.refresh_token,
-      }).then(async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const { data } = await supabase
-          .from("member_profiles")
-          .select("display_name, avatar_url")
-          .eq("user_id", user.id)
-          .single();
-        if (data) setUserProfile(data);
-      });
+      supabase.auth
+        .setSession({
+          access_token: shellSession.access_token,
+          refresh_token: shellSession.refresh_token,
+        })
+        .then(async () => {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) return;
+          const { data } = await supabase
+            .from("member_profiles")
+            .select("display_name, avatar_url")
+            .eq("user_id", user.id)
+            .single();
+          if (data) setUserProfile(data);
+        });
     }
   }, []);
 
@@ -98,22 +106,31 @@ const App = () => {
   const dragStartWidth = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleDragStart = useCallback((clientX: number) => {
-    isDragging.current = true;
-    dragStartX.current = clientX;
-    dragStartWidth.current = chatWidth;
-    setIsDraggingHandle(true);
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-  }, [chatWidth]);
+  const handleDragStart = useCallback(
+    (clientX: number) => {
+      isDragging.current = true;
+      dragStartX.current = clientX;
+      dragStartWidth.current = chatWidth;
+      setIsDraggingHandle(true);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    },
+    [chatWidth],
+  );
 
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
       if (!isDragging.current) return;
       const delta = e.clientX - dragStartX.current;
-      const containerWidth = containerRef.current?.offsetWidth ?? window.innerWidth;
+      const containerWidth =
+        containerRef.current?.offsetWidth ?? window.innerWidth;
       const maxWidth = Math.floor(containerWidth * 0.5);
-      setChatWidth(Math.max(CHAT_MIN_WIDTH, Math.min(dragStartWidth.current + delta, maxWidth)));
+      setChatWidth(
+        Math.max(
+          CHAT_MIN_WIDTH,
+          Math.min(dragStartWidth.current + delta, maxWidth),
+        ),
+      );
     };
     const onMouseUp = () => {
       if (!isDragging.current) return;
@@ -292,6 +309,7 @@ const App = () => {
 
   return (
     <div className="flex flex-col h-full">
+      <Toaster position="bottom-right" richColors closeButton />
       {isBuilding && <BuildingState />}
 
       {isLoading && !isBuilding && (
@@ -328,7 +346,8 @@ const App = () => {
           <div
             className={cn(
               "flex-shrink-0 overflow-hidden",
-              !isDraggingHandle && "transition-[width] duration-300 ease-in-out",
+              !isDraggingHandle &&
+                "transition-[width] duration-300 ease-in-out",
             )}
             style={{ width: isChatOpen ? chatWidth : 0 }}
           >
@@ -352,7 +371,10 @@ const App = () => {
           {/* Drag handle between chat and itinerary — only visible when chat is open */}
           {isChatOpen && (
             <div
-              onMouseDown={(e) => { e.preventDefault(); handleDragStart(e.clientX); }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleDragStart(e.clientX);
+              }}
               onDoubleClick={() => setChatWidth(CHAT_DEFAULT_WIDTH)}
               className="flex-shrink-0 flex items-center justify-center w-3 cursor-col-resize group relative bg-border/40 hover:bg-teal-500/15 transition-colors duration-150 border-x border-border"
             >
@@ -372,7 +394,9 @@ const App = () => {
           )}
 
           {/* Itinerary panel */}
-          <div className={cn(isChatOpen ? "flex-1" : "w-1/2", "overflow-y-auto")}>
+          <div
+            className={cn(isChatOpen ? "flex-1" : "w-1/2", "overflow-y-auto")}
+          >
             <ItineraryPanel
               data={itineraryData}
               tripId={tripId}

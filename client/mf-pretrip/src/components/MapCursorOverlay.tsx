@@ -143,12 +143,23 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#39;");
 }
 
+// Curated palette — soft, muted tones that are easy on the eyes over a map
+const CURSOR_PALETTE = [
+  "#6366F1", // indigo
+  "#0EA5E9", // sky
+  "#14B8A6", // teal
+  "#F97316", // orange
+  "#A855F7", // purple
+  "#EC4899", // pink
+  "#EAB308", // amber
+  "#64748B", // slate
+];
+
 function colorFromId(id: string) {
   let hash = 0;
   for (let i = 0; i < id.length; i += 1) {
     hash = (hash << 5) - hash + id.charCodeAt(i);
     hash |= 0;
   }
-  const hue = Math.abs(hash) % 360;
-  return `hsl(${hue} 78% 56%)`;
+  return CURSOR_PALETTE[Math.abs(hash) % CURSOR_PALETTE.length];
 }

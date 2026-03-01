@@ -2,7 +2,7 @@
 
 import { AddIdeaModal } from "./AddIdeaModal";
 import { IdeaDetailModal } from "./IdeaDetailModal";
-import { IdeaRatingModal } from "./IdeaRatingModal";
+import { RatingHub } from "./RatingHub";
 import { CreateTripModal } from "./CreateTripModal";
 import { InviteLinkModal } from "./InviteLinkModal";
 import { TripMembersModal } from "./TripMembersModal";
@@ -34,10 +34,12 @@ export function ModalManager() {
       <InviteLinkModal />
       <TripSettingsModal />
       {/* Show modal immediately, even if idea is still loading */}
-      {isOpen("ideaDetail") && <IdeaDetailModal idea={selectedIdea} tripId={currentTripId} />}
+      {isOpen("ideaDetail") && (
+        <IdeaDetailModal idea={selectedIdea} tripId={currentTripId} />
+      )}
       {/* Idea Rating Modal - rate all ideas in sequence */}
       {isOpen("ratingMode") && (
-        <IdeaRatingModal ideas={ideas} tripId={currentTripId} />
+        <RatingHub ideas={ideas} tripId={currentTripId} />
       )}
       {/* Trip Members Modal */}
       {isOpen("tripMembers") && tripMembersData?.tripId && (

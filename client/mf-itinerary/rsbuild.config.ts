@@ -46,6 +46,7 @@ export default defineConfig({
   },
   html: {
     title: "Itinerary MFE",
+    favicon: "./public/favicon.svg",
   },
   output: {
     assetPrefix: "auto",

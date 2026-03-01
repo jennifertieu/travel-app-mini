@@ -364,7 +364,7 @@ export function TripView() {
         </div>
       ) : (
         /* Expanded sidebar */
-        <div className="flex-shrink-0 w-96 relative">
+        <div className="flex-shrink-0 w-[500px] relative">
           <button
             onClick={() => setSidebarCollapsed(true)}
             className="absolute -right-3 top-20 z-10 bg-background border rounded-full p-1 shadow-sm hover:bg-muted transition-colors"

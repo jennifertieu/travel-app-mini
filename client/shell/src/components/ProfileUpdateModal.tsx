@@ -1,8 +1,32 @@
-import React, { useState, useEffect, useRef } from "react";
-import { X, Save, MapPin } from "lucide-react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import {
+  X,
+  Save,
+  MapPin,
+  UtensilsCrossed,
+  TreePine,
+  Music,
+  Landmark,
+  Camera,
+  Building2,
+  ShoppingBag,
+  Dumbbell,
+  Palette,
+  Globe,
+  Mic2,
+  BookOpen,
+  Leaf,
+  WheatOff,
+  Milk,
+  NutOff,
+  Fish,
+  User,
+  Footprints,
+  Compass,
+  Check,
+} from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
-import type { MemberProfile } from "../types/auth";
 
 interface ProfileUpdateModalProps {
   isOpen: boolean;
@@ -10,48 +34,99 @@ interface ProfileUpdateModalProps {
 }
 
 const TRAVEL_STYLES = [
-  { value: "chill", label: "Chill - Relaxed pace with plenty of downtime" },
-  { value: "balanced", label: "Balanced - Mix of activities and relaxation" },
-  { value: "packed", label: "Packed - Action-packed with lots of activities" },
+  { value: "chill", label: "Chill", sub: "Easy pace" },
+  { value: "balanced", label: "Balanced", sub: "Best of both" },
+  { value: "packed", label: "Packed", sub: "See it all" },
 ];
 
 const WALKING_TOLERANCE = [
-  { value: "low", label: "Low - Prefer minimal walking" },
-  { value: "medium", label: "Medium - Comfortable with moderate walking" },
-  { value: "high", label: "High - Love long walks and hiking" },
+  { value: "low", label: "Light", dots: 1 },
+  { value: "medium", label: "Moderate", dots: 2 },
+  { value: "high", label: "Heavy", dots: 3 },
 ];
 
-const COMMON_INTERESTS = [
-  "Food & Dining",
-  "Museums & Culture",
-  "Nature & Outdoors",
-  "Shopping",
-  "Nightlife",
-  "Photography",
-  "History",
-  "Architecture",
-  "Adventure Sports",
-  "Local Experiences",
-  "Art & Galleries",
-  "Music & Entertainment",
+const INTERESTS = [
+  { label: "Food & Dining", icon: UtensilsCrossed },
+  { label: "Museums & Culture", icon: BookOpen },
+  { label: "Nature & Outdoors", icon: TreePine },
+  { label: "Shopping", icon: ShoppingBag },
+  { label: "Nightlife", icon: Music },
+  { label: "Photography", icon: Camera },
+  { label: "History", icon: Landmark },
+  { label: "Architecture", icon: Building2 },
+  { label: "Adventure Sports", icon: Dumbbell },
+  { label: "Local Experiences", icon: Globe },
+  { label: "Art & Galleries", icon: Palette },
+  { label: "Music & Entertainment", icon: Mic2 },
 ];
 
 const DIETARY_OPTIONS = [
-  "Vegetarian",
-  "Vegan",
-  "Gluten-Free",
-  "Dairy-Free",
-  "Nut Allergy",
-  "Halal",
-  "Kosher",
-  "Pescatarian",
-  "Keto",
-  "Low-Carb",
+  { label: "Vegetarian", icon: Leaf },
+  { label: "Vegan", icon: Leaf },
+  { label: "Gluten-Free", icon: WheatOff },
+  { label: "Dairy-Free", icon: Milk },
+  { label: "Nut Allergy", icon: NutOff },
+  { label: "Halal", icon: Globe },
+  { label: "Kosher", icon: Globe },
+  { label: "Pescatarian", icon: Fish },
+  { label: "Keto", icon: Leaf },
+  { label: "Low-Carb", icon: Leaf },
 ];
+
+// Hash name to one of several muted colors
+const AVATAR_COLORS = [
+  "bg-blue-100 text-blue-700",
+  "bg-violet-100 text-violet-700",
+  "bg-emerald-100 text-emerald-700",
+  "bg-amber-100 text-amber-700",
+  "bg-rose-100 text-rose-700",
+  "bg-cyan-100 text-cyan-700",
+];
+
+function getAvatarColor(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++)
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
 
 interface NominatimResult {
   display_name: string;
   place_id: number;
+}
+
+type FormData = {
+  display_name: string;
+  hometown: string;
+  travel_style: string;
+  walking_tolerance: string;
+  interests: string[];
+  dietary: string[];
+};
+
+function formsDiffer(a: FormData, b: FormData) {
+  return (
+    a.display_name !== b.display_name ||
+    a.hometown !== b.hometown ||
+    a.travel_style !== b.travel_style ||
+    a.walking_tolerance !== b.walking_tolerance ||
+    JSON.stringify([...a.interests].sort()) !==
+      JSON.stringify([...b.interests].sort()) ||
+    JSON.stringify([...a.dietary].sort()) !==
+      JSON.stringify([...b.dietary].sort())
+  );
+}
+
+// Profile completion score
+function completionScore(f: FormData) {
+  let filled = 0;
+  if (f.display_name) filled++;
+  if (f.hometown) filled++;
+  if (f.travel_style) filled++;
+  if (f.walking_tolerance) filled++;
+  if (f.interests.length > 0) filled++;
+  if (f.dietary.length > 0) filled++;
+  return Math.round((filled / 6) * 100);
 }
 
 export const ProfileUpdateModal: React.FC<ProfileUpdateModalProps> = ({
@@ -66,28 +141,39 @@ export const ProfileUpdateModal: React.FC<ProfileUpdateModalProps> = ({
     null,
   );
   const suggestionsRef = useRef<HTMLDivElement>(null);
-  const [formData, setFormData] = useState({
+
+  const emptyForm: FormData = {
     display_name: "",
     hometown: "",
     travel_style: "",
     walking_tolerance: "",
-    interests: [] as string[],
-    dietary: [] as string[],
-  });
+    interests: [],
+    dietary: [],
+  };
 
-  // Initialize form data when modal opens
+  const [originalData, setOriginalData] = useState<FormData>(emptyForm);
+  const [formData, setFormData] = useState<FormData>(emptyForm);
+
   useEffect(() => {
     if (isOpen && profile) {
-      setFormData({
+      const initial: FormData = {
         display_name: profile.display_name || "",
         hometown: profile.hometown || "",
         travel_style: profile.travel_style || "",
         walking_tolerance: profile.walking_tolerance || "",
         interests: profile.interests || [],
         dietary: profile.dietary || [],
-      });
+      };
+      setFormData(initial);
+      setOriginalData(initial);
     }
   }, [isOpen, profile]);
+
+  const isDirty = useMemo(
+    () => formsDiffer(formData, originalData),
+    [formData, originalData],
+  );
+  const completion = useMemo(() => completionScore(formData), [formData]);
 
   const searchHometown = (query: string) => {
     if (hometownDebounceRef.current) clearTimeout(hometownDebounceRef.current);
@@ -113,8 +199,7 @@ export const ProfileUpdateModal: React.FC<ProfileUpdateModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !profile) return;
-
+    if (!user || !profile || !isDirty) return;
     setLoading(true);
     try {
       const { error } = await supabase
@@ -135,8 +220,6 @@ export const ProfileUpdateModal: React.FC<ProfileUpdateModalProps> = ({
         alert("Failed to update profile. Please try again.");
         return;
       }
-
-      // Refresh the page to update the auth context
       window.location.reload();
     } catch (error) {
       console.error("Unexpected error updating profile:", error);
@@ -146,459 +229,351 @@ export const ProfileUpdateModal: React.FC<ProfileUpdateModalProps> = ({
     }
   };
 
-  const toggleArrayItem = (array: string[], item: string) => {
-    return array.includes(item)
-      ? array.filter((i) => i !== item)
-      : [...array, item];
-  };
+  const toggleArrayItem = (array: string[], item: string) =>
+    array.includes(item) ? array.filter((i) => i !== item) : [...array, item];
+
+  const initials = formData.display_name
+    ? formData.display_name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "?";
+
+  const avatarColor = getAvatarColor(formData.display_name || "?");
 
   if (!isOpen) return null;
 
   return (
     <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 9999,
-        padding: "1rem",
-      }}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div
-        style={{
-          backgroundColor: "white",
-          borderRadius: "0.75rem",
-          width: "100%",
-          maxWidth: "600px",
-          maxHeight: "90vh",
-          overflow: "auto",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-        }}
-      >
+      <div className="bg-white rounded-2xl w-full max-w-[560px] max-h-[90vh] overflow-y-auto shadow-2xl">
         {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "1.5rem",
-            borderBottom: "1px solid #e5e7eb",
-          }}
-        >
-          <h2
-            style={{
-              fontSize: "1.25rem",
-              fontWeight: "600",
-              color: "#111827",
-              margin: 0,
-            }}
-          >
-            Update Travel Profile
-          </h2>
-          <button
-            onClick={onClose}
-            style={{
-              padding: "0.5rem",
-              backgroundColor: "transparent",
-              border: "none",
-              borderRadius: "0.375rem",
-              cursor: "pointer",
-              color: "#6b7280",
-            }}
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ padding: "1.5rem" }}>
-          {/* Display Name */}
-          <div style={{ marginBottom: "1.5rem" }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: "0.875rem",
-                fontWeight: "500",
-                color: "#374151",
-                marginBottom: "0.5rem",
-              }}
+        <div className="px-6 pt-6 pb-4">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-full shrink-0 overflow-hidden">
+                {profile?.avatar_url ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt={formData.display_name || "Avatar"}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div
+                    className={`w-full h-full flex items-center justify-center text-sm font-semibold ${avatarColor}`}
+                  >
+                    {initials}
+                  </div>
+                )}
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-gray-900 leading-tight">
+                  Travel Profile
+                </h2>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Personalize your travel preferences
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors mt-0.5"
             >
-              Display Name
-            </label>
-            <input
-              type="text"
-              value={formData.display_name}
-              onChange={(e) =>
-                setFormData({ ...formData, display_name: e.target.value })
-              }
-              style={{
-                width: "100%",
-                padding: "0.75rem",
-                border: "1px solid #d1d5db",
-                borderRadius: "0.5rem",
-                fontSize: "0.875rem",
-                boxSizing: "border-box",
-              }}
-              placeholder="Enter your display name"
-            />
+              <X size={18} />
+            </button>
           </div>
 
-          {/* Hometown */}
-          <div style={{ marginBottom: "1.5rem" }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: "0.875rem",
-                fontWeight: "500",
-                color: "#374151",
-                marginBottom: "0.5rem",
-              }}
-            >
-              Hometown
-            </label>
-            <div style={{ position: "relative" }} ref={suggestionsRef}>
-              <MapPin
-                size={16}
-                style={{
-                  position: "absolute",
-                  left: "0.75rem",
-                  top: "0.875rem",
-                  color: "#9ca3af",
-                  zIndex: 1,
-                }}
+          {/* Completion bar */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-gray-400">
+                Profile completeness
+              </span>
+              <span className="text-xs font-semibold text-gray-600">
+                {completion}%
+              </span>
+            </div>
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                style={{ width: `${completion}%` }}
               />
-              <input
-                type="text"
-                value={formData.hometown}
-                onChange={(e) => {
-                  setFormData({ ...formData, hometown: e.target.value });
-                  searchHometown(e.target.value);
-                }}
-                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                onFocus={() => {
-                  if (hometownSuggestions.length > 0) setShowSuggestions(true);
-                }}
-                style={{
-                  width: "100%",
-                  padding: "0.75rem",
-                  paddingLeft: "2.25rem",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "0.5rem",
-                  fontSize: "0.875rem",
-                  boxSizing: "border-box",
-                }}
-                placeholder="e.g. San Francisco, New York, London"
-              />
-              {showSuggestions && hometownSuggestions.length > 0 && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "100%",
-                    left: 0,
-                    right: 0,
-                    backgroundColor: "white",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "0.5rem",
-                    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
-                    zIndex: 50,
-                    marginTop: "0.25rem",
-                    overflow: "hidden",
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-6 pb-6 space-y-5">
+          {/* Display Name + Hometown */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                Display Name
+              </label>
+              <div className="relative">
+                <User
+                  size={14}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+                <input
+                  type="text"
+                  value={formData.display_name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, display_name: e.target.value })
+                  }
+                  className="w-full pl-8 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Your name"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                Hometown
+              </label>
+              <div className="relative" ref={suggestionsRef}>
+                <MapPin
+                  size={14}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"
+                />
+                <input
+                  type="text"
+                  value={formData.hometown}
+                  onChange={(e) => {
+                    setFormData({ ...formData, hometown: e.target.value });
+                    searchHometown(e.target.value);
                   }}
-                >
-                  {hometownSuggestions.map((suggestion, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onMouseDown={() => {
-                        setFormData({ ...formData, hometown: suggestion });
-                        setShowSuggestions(false);
-                        setHometownSuggestions([]);
-                      }}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                        width: "100%",
-                        padding: "0.625rem 0.75rem",
-                        backgroundColor: "transparent",
-                        border: "none",
-                        borderBottom:
-                          i < hometownSuggestions.length - 1
-                            ? "1px solid #f3f4f6"
-                            : "none",
-                        cursor: "pointer",
-                        fontSize: "0.8125rem",
-                        color: "#374151",
-                        textAlign: "left",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor = "#f9fafb")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor = "transparent")
-                      }
-                    >
-                      <MapPin
-                        size={12}
-                        style={{ color: "#9ca3af", flexShrink: 0 }}
-                      />
-                      <span
-                        style={{
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
+                  onBlur={() =>
+                    setTimeout(() => setShowSuggestions(false), 150)
+                  }
+                  onFocus={() => {
+                    if (hometownSuggestions.length > 0)
+                      setShowSuggestions(true);
+                  }}
+                  className="w-full pl-8 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="City, Country"
+                />
+                {showSuggestions && hometownSuggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
+                    {hometownSuggestions.map((suggestion, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onMouseDown={() => {
+                          setFormData({ ...formData, hometown: suggestion });
+                          setShowSuggestions(false);
+                          setHometownSuggestions([]);
                         }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 border-b border-gray-100 last:border-0"
                       >
-                        {suggestion}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
+                        <MapPin size={11} className="text-gray-400 shrink-0" />
+                        <span className="truncate">{suggestion}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
+          <div className="border-t border-gray-100" />
+
           {/* Travel Style */}
-          <div style={{ marginBottom: "1.5rem" }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: "0.875rem",
-                fontWeight: "500",
-                color: "#374151",
-                marginBottom: "0.5rem",
-              }}
-            >
+          <div>
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              <Compass size={13} className="text-gray-400" />
               Travel Style
             </label>
-            <select
-              value={formData.travel_style}
-              onChange={(e) =>
-                setFormData({ ...formData, travel_style: e.target.value })
-              }
-              style={{
-                width: "100%",
-                padding: "0.75rem",
-                border: "1px solid #d1d5db",
-                borderRadius: "0.5rem",
-                fontSize: "0.875rem",
-                backgroundColor: "white",
-                boxSizing: "border-box",
-              }}
-            >
-              <option value="">Select your travel style</option>
-              {TRAVEL_STYLES.map((style) => (
-                <option key={style.value} value={style.value}>
-                  {style.label}
-                </option>
-              ))}
-            </select>
+            <div className="flex gap-2">
+              {TRAVEL_STYLES.map((style) => {
+                const active = formData.travel_style === style.value;
+                return (
+                  <button
+                    key={style.value}
+                    type="button"
+                    onClick={() =>
+                      setFormData({ ...formData, travel_style: style.value })
+                    }
+                    className={`flex-1 py-2.5 px-3 rounded-lg border transition-all text-left ${
+                      active
+                        ? "bg-gray-900 text-white border-gray-900"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{style.label}</span>
+                      {active && (
+                        <Check size={13} className="text-white opacity-80" />
+                      )}
+                    </div>
+                    <p
+                      className={`text-xs mt-0.5 ${active ? "text-gray-300" : "text-gray-400"}`}
+                    >
+                      {style.sub}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Walking Tolerance */}
-          <div style={{ marginBottom: "1.5rem" }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: "0.875rem",
-                fontWeight: "500",
-                color: "#374151",
-                marginBottom: "0.5rem",
-              }}
-            >
+          <div>
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              <Footprints size={13} className="text-gray-400" />
               Walking Tolerance
             </label>
-            <select
-              value={formData.walking_tolerance}
-              onChange={(e) =>
-                setFormData({ ...formData, walking_tolerance: e.target.value })
-              }
-              style={{
-                width: "100%",
-                padding: "0.75rem",
-                border: "1px solid #d1d5db",
-                borderRadius: "0.5rem",
-                fontSize: "0.875rem",
-                backgroundColor: "white",
-                boxSizing: "border-box",
-              }}
-            >
-              <option value="">Select your walking preference</option>
-              {WALKING_TOLERANCE.map((tolerance) => (
-                <option key={tolerance.value} value={tolerance.value}>
-                  {tolerance.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Interests */}
-          <div style={{ marginBottom: "1.5rem" }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: "0.875rem",
-                fontWeight: "500",
-                color: "#374151",
-                marginBottom: "0.5rem",
-              }}
-            >
-              Interests
-            </label>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                gap: "0.5rem",
-              }}
-            >
-              {COMMON_INTERESTS.map((interest) => (
-                <label
-                  key={interest}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    padding: "0.5rem",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "0.375rem",
-                    cursor: "pointer",
-                    fontSize: "0.875rem",
-                    backgroundColor: formData.interests.includes(interest)
-                      ? "#eff6ff"
-                      : "white",
-                    borderColor: formData.interests.includes(interest)
-                      ? "#3b82f6"
-                      : "#e5e7eb",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={formData.interests.includes(interest)}
-                    onChange={() =>
-                      setFormData({
-                        ...formData,
-                        interests: toggleArrayItem(
-                          formData.interests,
-                          interest,
-                        ),
-                      })
+            <div className="flex gap-2">
+              {WALKING_TOLERANCE.map((t) => {
+                const active = formData.walking_tolerance === t.value;
+                return (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() =>
+                      setFormData({ ...formData, walking_tolerance: t.value })
                     }
-                    style={{ margin: 0 }}
-                  />
-                  {interest}
-                </label>
-              ))}
+                    className={`flex-1 py-2.5 px-3 rounded-lg border transition-all text-left ${
+                      active
+                        ? "bg-gray-900 text-white border-gray-900"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium">{t.label}</span>
+                      {active && (
+                        <Check size={13} className="text-white opacity-80" />
+                      )}
+                    </div>
+                    {/* Dot indicator */}
+                    <div className="flex gap-1">
+                      {[1, 2, 3].map((d) => (
+                        <div
+                          key={d}
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            d <= t.dots
+                              ? active
+                                ? "bg-white opacity-70"
+                                : "bg-gray-400"
+                              : active
+                                ? "bg-white opacity-20"
+                                : "bg-gray-200"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Dietary Restrictions */}
-          <div style={{ marginBottom: "2rem" }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: "0.875rem",
-                fontWeight: "500",
-                color: "#374151",
-                marginBottom: "0.5rem",
-              }}
-            >
-              Dietary Restrictions
-            </label>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-                gap: "0.5rem",
-              }}
-            >
-              {DIETARY_OPTIONS.map((dietary) => (
-                <label
-                  key={dietary}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    padding: "0.5rem",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "0.375rem",
-                    cursor: "pointer",
-                    fontSize: "0.875rem",
-                    backgroundColor: formData.dietary.includes(dietary)
-                      ? "#fef3c7"
-                      : "white",
-                    borderColor: formData.dietary.includes(dietary)
-                      ? "#f59e0b"
-                      : "#e5e7eb",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={formData.dietary.includes(dietary)}
-                    onChange={() =>
+          <div className="border-t border-gray-100" />
+
+          {/* Interests */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Interests
+              </label>
+              {formData.interests.length > 0 && (
+                <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                  {formData.interests.length} selected
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {INTERESTS.map(({ label, icon: Icon }) => {
+                const active = formData.interests.includes(label);
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() =>
                       setFormData({
                         ...formData,
-                        dietary: toggleArrayItem(formData.dietary, dietary),
+                        interests: toggleArrayItem(formData.interests, label),
                       })
                     }
-                    style={{ margin: 0 }}
-                  />
-                  {dietary}
-                </label>
-              ))}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-all active:scale-95 ${
+                      active
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    {active ? <Check size={12} /> : <Icon size={12} />}
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100" />
+
+          {/* Dietary Restrictions */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Dietary Restrictions
+              </label>
+              {formData.dietary.length > 0 && (
+                <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                  {formData.dietary.length} selected
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {DIETARY_OPTIONS.map(({ label, icon: Icon }) => {
+                const active = formData.dietary.includes(label);
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        dietary: toggleArrayItem(formData.dietary, label),
+                      })
+                    }
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-all active:scale-95 ${
+                      active
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    {active ? <Check size={12} /> : <Icon size={12} />}
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* Actions */}
-          <div
-            style={{
-              display: "flex",
-              gap: "0.75rem",
-              justifyContent: "flex-end",
-            }}
-          >
+          <div className="flex gap-2 pt-1">
             <button
               type="button"
               onClick={onClose}
-              style={{
-                padding: "0.75rem 1.5rem",
-                backgroundColor: "transparent",
-                border: "1px solid #d1d5db",
-                borderRadius: "0.5rem",
-                cursor: "pointer",
-                fontSize: "0.875rem",
-                color: "#374151",
-              }}
+              className="flex-1 py-2.5 px-4 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={loading}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.75rem 1.5rem",
-                backgroundColor: loading ? "#9ca3af" : "#3b82f6",
-                border: "none",
-                borderRadius: "0.5rem",
-                cursor: loading ? "not-allowed" : "pointer",
-                fontSize: "0.875rem",
-                color: "white",
-                fontWeight: "500",
-              }}
+              disabled={loading || !isDirty}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors ${
+                isDirty && !loading
+                  ? "bg-blue-600 hover:bg-blue-700 text-white"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
+              }`}
             >
-              <Save size={16} />
+              <Save size={15} />
               {loading ? "Saving..." : "Save Changes"}
             </button>
           </div>

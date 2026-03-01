@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plane, Clock, ChevronDown, ChevronUp, ArrowRight } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import { getApiUrl } from "../lib/api";
 import { supabase } from "../lib/supabase";
@@ -162,9 +163,11 @@ export function FlightCard({
         },
         body: JSON.stringify({ direction, selectedIndex: index }),
       });
+      toast.success("Flight updated");
       onFlightSwap?.(direction, index);
     } catch (err) {
       console.warn("Flight select failed:", err);
+      toast.error("Failed to update flight");
     } finally {
       setSelecting(false);
     }

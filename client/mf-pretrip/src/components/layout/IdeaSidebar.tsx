@@ -6,7 +6,7 @@ import { IdeaCard } from "../cards/IdeaCard";
 import { IdeaCardSkeleton } from "../cards/IdeaCardSkeleton";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import { Search, Sparkles, Vote, PlusCircle, Hotel } from "lucide-react";
+import { Search, Sparkles, Vote, PlusCircle, Hotel, Plus } from "lucide-react";
 import { useModals } from "../../contexts/ModalContext";
 import { AnnotationList } from "./AnnotationList";
 import { useAllTripReactions } from "../../hooks/useAllTripReactions";
@@ -125,9 +125,23 @@ export function IdeaSidebar({
 
     // Category filter
     if (activeCategory) {
-      result = result.filter(
-        (idea) => idea.category?.trim().toLowerCase() === activeCategory,
-      );
+      if (activeCategory === "activities") {
+        // Merged category: matches sightseeing, activity, nature, shopping, nightlife
+        const activityCats = new Set([
+          "sightseeing",
+          "activity",
+          "nature",
+          "shopping",
+          "nightlife",
+        ]);
+        result = result.filter((idea) =>
+          activityCats.has(idea.category?.trim().toLowerCase() ?? ""),
+        );
+      } else {
+        result = result.filter(
+          (idea) => idea.category?.trim().toLowerCase() === activeCategory,
+        );
+      }
     }
 
     return result;
@@ -186,30 +200,22 @@ export function IdeaSidebar({
 
   return (
     <div className="h-full flex flex-col bg-background border-r">
-      {/* Trip Title */}
+      {/* Trip Title + Add button */}
       {trip?.title && (
-        <div className="flex-shrink-0 px-4 pt-4 pb-2">
-          <div className="flex items-start justify-between gap-2">
-            <h1 className="text-xl font-bold leading-tight min-w-0">
-              {trip.title}
-            </h1>
-            {!!unratedCount && unratedCount > 0 && onOpenRating && (
-              <button
-                onClick={onOpenRating}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors shrink-0"
-              >
-                <Vote className="h-3 w-3" />
-                Rate {unratedCount} left
-              </button>
-            )}
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            {activeTab === "saved"
-              ? "Your saved ideas!"
-              : activeTab === "notes"
-                ? "Your trip notes."
-                : "Let\u2019s start by brainstorming some ideas."}
-          </p>
+        <div className="flex-shrink-0 px-4 pt-4 pb-1 flex items-center justify-between gap-2">
+          <h1 className="text-xl font-bold leading-tight min-w-0 truncate">
+            {trip.title}
+          </h1>
+          {activeTab !== "notes" && (
+            <Button
+              onClick={handleAddClick}
+              size="sm"
+              className="bg-[#13BFB0] hover:bg-[#11a89b] text-white h-8 px-3 shrink-0"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Add
+            </Button>
+          )}
         </div>
       )}
 
@@ -236,29 +242,6 @@ export function IdeaSidebar({
           ))}
         </div>
 
-        {/* Search Bar + Add */}
-        {activeTab !== "notes" && (
-          <div className="flex items-center gap-2 mt-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search for ideas"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-            <Button
-              onClick={handleAddClick}
-              size="sm"
-              className="bg-emerald-500 hover:bg-emerald-600 text-white h-9 px-4 shrink-0"
-            >
-              Add
-            </Button>
-          </div>
-        )}
-
         {/* Category Filter Bar */}
         {activeTab !== "notes" && (
           <div className="mt-3 pb-3">
@@ -272,7 +255,7 @@ export function IdeaSidebar({
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto min-h-0">
+      <div className="flex-1 overflow-y-auto min-h-0 scrollbar-hide">
         {activeTab === "notes" ? (
           <div className="py-4">
             <AnnotationList

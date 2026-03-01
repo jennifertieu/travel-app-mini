@@ -1,43 +1,8 @@
-import { Flame, ThumbsUp, Minus, SkipForward } from "lucide-react";
 import type { Database } from "@travel-app/shared-types";
 import type { TripMember } from "../../hooks/useTripMembers";
+import { SIGNAL_CONFIG } from "../../lib/signals";
 
 type Reaction = Database["public"]["Tables"]["trip_reel_idea_reactions"]["Row"];
-
-const SIGNAL_CONFIG = [
-  {
-    signal: "fire",
-    label: "Must do!",
-    icon: Flame,
-    color: "text-orange-500",
-    bg: "bg-orange-50",
-    border: "border-orange-200",
-  },
-  {
-    signal: "down",
-    label: "Interested",
-    icon: ThumbsUp,
-    color: "text-blue-500",
-    bg: "bg-blue-50",
-    border: "border-blue-200",
-  },
-  {
-    signal: "meh",
-    label: "Meh",
-    icon: Minus,
-    color: "text-gray-500",
-    bg: "bg-gray-50",
-    border: "border-gray-200",
-  },
-  {
-    signal: "skip",
-    label: "Skip",
-    icon: SkipForward,
-    color: "text-red-400",
-    bg: "bg-red-50",
-    border: "border-red-200",
-  },
-] as const;
 
 interface ReactionBarProps {
   reactions: Reaction[];
@@ -47,7 +12,7 @@ interface ReactionBarProps {
 
 function getMemberProfile(members: TripMember[], memberId: string) {
   const member = members.find(
-    (m) => m.member_profile?.id === memberId || m.user_id === memberId
+    (m) => m.member_profile?.id === memberId || m.user_id === memberId,
   );
   return member?.member_profile ?? null;
 }
@@ -88,7 +53,10 @@ export function ReactionBar({
                 </p>
                 <div className="space-y-1.5">
                   {signalReactions.map((reaction) => {
-                    const profile = getMemberProfile(members, reaction.member_id);
+                    const profile = getMemberProfile(
+                      members,
+                      reaction.member_id,
+                    );
                     const displayName =
                       profile?.display_name ||
                       reaction.member_name ||
@@ -97,7 +65,10 @@ export function ReactionBar({
                     const isYou = reaction.member_id === currentMemberId;
 
                     return (
-                      <div key={reaction.id} className="flex items-center gap-1.5">
+                      <div
+                        key={reaction.id}
+                        className="flex items-center gap-1.5"
+                      >
                         <div className="h-5 w-5 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-[9px] font-medium overflow-hidden shrink-0 border border-border">
                           {avatarUrl ? (
                             <img
@@ -113,7 +84,9 @@ export function ReactionBar({
                         <span className="text-xs text-foreground whitespace-nowrap">
                           {displayName}
                           {isYou && (
-                            <span className="text-muted-foreground ml-0.5">(you)</span>
+                            <span className="text-muted-foreground ml-0.5">
+                              (you)
+                            </span>
                           )}
                         </span>
                       </div>

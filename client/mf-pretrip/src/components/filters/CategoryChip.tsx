@@ -1,5 +1,7 @@
+import type { LucideIcon } from "lucide-react";
+
 interface CategoryChipProps {
-  emoji: string;
+  icon: LucideIcon;
   label: string;
   count: number;
   isActive: boolean;
@@ -7,7 +9,7 @@ interface CategoryChipProps {
 }
 
 export function CategoryChip({
-  emoji,
+  icon: Icon,
   label,
   count,
   isActive,
@@ -19,11 +21,11 @@ export function CategoryChip({
       onClick={onClick}
       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-150 ease-out shrink-0 ${
         isActive
-          ? "bg-emerald-500 text-white border-emerald-500 scale-[1.02]"
+          ? "bg-[#13BFB0] text-white border-[#13BFB0] scale-[1.02]"
           : "bg-muted text-foreground border-transparent hover:border-border hover:bg-muted/80"
       }`}
     >
-      {emoji && <span>{emoji}</span>}
+      <Icon className="w-3.5 h-3.5" />
       <span>{label}</span>
       <span
         className={`text-[10px] px-1.5 py-0.5 rounded-full ${

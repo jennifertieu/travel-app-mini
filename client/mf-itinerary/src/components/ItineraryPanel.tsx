@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { getApiUrl } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { DayTabs } from "./DayTabs";
@@ -176,9 +177,16 @@ export function ItineraryPanel({
     undo();
   }, [undo]);
 
-  const handleSave = useCallback(() => {
-    save(itineraryRowId);
-  }, [save, itineraryRowId]);
+  const handleSave = useCallback(async () => {
+    const toastId = toast.loading("Saving itinerary…");
+    await save(itineraryRowId);
+    // saveError is set by the hook if it failed
+    if (saveError) {
+      toast.error("Failed to save", { id: toastId });
+    } else {
+      toast.success("Itinerary saved", { id: toastId });
+    }
+  }, [save, itineraryRowId, saveError]);
 
   const handleFlightSwap = useCallback((_direction: string, _index: number) => {
     // FlightCard already PATCHed the server — next data refetch picks up the change
@@ -193,6 +201,7 @@ export function ItineraryPanel({
     if (!tripId || isRebuilding) return;
     setIsRebuilding(true);
     setRebuildError(null);
+    const toastId = toast.loading("Rebuilding itinerary…");
     try {
       const {
         data: { session },
@@ -209,9 +218,11 @@ export function ItineraryPanel({
         const json = await res.json().catch(() => ({}));
         throw new Error(json.error || "Failed to rebuild itinerary");
       }
+      toast.success("Itinerary rebuilt!", { id: toastId });
       // Realtime subscription in App.tsx will pick up the new itinerary
     } catch (err: any) {
       setRebuildError(err.message);
+      toast.error("Failed to rebuild itinerary", { id: toastId });
     } finally {
       setIsRebuilding(false);
     }
@@ -221,6 +232,7 @@ export function ItineraryPanel({
     if (!tripId || regenerating) return;
     setRegenerating(true);
     setRegenError(null);
+    const toastId = toast.loading("Searching for flights…");
     try {
       const {
         data: { session },
@@ -240,10 +252,12 @@ export function ItineraryPanel({
         const json = await res.json().catch(() => ({}));
         throw new Error(json.error || "Failed to regenerate flights");
       }
+      toast.success("Flights updated!", { id: toastId });
       // Reload the page to pick up new flight data
       window.location.reload();
     } catch (err: any) {
       setRegenError(err.message);
+      toast.error("Failed to regenerate flights", { id: toastId });
     } finally {
       setRegenerating(false);
     }
