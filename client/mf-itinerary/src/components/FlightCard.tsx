@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Plane, Clock, ChevronDown, ChevronUp, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "../lib/utils";
 import { getApiUrl } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import type { FlightOption, FlightSearchResult } from "../types";
@@ -19,6 +18,30 @@ function formatTime(iso: string): string {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+  });
+}
+
+function formatTime24(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function formatFlightDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatRouteDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
   });
 }
 
@@ -48,96 +71,157 @@ function FlightDetails({
   const depTime = formatTime(first.departureTime);
   const arrTime = formatTime(last.arrivalTime);
   const nextDay = isNextDay(first.departureTime, last.arrivalTime);
+  const metaStr = [
+    formatDuration(flight.totalDurationMinutes),
+    flight.stops === 0 ? "Nonstop" : `${flight.stops} stop${flight.stops > 1 ? "s" : ""}`,
+    flight.cabinClass,
+  ].join(" · ");
+  const priceStr = `$${flight.priceTotal.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+  if (compact) {
+    return (
+      <div className="flex flex-col gap-1.5 text-xs">
+        <div className="flex items-center gap-2 flex-wrap">
+          <img
+            src={flight.airlineLogo}
+            alt={first.airline}
+            className="h-4 object-contain"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+          <span className="font-medium text-foreground">{first.airline}</span>
+          <span className="text-muted-foreground">{first.flightNumber}</span>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-semibold tabular-nums">{depTime}</span>
+          <span className="text-muted-foreground">{first.departureAirport}</span>
+          <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
+          <span className="font-semibold tabular-nums">
+            {arrTime}
+            {nextDay && <sup className="text-amber-600 dark:text-amber-400 ml-0.5">+1</sup>}
+          </span>
+          <span className="text-muted-foreground">{last.arrivalAirport}</span>
+          <span className="text-muted-foreground ml-auto">{metaStr}</span>
+          <span className="font-semibold text-foreground tabular-nums">{priceStr}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className={cn("flex flex-col", compact ? "gap-1.5 text-xs" : "gap-3")}>
-      {/* Airline + flight number */}
-      <div className="flex items-center gap-2">
-        <img
-          src={flight.airlineLogo}
-          alt={first.airline}
-          className={cn("object-contain", compact ? "h-4" : "h-5")}
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
-        />
-        <span
-          className={cn(
-            "font-medium text-foreground",
-            compact ? "text-xs" : "text-sm",
-          )}
-        >
-          {first.airline}
-        </span>
-        <span className="text-muted-foreground text-xs">
-          {first.flightNumber}
-        </span>
-      </div>
-
-      {/* Route: departure | arrow + duration | arrival */}
-      <div
-        className={cn(
-          "flex items-center gap-2",
-          compact ? "flex-wrap" : "flex-wrap sm:flex-nowrap",
-        )}
-      >
-        <div className="flex flex-col min-w-0">
-          <span
-            className={cn(
-              "font-semibold text-foreground tabular-nums",
-              compact ? "text-xs" : "text-base",
-            )}
-          >
-            {depTime}
-          </span>
-          <span className="text-xs text-muted-foreground font-medium">
-            {first.departureAirport}
-          </span>
+    <div className="flex flex-col gap-2">
+      {/* Row 1: airline (small) + route inline + price */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <img
+            src={flight.airlineLogo}
+            alt={first.airline}
+            className="h-4 w-5 object-contain shrink-0"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+          <span className="text-xs font-medium text-foreground truncate">{first.airline}</span>
+          <span className="text-xs text-muted-foreground shrink-0">{first.flightNumber}</span>
         </div>
-        <div className="shrink-0 flex items-center self-center">
-          <ArrowRight className="w-4 h-4 text-muted-foreground" />
-        </div>
-        <div className="flex flex-col min-w-0 text-right">
-          <span
-            className={cn(
-              "font-semibold text-foreground tabular-nums",
-              compact ? "text-xs" : "text-base",
-            )}
-          >
+        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+          <span className="text-sm font-semibold text-foreground tabular-nums">{depTime}</span>
+          <span className="text-xs text-muted-foreground">{first.departureAirport}</span>
+          <ArrowRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          <span className="text-sm font-semibold text-foreground tabular-nums">
             {arrTime}
-            {nextDay && (
-              <sup className="text-[10px] text-amber-600 dark:text-amber-400 ml-0.5 font-normal">
-                +1
-              </sup>
-            )}
+            {nextDay && <sup className="text-[10px] text-amber-600 dark:text-amber-400 ml-0.5 font-normal">+1</sup>}
           </span>
-          <span className="text-xs text-muted-foreground font-medium">
-            {last.arrivalAirport}
-          </span>
+          <span className="text-xs text-muted-foreground">{last.arrivalAirport}</span>
         </div>
+        <span className="text-sm font-semibold text-foreground tabular-nums ml-auto shrink-0">
+          {priceStr}
+        </span>
       </div>
-
-      {/* Meta: duration, stops, cabin, price */}
-      <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-        <span className="flex items-center gap-1">
-          <Clock className="w-3.5 h-3.5 shrink-0" />
-          {formatDuration(flight.totalDurationMinutes)}
-        </span>
-        <span>
-          {flight.stops === 0
-            ? "Nonstop"
-            : `${flight.stops} stop${flight.stops > 1 ? "s" : ""}`}
-        </span>
-        <span className="capitalize">{flight.cabinClass}</span>
-        <span className="font-semibold text-foreground ml-auto tabular-nums">
-          $
-          {flight.priceTotal.toLocaleString("en-US", {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2,
-          })}
-        </span>
+      {/* Row 2: duration, stops, cabin */}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Clock className="w-3 h-3 shrink-0" />
+        <span>{metaStr}</span>
       </div>
     </div>
+  );
+}
+
+function MainFlightLayout({ flight }: { flight: FlightOption }) {
+  const first = flight.segments[0];
+  const last = flight.segments[flight.segments.length - 1];
+  if (!first || !last) return null;
+
+  const depTime = formatTime24(first.departureTime);
+  const arrTime = formatTime24(last.arrivalTime);
+  const nextDay = isNextDay(first.departureTime, last.arrivalTime);
+  const priceStr = `$${flight.priceTotal.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+  return (
+    <>
+      {/* Top: airline + flight#/cabin + price */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-gray-100 dark:bg-zinc-700/50 border border-gray-200 dark:border-zinc-600 flex items-center justify-center shrink-0 overflow-hidden">
+              <img
+                src={flight.airlineLogo}
+                alt={first.airline}
+                className="h-5 w-5 object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            </div>
+            <span className="font-semibold text-sm text-foreground truncate">{first.airline}</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5 pl-10">
+            {first.flightNumber} · <span className="capitalize">{flight.cabinClass}</span>
+          </p>
+        </div>
+        <div className="text-right shrink-0">
+          <span className="font-bold text-base text-foreground tabular-nums">{priceStr}</span>
+          <span className="text-xs text-muted-foreground ml-0.5">/pax</span>
+        </div>
+      </div>
+
+      <hr className="border-0 border-t border-gray-200 dark:border-zinc-600 my-2" />
+
+      {/* Route: dep | duration + line + direct | arr (stack on narrow, 3-col on sm+) */}
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-3 sm:gap-4 items-center">
+        <div className="flex flex-col min-w-0">
+          <span className="text-lg font-bold text-foreground tabular-nums">{depTime}</span>
+          <span className="text-xs text-muted-foreground mt-0.5">{formatRouteDate(first.departureTime)}</span>
+          <div className="flex items-center gap-1.5 mt-1">
+            <Plane className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <span className="w-4 h-0.5 bg-gray-400 dark:bg-gray-500 rounded shrink-0" aria-hidden />
+            <span className="text-sm font-medium text-foreground">{first.departureAirport}</span>
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center px-2 py-1 sm:py-0 order-1 sm:order-none">
+          <span className="text-xs text-muted-foreground">Duration: {formatDuration(flight.totalDurationMinutes)}</span>
+          <span className="w-full max-w-[80px] sm:max-w-[60px] h-px bg-gray-200 dark:bg-zinc-600 my-1" aria-hidden />
+          <span className="text-xs font-medium text-foreground">
+            {flight.stops === 0 ? "Direct" : `${flight.stops} stop${flight.stops > 1 ? "s" : ""}`}
+          </span>
+        </div>
+        <div className="flex flex-col items-end min-w-0 text-right order-2 sm:order-none">
+          <span className="text-lg font-bold text-foreground tabular-nums">
+            {arrTime}
+            {nextDay && <sup className="text-[10px] text-amber-600 dark:text-amber-400 ml-0.5 font-normal">+1</sup>}
+          </span>
+          <span className="text-xs text-muted-foreground mt-0.5">{formatRouteDate(last.arrivalTime)}</span>
+          <div className="flex items-center gap-1.5 mt-1 justify-end">
+            <span className="text-sm font-medium text-foreground">{last.arrivalAirport}</span>
+            <span className="w-4 h-0.5 bg-gray-400 dark:bg-gray-500 rounded shrink-0" aria-hidden />
+            <Plane className="w-3.5 h-3.5 text-muted-foreground shrink-0 rotate-90" />
+          </div>
+        </div>
+      </div>
+
+      <hr className="border-0 border-t border-gray-200 dark:border-zinc-600 my-2" />
+    </>
   );
 }
 
@@ -148,6 +232,7 @@ export function FlightCard({
   onFlightSwap,
 }: FlightCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [selecting, setSelecting] = useState(false);
 
   const options = direction === "outbound" ? flights.outbound : flights.return;
@@ -188,95 +273,105 @@ export function FlightCard({
   };
 
   const label = direction === "outbound" ? "Outbound Flight" : "Return Flight";
+  const firstSegment = selected.segments[0];
+  const flightDate = firstSegment ? formatFlightDate(firstSegment.departureTime) : null;
 
   return (
     <div className="rounded-xl border border-gray-200 dark:border-zinc-700/60 bg-white dark:bg-zinc-800/50 shadow-sm overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 bg-gray-50/80 dark:bg-zinc-800/80 border-b border-gray-100 dark:border-zinc-700/50">
-        <div
-          className={cn(
-            "flex items-center justify-center w-8 h-8 rounded-lg",
-            direction === "outbound"
-              ? "bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400"
-              : "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400",
-          )}
-        >
-          <Plane className="w-4 h-4" />
-        </div>
-        <span className="text-sm font-semibold text-foreground">
+      {/* Slim direction label */}
+      <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50/70 dark:bg-zinc-800/70 border-b border-gray-100 dark:border-zinc-700/50">
+        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
           {label}
+          {flightDate && ` · ${flightDate}`}
         </span>
         {selected.recommended && (
-          <span className="ml-auto inline-flex items-center px-2.5 py-1 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 text-xs font-medium">
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded-md border border-gray-200 dark:border-zinc-600 text-muted-foreground">
             Recommended
           </span>
         )}
       </div>
 
-      {/* Selected flight details */}
-      <div className="p-4">
-        <FlightDetails flight={selected} />
+      {/* Card body: airline + route + link row */}
+      <div className="p-3">
+        <MainFlightLayout flight={selected} />
 
-        {/* LLM summary */}
-        {selected.summary && (
-          <p className="mt-3 text-xs italic text-muted-foreground leading-relaxed">
-            {selected.summary}
-          </p>
-        )}
-      </div>
-
-      {/* Alternatives toggle */}
-      {alternatives.length > 0 && (
-        <div className="px-4 pb-4 pt-0">
-          <button
-            type="button"
-            onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1.5 w-full py-2.5 rounded-lg text-xs font-medium text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors"
-          >
-            {expanded ? (
-              <ChevronUp className="w-4 h-4 shrink-0" />
-            ) : (
-              <ChevronDown className="w-4 h-4 shrink-0" />
-            )}
-            {alternatives.length} other option
-            {alternatives.length > 1 ? "s" : ""}
-          </button>
-
-          {expanded && (
-            <div className="mt-2 flex flex-col gap-2">
-              {alternatives.map((alt) => {
-                const realIndex = options.indexOf(alt);
-                return (
-                  <div
-                    key={alt.id}
-                    className="rounded-lg border border-gray-200 dark:border-zinc-700/50 bg-gray-50/50 dark:bg-zinc-900/50 p-3"
-                  >
-                    <FlightDetails flight={alt} compact />
-                    {alt.summary && (
-                      <p className="mt-2 text-[11px] italic text-muted-foreground leading-snug">
-                        {alt.summary}
-                      </p>
-                    )}
-                    {alt.recommended && (
-                      <span className="inline-flex items-center mt-2 px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 text-[10px] font-medium">
-                        Recommended
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      disabled={selecting}
-                      onClick={() => handleSelect(realIndex)}
-                      className="mt-3 w-full text-center text-xs font-medium py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white disabled:opacity-50 transition-colors"
-                    >
-                      {selecting ? "Selecting…" : "Select this flight"}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+        {/* Bottom link row: app-style pill links */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+          {selected.summary && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setSummaryExpanded(!summaryExpanded); }}
+              className="px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-gray-100 dark:hover:bg-zinc-700/50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-zinc-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-900"
+            >
+              {summaryExpanded ? "Hide tip" : "Why this flight?"}
+            </button>
+          )}
+          {alternatives.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setExpanded(!expanded)}
+              className="px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-gray-100 dark:hover:bg-zinc-700/50 transition-colors flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-zinc-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-900"
+            >
+              {expanded ? (
+                <>
+                  <ChevronUp className="w-3 h-3 shrink-0" />
+                  Less
+                </>
+              ) : (
+                <>
+                  {alternatives.length} other option{alternatives.length > 1 ? "s" : ""}
+                  <ChevronDown className="w-3 h-3 shrink-0" />
+                </>
+              )}
+            </button>
           )}
         </div>
-      )}
+
+        {/* Expanded summary: trip tip */}
+        {selected.summary && summaryExpanded && (
+          <div className="mt-2 p-2 rounded-lg bg-gray-50 dark:bg-zinc-800/80 border border-gray-100 dark:border-zinc-700/50">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Trip tip</p>
+            <p className="text-xs text-foreground leading-relaxed">
+              {selected.summary}
+            </p>
+          </div>
+        )}
+
+        {/* Expanded alternatives */}
+        {expanded && alternatives.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-zinc-700/50 space-y-2">
+            {alternatives.map((alt) => {
+              const realIndex = options.indexOf(alt);
+              return (
+                <div
+                  key={alt.id}
+                  className="rounded-lg border border-gray-200 dark:border-zinc-700/50 bg-gray-50/50 dark:bg-zinc-900/50 p-2.5"
+                >
+                  <FlightDetails flight={alt} compact />
+                  {alt.summary && (
+                    <p className="mt-1.5 text-[11px] italic text-muted-foreground leading-snug">
+                      {alt.summary}
+                    </p>
+                  )}
+                  {alt.recommended && (
+                    <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 text-[10px] font-medium">
+                      Recommended
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    disabled={selecting}
+                    onClick={() => handleSelect(realIndex)}
+                    className="mt-2 w-full text-center text-xs font-medium py-1.5 rounded-md bg-gray-600 hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-gray-600 text-white disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-zinc-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-900"
+                  >
+                    {selecting ? "Selecting…" : "Select this flight"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

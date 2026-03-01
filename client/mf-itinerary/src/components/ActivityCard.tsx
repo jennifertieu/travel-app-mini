@@ -98,7 +98,7 @@ export function ActivityCard({
             {activity.name}
           </h4>
           {activity.cost_estimate != null && activity.cost_estimate > 0 && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-xs font-medium flex-shrink-0">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 text-xs font-medium flex-shrink-0">
               ~${activity.cost_estimate}
             </span>
           )}

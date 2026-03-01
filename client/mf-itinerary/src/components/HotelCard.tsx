@@ -7,16 +7,16 @@ interface HotelCardProps {
 
 export function HotelCard({ hotel }: HotelCardProps) {
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <div className="rounded-xl border border-gray-200 dark:border-zinc-700/60 bg-white dark:bg-zinc-800/50 shadow-sm overflow-hidden">
       {hotel.photoUrl && (
         <img
           src={hotel.photoUrl}
           alt={hotel.name}
-          className="w-full h-40 object-cover"
+          className="w-full h-28 object-cover"
         />
       )}
-      <div className="p-3 space-y-1">
-        <p className="font-semibold text-sm">{hotel.name}</p>
+      <div className="p-2.5 space-y-0.5">
+        <p className="font-semibold text-sm text-foreground">{hotel.name}</p>
         <div className="flex items-center gap-2 text-sm">
           {hotel.rating !== null && (
             <span className="flex items-center gap-1">

@@ -38,10 +38,24 @@ export function BudgetSummary({
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
 
   const total = budget.total || 0;
-  const dailyAvg =
-    budget.per_day_average ||
-    (tripDays ? Math.round((total - budget.flights) / tripDays) : 0);
+  const tripDaysActual = (tripDays ?? (days?.length ?? 0)) || 1;
+  const onTheGroundTotal = total - (budget.flights || 0) - (budget.hotel || 0);
+  const dailySpendExclFlightsHotel =
+    tripDaysActual > 0 ? Math.round(onTheGroundTotal / tripDaysActual) : 0;
   const groupTotal = total * memberCount;
+
+  function formatFriendlyDate(isoDate: string | undefined): string {
+    if (!isoDate) return "";
+    try {
+      return new Date(isoDate).toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return isoDate;
+    }
+  }
 
   const toggleDay = (day: number) => {
     setExpandedDays((prev) => {
@@ -105,72 +119,108 @@ export function BudgetSummary({
 
   return (
     <div className="px-4 py-5 space-y-6">
-      {/* Hero total */}
-      <div className="text-center space-y-1">
-        <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-widest">
-          Estimated total per person
-        </p>
-        <p className="text-4xl font-bold text-gray-900 dark:text-white tracking-tight">
-          ${total.toLocaleString()}
-        </p>
-        <div className="flex items-center justify-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-          {dailyAvg > 0 && <span>~${dailyAvg}/day</span>}
-          {memberCount > 1 && (
-            <span className="flex items-center gap-1">
-              <Users className="w-3 h-3" />
-              {memberCount} travelers
-            </span>
-          )}
+      {/* Hero: daily spend prominent, trip total secondary, refresh in header */}
+      <div className="relative">
+        <div className="text-center space-y-1">
+          <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-widest">
+            Daily spend (excl. flights)
+          </p>
+          <p className="text-4xl font-bold text-gray-900 dark:text-white tracking-tight">
+            ~${dailySpendExclFlightsHotel}/day
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Trip total: ${total.toLocaleString()}
+          </p>
+          <div className="flex items-center justify-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+            {memberCount > 1 && (
+              <span className="flex items-center gap-1">
+                <Users className="w-3 h-3" />
+                {memberCount} travelers
+              </span>
+            )}
+          </div>
         </div>
+        {tripId && (
+          <button
+            type="button"
+            onClick={handleRecalculate}
+            disabled={isRecalculating}
+            className="absolute top-0 right-0 p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700/50 transition-colors disabled:opacity-50"
+            aria-label="Re-estimate budget"
+          >
+            <RefreshCw
+              className={`w-4 h-4 ${isRecalculating ? "animate-spin" : ""}`}
+            />
+          </button>
+        )}
       </div>
 
-      {/* Category cards grid */}
-      <div className="grid grid-cols-2 gap-2">
-        {cats.map(({ key, label, Icon, bar }) => {
-          const amount = (budget[key] as number) || 0;
-          const pct = total > 0 ? (amount / total) * 100 : 0;
-          return (
-            <div
-              key={key}
-              className="rounded-xl bg-gray-100 dark:bg-zinc-800/80 p-3 space-y-2"
-            >
+      {/* Stacked bar + compact legend */}
+      <div className="space-y-3">
+        <div className="h-3 rounded-full bg-gray-200 dark:bg-zinc-700 overflow-hidden flex">
+          {cats.map(({ key, bar }) => {
+            const amount = (budget[key] as number) || 0;
+            const pct = total > 0 ? (amount / total) * 100 : 0;
+            if (pct <= 0) return null;
+            return (
+              <div
+                key={key}
+                className={`${bar} min-w-[2px] transition-all`}
+                style={{ width: `${pct}%` }}
+                title={`${key}: $${amount.toLocaleString()}`}
+              />
+            );
+          })}
+        </div>
+        <ul className="space-y-1.5">
+          {cats.map(({ key, label, Icon, bar }) => {
+            const amount = (budget[key] as number) || 0;
+            const pct = total > 0 ? (amount / total) * 100 : 0;
+            const isEmpty = amount === 0;
+            return (
+              <li
+                key={key}
+                className="flex items-center justify-between gap-2 text-sm"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className={`w-2 h-2 rounded-full flex-shrink-0 ${bar}`}
+                    aria-hidden
+                  />
+                  <Icon className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                  <span className="text-gray-700 dark:text-gray-200 truncate">
+                    {label}
+                  </span>
+                </div>
+                {isEmpty ? (
+                  <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
+                    No {key === "hotel" ? "hotel" : key} added yet
+                  </span>
+                ) : (
+                  <span className="text-gray-600 dark:text-gray-300 flex-shrink-0">
+                    ${amount.toLocaleString()}{" "}
+                    <span className="text-gray-400 dark:text-gray-500 text-xs">
+                      {Math.round(pct)}%
+                    </span>
+                  </span>
+                )}
+              </li>
+            );
+          })}
+          {memberCount > 1 && (
+            <li className="flex items-center justify-between gap-2 text-sm pt-1.5 border-t border-gray-200 dark:border-zinc-700">
               <div className="flex items-center gap-2">
-                <Icon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                <span className="text-xs text-gray-600 dark:text-gray-300">
-                  {label}
+                <Users className="w-3.5 h-3.5 text-teal-500" />
+                <span className="text-teal-700 dark:text-teal-300">
+                  Group total
                 </span>
               </div>
-              <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                ${amount.toLocaleString()}
-              </p>
-              <div className="h-1.5 rounded-full bg-gray-200 dark:bg-zinc-700 overflow-hidden">
-                <div
-                  className={`h-full rounded-full ${bar}`}
-                  style={{ width: `${Math.max(pct, 2)}%` }}
-                />
-              </div>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                {Math.round(pct)}% of total
-              </p>
-            </div>
-          );
-        })}
-        {memberCount > 1 && (
-          <div className="rounded-xl bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800/30 p-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-              <span className="text-xs text-teal-700 dark:text-teal-300">
-                Group total
+              <span className="font-medium text-gray-900 dark:text-white">
+                ${groupTotal.toLocaleString()}
               </span>
-            </div>
-            <p className="text-lg font-semibold text-gray-900 dark:text-white">
-              ${groupTotal.toLocaleString()}
-            </p>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400">
-              {memberCount} × ${total.toLocaleString()}
-            </p>
-          </div>
-        )}
+            </li>
+          )}
+        </ul>
       </div>
 
       {/* Daily breakdown — expandable */}
@@ -209,48 +259,60 @@ export function BudgetSummary({
                 <button
                   type="button"
                   onClick={() => toggleDay(day.day)}
-                  className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-100 dark:hover:bg-zinc-700/50 transition-colors"
+                  className="w-full flex items-center justify-between gap-2 px-3 py-2.5 hover:bg-gray-100 dark:hover:bg-zinc-700/50 transition-colors text-left"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     {isExpanded ? (
-                      <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                      <ChevronDown className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                     ) : (
-                      <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                      <ChevronRight className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                     )}
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white flex-shrink-0">
                       Day {day.day}
                     </span>
                     {day.date && (
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {day.date}
+                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {formatFriendlyDate(day.date)}
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <div
+                      className="w-16 h-1.5 rounded-full bg-gray-200 dark:bg-zinc-700 overflow-hidden flex min-w-[4rem]"
+                      aria-hidden
+                    >
                       {actTotal > 0 && (
-                        <span className="flex items-center gap-0.5">
-                          <Ticket className="w-3 h-3" />${actTotal}
-                        </span>
+                        <div
+                          className="bg-emerald-500 min-w-[2px]"
+                          style={{
+                            width: `${(actTotal / dayTotal) * 100}%`,
+                          }}
+                        />
                       )}
                       {foodTotal > 0 && (
-                        <span className="flex items-center gap-0.5">
-                          <UtensilsCrossed className="w-3 h-3" />${foodTotal}
-                        </span>
+                        <div
+                          className="bg-amber-500 min-w-[2px]"
+                          style={{
+                            width: `${(foodTotal / dayTotal) * 100}%`,
+                          }}
+                        />
                       )}
                       {transTotal > 0 && (
-                        <span className="flex items-center gap-0.5">
-                          <Car className="w-3 h-3" />${transTotal}
-                        </span>
+                        <div
+                          className="bg-cyan-500 min-w-[2px]"
+                          style={{
+                            width: `${(transTotal / dayTotal) * 100}%`,
+                          }}
+                        />
                       )}
                     </div>
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
                       ${dayTotal}
                     </span>
                   </div>
                 </button>
 
-                {isExpanded && activitiesWithCost.length > 0 && (
+                {isExpanded && (activitiesWithCost.length > 0 || transTotal > 0) && (
                   <div className="px-3 pb-3 space-y-1">
                     {activitiesWithCost.map((a, i) => (
                       <div

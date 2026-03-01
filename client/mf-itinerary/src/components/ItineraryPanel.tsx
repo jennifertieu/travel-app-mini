@@ -328,18 +328,65 @@ export function ItineraryPanel({
         </div>
       ) : activeSection === "travel" ? (
         /* Travel tab content */
-        <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
-          <div className="text-center space-y-1 mb-2">
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-widest">
-              Travel overview
-            </p>
-            <p className="text-lg font-bold text-gray-900 dark:text-white">
-              Flights & Logistics
-            </p>
-          </div>
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+          {/* Flights section header: title + trip total + refresh */}
+          {(() => {
+            const outbound = data.flights?.outbound?.[data.flights.selectedOutbound];
+            const returnFlight = data.flights?.return?.[data.flights.selectedReturn];
+            const tripTotal = outbound && returnFlight ? outbound.priceTotal + returnFlight.priceTotal : 0;
+            return (
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-1">
+                <div className="space-y-0.5 min-w-0">
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-widest">
+                    Travel overview
+                  </p>
+                  <p className="text-base font-bold text-gray-900 dark:text-white">
+                    Flights & Logistics
+                  </p>
+                  {(data.destination || (data.days?.length && data.days[0]?.date)) && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {data.destination ? `Flights and hotel for ${data.destination}` : "Your trip"}
+                      {data.days?.length && data.days[0]?.date && data.days[data.days.length - 1]?.date && (
+                        <>
+                          {" · "}
+                          {new Date(data.days[0].date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          {" – "}
+                          {new Date(data.days[data.days.length - 1].date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </>
+                      )}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {tripTotal > 0 && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      Total <span className="font-semibold text-foreground tabular-nums">${tripTotal.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                    </span>
+                  )}
+                  {data.flights && (
+                    <button
+                      type="button"
+                      onClick={handleRegenerateFlights}
+                      disabled={regenerating}
+                      className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-50 transition-colors"
+                      title="Search for new flight options"
+                    >
+                      <RefreshCw
+                        className={`w-3.5 h-3.5 ${regenerating ? "animate-spin" : ""}`}
+                      />
+                      {regenerating ? "Searching…" : "Refresh"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+          {regenError && (
+            <p className="text-xs text-red-500 text-center -mt-0.5">{regenError}</p>
+          )}
 
           {data.flights ? (
-            <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <FlightCard
                 direction="outbound"
                 flights={data.flights}
@@ -352,43 +399,37 @@ export function ItineraryPanel({
                 tripId={tripId}
                 onFlightSwap={handleFlightSwap}
               />
-            </>
+            </div>
           ) : (
-            <div className="text-center py-8 text-sm text-gray-400">
+            <div className="text-center py-6 text-sm text-gray-400">
               No flight data available
             </div>
           )}
 
-          {/* Regenerate button */}
-          <button
-            type="button"
-            onClick={handleRegenerateFlights}
-            disabled={regenerating}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-200 dark:border-zinc-700 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-50 transition-colors"
-          >
-            <RefreshCw
-              className={`w-4 h-4 ${regenerating ? "animate-spin" : ""}`}
-            />
-            {regenerating ? "Searching flights…" : "Regenerate flights"}
-          </button>
-          {regenError && (
-            <p className="text-xs text-red-500 text-center">{regenError}</p>
-          )}
-
-          {/* Hotel */}
-          {data.hotel ? (
-            <HotelCard hotel={data.hotel} />
-          ) : (
-            <div className="rounded-xl border border-dashed border-gray-300 dark:border-zinc-600 bg-gray-50 dark:bg-zinc-800/40 p-4 text-center space-y-1">
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1.5">
-                <Hotel className="w-4 h-4" />
-                Hotel info coming soon
+          {/* Accommodation section */}
+          <div className="pt-3 mt-4 border-t border-gray-200 dark:border-zinc-700/60 space-y-2">
+            <div className="space-y-0.5">
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-widest">
+                Accommodation
               </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500">
-                Hotel search and booking details will appear here
+              <p className="text-base font-bold text-gray-900 dark:text-white">
+                Where you&apos;re staying
               </p>
             </div>
-          )}
+            {data.hotel ? (
+              <HotelCard hotel={data.hotel} />
+            ) : (
+              <div className="rounded-xl border border-dashed border-gray-300 dark:border-zinc-600 bg-gray-50 dark:bg-zinc-800/40 p-4 text-center space-y-1">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1.5">
+                  <Hotel className="w-4 h-4" />
+                  Hotel info coming soon
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">
+                  Hotel search and booking details will appear here
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       ) : activeSection === "guide" ? (
         /* Guide tab content */
