@@ -18,6 +18,7 @@ import { calculateBudgetFromDays } from "../lib/budget-utils";
 import { useItineraryDeletion } from "../hooks/useItineraryDeletion";
 import { useTripMembers } from "../hooks/useTripMembers";
 import { useTravelGuide } from "../hooks/useTravelGuide";
+import { usePhotoGuide } from "../hooks/usePhotoGuide";
 import type {
   Activity,
   ActivitySpotlight,
@@ -83,6 +84,9 @@ export function ItineraryPanel({
     [localDays, activeDayIndex],
   );
   const activeDay = currentDay?.day ?? 1;
+
+  // Prefetch photo guide for the current day so the Photo tab loads instantly when opened
+  const photoGuide = usePhotoGuide(tripId, activeDay);
 
   // Original day for FreeTimeSlot comparison
   const originalDay = useMemo(
@@ -455,13 +459,13 @@ export function ItineraryPanel({
           />
         </div>
       ) : activeSection === "photo" ? (
-        /* Photo Guide tab content */
+        /* Photo Guide tab content — uses prefetched data from parent hook */
         <div className="flex-1 min-h-0 flex flex-col">
           <PhotoGuideModal
             open
             onClose={() => setActiveSection("itinerary")}
-            tripId={tripId}
             dayNumber={activeDay}
+            photoGuide={photoGuide}
             inline
           />
         </div>

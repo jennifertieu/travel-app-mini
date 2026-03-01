@@ -14,8 +14,7 @@ import {
   Crosshair,
   RefreshCw,
 } from "lucide-react";
-import { usePhotoGuide } from "../hooks/usePhotoGuide";
-import type { SpotPhotosMap } from "../hooks/usePhotoGuide";
+import type { SpotPhotosMap, UsePhotoGuideResult } from "../hooks/usePhotoGuide";
 import { cn } from "../lib/utils";
 import type {
   PhotoGuideData,
@@ -26,8 +25,9 @@ import type {
 interface PhotoGuideModalProps {
   open: boolean;
   onClose: () => void;
-  tripId: string | null;
   dayNumber: number;
+  /** Prefetched photo guide state from parent (usePhotoGuide). Ensures tab opens instantly when data is already loaded. */
+  photoGuide: UsePhotoGuideResult;
   /** When true, render content inline in the panel (no overlay/modal). */
   inline?: boolean;
 }
@@ -101,9 +101,12 @@ function PoseOfTheDayBanner({
 function PhotoGallery({
   photos,
   activityName,
+  showAiExampleLabel = false,
 }: {
   photos: string[];
   activityName: string;
+  /** When true, the first image is the AI-generated example; show a small label. */
+  showAiExampleLabel?: boolean;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const safeIndex = Math.min(activeIndex, Math.max(0, photos.length - 1));
@@ -119,11 +122,17 @@ function PhotoGallery({
 
   const canPrev = safeIndex > 0;
   const canNext = safeIndex < photos.length - 1;
+  const isShowingAiExample = showAiExampleLabel && safeIndex === 0;
 
   return (
     <div className="flex-1 flex flex-col gap-2 min-w-0">
       {/* Hero image */}
       <div className="relative rounded-xl overflow-hidden bg-muted aspect-[4/3] group">
+        {isShowingAiExample && (
+          <span className="absolute left-2 top-2 z-10 px-2 py-0.5 rounded-md bg-teal-600/90 text-white text-[10px] font-medium uppercase tracking-wider shadow-sm">
+            AI example
+          </span>
+        )}
         <AnimatePresence mode="wait">
           <motion.img
             key={photos[safeIndex]}
@@ -237,7 +246,7 @@ function SpotInfo({
       initial={{ opacity: 0, x: 12 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3, delay: 0.1 }}
-      className="w-[340px] flex-shrink-0 flex flex-col gap-4 overflow-y-auto"
+      className="w-[340px] flex-shrink-0 flex flex-col gap-5 overflow-y-auto"
     >
       {/* Header */}
       <div>
@@ -274,16 +283,16 @@ function SpotInfo({
         </div>
       )}
 
-      {/* Challenge */}
+      {/* Challenge: description + difficulty pill in one block so the pill doesn't float alone */}
       {tip.challenge && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs font-medium">
-            <Sparkles className="w-3.5 h-3.5" />
+        <div className="flex items-center gap-2 flex-wrap rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 px-3 py-2.5">
+          <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
+          <span className="text-xs font-medium flex-1 min-w-0">
             {tip.challenge.description}
           </span>
           <span
             className={cn(
-              "text-[10px] font-medium px-1.5 py-0.5 rounded",
+              "text-[10px] font-medium px-1.5 py-0.5 rounded flex-shrink-0",
               DIFFICULTY_COLORS[tip.challenge.difficulty],
             )}
           >
@@ -294,12 +303,12 @@ function SpotInfo({
 
       {/* Generate selfie CTA */}
       {onGenerateSelfie && hasImage && (
-        <div className="space-y-3 pt-3 border-t border-border/60 mt-auto">
+        <div className="pt-4 mt-auto border-t border-border/60">
           <button
             type="button"
             onClick={handleGenerateSelfie}
             disabled={selfieLoading}
-            className="flex items-center gap-2 w-full justify-center px-3 py-2.5 rounded-xl bg-teal-600 text-white text-sm font-medium shadow-sm hover:bg-teal-700 active:scale-[0.98] disabled:opacity-60 transition-all"
+            className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-teal-600 text-white text-sm font-medium shadow-sm hover:bg-teal-700 active:scale-[0.98] disabled:opacity-60 transition-all"
           >
             {selfieLoading ? (
               <RefreshCw className="w-4 h-4 animate-spin" />
@@ -331,7 +340,7 @@ function SpotNav({
   spotPhotos: SpotPhotosMap;
 }) {
   return (
-    <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1">
+    <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
       {tips.map((tip, index) => {
         const photos = getPhotosForTip(tip, spotPhotos);
         const thumbUrl = photos[0];
@@ -342,7 +351,7 @@ function SpotNav({
             type="button"
             onClick={() => onSelect(index)}
             className={cn(
-              "flex-shrink-0 flex items-center gap-3 rounded-xl px-3 py-2.5 border transition-all text-left min-w-[200px] max-w-[280px]",
+              "flex-shrink-0 flex items-center gap-3 rounded-xl px-3 py-2.5 border transition-all text-left w-[220px]",
               isActive
                 ? "border-teal-500/60 bg-teal-500/5 shadow-sm ring-1 ring-teal-500/20"
                 : "border-border/60 hover:border-border hover:bg-muted/40",
@@ -417,13 +426,14 @@ function SkeletonLoader() {
 export function PhotoGuideModal({
   open,
   onClose,
-  tripId,
   dayNumber,
+  photoGuide,
   inline = false,
 }: PhotoGuideModalProps) {
   const {
     data,
     spotPhotos,
+    isFetching,
     isLoading,
     regenerateAllLoading,
     error,
@@ -432,7 +442,7 @@ export function PhotoGuideModal({
     refetch,
     generateSelfie,
     regenerateAllSelfies,
-  } = usePhotoGuide(tripId, dayNumber);
+  } = photoGuide;
   const [activeSpotIndex, setActiveSpotIndex] = useState(0);
 
   if (!open) return null;
@@ -461,11 +471,13 @@ export function PhotoGuideModal({
           <h1 className="text-base font-semibold text-foreground tracking-tight">
             Day {dayNumber} Photo Guide
           </h1>
-          {tipCount > 0 && (
+          {(isFetching && !data) ? (
+            <p className="text-xs text-muted-foreground animate-pulse">Loading…</p>
+          ) : tipCount > 0 ? (
             <p className="text-xs text-muted-foreground">
               {tipCount} spot{tipCount !== 1 ? "s" : ""} to capture
             </p>
-          )}
+          ) : null}
         </div>
       </div>
       <div className="flex items-center gap-2">
@@ -506,16 +518,18 @@ export function PhotoGuideModal({
               </div>
             )}
 
-            {isLoading && !data && <SkeletonLoader />}
+            {/* Show skeleton while loading existing guide (so we don't flash "Generate" when one already exists) */}
+            {(isFetching || (isLoading && !data)) && !data && <SkeletonLoader />}
 
-            {!isLoading && !data && !error && (
+            {/* Empty state only after we know there's no guide yet */}
+            {!isFetching && !data && !error && (
               <div className="py-20 text-center">
                 <div className="w-14 h-14 rounded-2xl bg-muted/80 flex items-center justify-center mx-auto mb-5">
                   <Aperture className="w-7 h-7 text-muted-foreground/60" />
                 </div>
                 <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto leading-relaxed">
-                  Generate selfie tips, pose ideas, and photo challenges for
-                  each spot on this day.
+                  Get selfie tips, pose ideas, and photo challenges for each
+                  spot on this day.
                 </p>
                 <button
                   type="button"
@@ -537,10 +551,11 @@ export function PhotoGuideModal({
 
                 {/* Two-panel content: gallery + info */}
                 {activeTip && (
-                  <div className="flex gap-6 px-6 pt-5 pb-3 min-h-[380px]">
+                  <div className="flex gap-6 px-6 pt-5 pb-4 min-h-[380px] items-stretch">
                     <PhotoGallery
                       photos={galleryPhotos}
                       activityName={activeTip.activity_name}
+                      showAiExampleLabel={Boolean(activeTip?.generated_selfie_base64)}
                     />
                     <SpotInfo
                       tip={activeTip}
@@ -552,8 +567,8 @@ export function PhotoGuideModal({
 
                 {/* Spot navigation */}
                 {tipCount > 1 && (
-                  <div className="px-6 pb-5 pt-3 border-t border-border/60">
-                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest mb-2.5">
+                  <div className="px-6 pb-5 pt-4 border-t border-border/60">
+                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest mb-3">
                       Photo Spots
                     </p>
                     <SpotNav

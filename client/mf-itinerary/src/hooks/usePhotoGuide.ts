@@ -6,10 +6,13 @@ import type { PhotoGuideData } from "../types";
 /** Map of activity_name → array of Google Places photo URLs from trip_reel_ideas */
 export type SpotPhotosMap = Record<string, string[]>;
 
-interface UsePhotoGuideResult {
+export interface UsePhotoGuideResult {
   data: PhotoGuideData | null;
   /** Extra Google Places photos keyed by activity name (from trip_reel_ideas) */
   spotPhotos: SpotPhotosMap;
+  /** True while fetching existing guide from DB (initial load or refetch). */
+  isFetching: boolean;
+  /** True while generating a new guide (POST create). */
   isLoading: boolean;
   /** True while regenerating all selfie examples for the current day's tips. */
   regenerateAllLoading: boolean;
@@ -30,6 +33,7 @@ export const usePhotoGuide = (
 ): UsePhotoGuideResult => {
   const [data, setData] = useState<PhotoGuideData | null>(null);
   const [spotPhotos, setSpotPhotos] = useState<SpotPhotosMap>({});
+  const [isFetching, setIsFetching] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [regenerateAllLoading, setRegenerateAllLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,25 +64,31 @@ export const usePhotoGuide = (
   const fetchFromSupabase = useCallback(async () => {
     if (!tripId || dayNumber < 1) {
       setData(null);
+      setIsFetching(false);
       return;
     }
     setError(null);
-    const { data: row, error: fetchError } = await supabase
-      .from("trip_photo_guides")
-      .select("guide_data")
-      .eq("trip_id", tripId)
-      .eq("day_number", dayNumber)
-      .maybeSingle();
+    setIsFetching(true);
+    try {
+      const { data: row, error: fetchError } = await supabase
+        .from("trip_photo_guides")
+        .select("guide_data")
+        .eq("trip_id", tripId)
+        .eq("day_number", dayNumber)
+        .maybeSingle();
 
-    if (fetchError) {
-      setError(fetchError.message);
-      setData(null);
-      return;
-    }
-    if (row?.guide_data) {
-      setData(row.guide_data as unknown as PhotoGuideData);
-    } else {
-      setData(null);
+      if (fetchError) {
+        setError(fetchError.message);
+        setData(null);
+        return;
+      }
+      if (row?.guide_data) {
+        setData(row.guide_data as unknown as PhotoGuideData);
+      } else {
+        setData(null);
+      }
+    } finally {
+      setIsFetching(false);
     }
   }, [tripId, dayNumber]);
 
@@ -266,6 +276,7 @@ export const usePhotoGuide = (
   return {
     data,
     spotPhotos,
+    isFetching,
     isLoading,
     regenerateAllLoading,
     error,
