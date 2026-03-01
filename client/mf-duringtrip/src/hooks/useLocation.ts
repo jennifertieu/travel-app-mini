@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { LocationService } from '../services/locationService';
 import { UseLocationReturn } from '../types/location';
+import { useDemoContext } from '../demo/DemoContext';
 
 /**
  * Hook for managing geolocation state and permissions
@@ -12,20 +13,39 @@ import { UseLocationReturn } from '../types/location';
  * - Provide loading and error states
  */
 export const useLocation = (): UseLocationReturn => {
+  const { isDemo, demoLocation } = useDemoContext();
   const [position, setPosition] = useState(() => LocationService.getCachedLocation());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'prompt' | 'unavailable'>('prompt');
 
-  // Check permission status on mount
+  // Check permission on mount and auto-request location if allowed
   useEffect(() => {
-    const checkPermission = async () => {
+    const init = async () => {
       const status = await LocationService.checkPermissionStatus();
       setPermissionStatus(status);
+
+      // Auto-request if already granted or if browser will prompt
+      if ((status === 'granted' || status === 'prompt') && !position) {
+        setIsLoading(true);
+        try {
+          const coords = await LocationService.getCurrentPosition();
+          setPosition(coords);
+          setPermissionStatus('granted');
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Failed to get location';
+          setError(msg);
+          if (msg.includes('permission denied')) {
+            setPermissionStatus('denied');
+          }
+        } finally {
+          setIsLoading(false);
+        }
+      }
     };
 
-    checkPermission();
-  }, []);
+    init();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Request the user's current location
@@ -57,6 +77,22 @@ export const useLocation = (): UseLocationReturn => {
   const clearError = useCallback(() => {
     setError(null);
   }, []);
+
+  if (isDemo) {
+    return {
+      position: {
+        latitude: demoLocation.lat,
+        longitude: demoLocation.lng,
+        accuracy: 10,
+        timestamp: Date.now(),
+      },
+      isLoading: false,
+      error: null,
+      permissionStatus: 'granted',
+      requestLocation: async () => {},
+      clearError: () => {},
+    };
+  }
 
   return {
     position,

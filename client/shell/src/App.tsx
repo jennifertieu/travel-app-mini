@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useState, useRef, useEffect } from "react";
 import {
   createRouter,
   createRootRoute,
@@ -9,9 +9,10 @@ import {
   useNavigate,
   useRouterState,
 } from "@tanstack/react-router";
-import { Globe, Calendar, Users, Settings } from "lucide-react";
+import { Globe, Calendar, Users, Settings, Menu, X } from "lucide-react";
 import { AuthProvider } from "./contexts/AuthContext";
 import { AuthNav } from "./components/AuthNav";
+import { supabase } from "./lib/supabase";
 import { AuthGuard } from "./components/AuthGuard";
 import { LandingPage } from "./components/LandingPage";
 import { TripMemberAvatars } from "./components/TripMemberAvatars";
@@ -143,6 +144,31 @@ const TripMetadata = ({ summary }: { summary: TripSummary }) => {
   );
 };
 
+const DemoToggle = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
+  <button
+    type="button"
+    onClick={onToggle}
+    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+      enabled
+        ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
+        : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+    }`}
+    aria-label={enabled ? "Disable demo mode" : "Enable demo mode"}
+  >
+    <span
+      className={`relative inline-flex w-6 h-3.5 rounded-full transition-colors ${
+        enabled ? "bg-amber-500" : "bg-gray-300"
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 w-2.5 h-2.5 bg-white rounded-full shadow transition-transform ${
+          enabled ? "translate-x-2.5" : "translate-x-0"
+        }`}
+      />
+    </span>
+    Demo
+  </button>
+);
 const PENDING_OPEN_MODAL_KEY = "pending-open-modal";
 const PENDING_OPEN_MODAL_TRIP_ID_KEY = "pending-open-modal-tripId";
 
@@ -151,6 +177,93 @@ const RootLayout = () => {
   const navigate = useNavigate();
   const isLandingPage = routerState.location.pathname === "/";
   const tripSummary = useTripSummary();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [demoAccess, setDemoAccess] = useState(
+    () => localStorage.getItem("demo-access") === "true",
+  );
+  const [demoEnabled, setDemoEnabled] = useState(
+    () => localStorage.getItem("demo-enabled") === "true",
+  );
+
+  const isDuringTrip = routerState.location.pathname === "/duringtrip";
+  const showDemoToggle = isDuringTrip && demoAccess;
+
+  // Check demo access via API when on /duringtrip (falls back to localStorage cache)
+  useEffect(() => {
+    if (!isDuringTrip) return;
+    if (localStorage.getItem("demo-access") === "true") {
+      setDemoAccess(true);
+      return;
+    }
+    const checkAccess = async () => {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s?.access_token) return;
+      const apiBase =
+        (import.meta.env.PUBLIC_API_URL as string | undefined) ??
+        (import.meta.env.PUBLIC_BACKEND_URL as string | undefined) ??
+        "http://localhost:5001";
+      try {
+        const res = await fetch(`${apiBase}/demo/access`, {
+          headers: { Authorization: `Bearer ${s.access_token}` },
+        });
+        if (!res.ok) return;
+        const { allowed } = await res.json();
+        if (allowed) {
+          localStorage.setItem("demo-access", "true");
+          setDemoAccess(true);
+        }
+      } catch {
+        // fail silently
+      }
+    };
+    checkAccess();
+  }, [isDuringTrip]);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [routerState.location.pathname]);
+
+  // Close mobile menu on outside click
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [mobileMenuOpen]);
+
+  // Sync demo state with mf-duringtrip via custom events
+  useEffect(() => {
+    const onAccessGranted = () => {
+      setDemoAccess(true);
+      setDemoEnabled(localStorage.getItem("demo-enabled") === "true");
+    };
+    const onToggle = (e: Event) => {
+      setDemoEnabled((e as CustomEvent<{ enabled: boolean }>).detail.enabled);
+    };
+    window.addEventListener("demo-access-granted", onAccessGranted);
+    window.addEventListener("demo-toggle", onToggle);
+    return () => {
+      window.removeEventListener("demo-access-granted", onAccessGranted);
+      window.removeEventListener("demo-toggle", onToggle);
+    };
+  }, []);
+
+  const handleDemoToggle = () => {
+    const next = !demoEnabled;
+    setDemoEnabled(next);
+    if (next) {
+      localStorage.setItem("demo-enabled", "true");
+    } else {
+      localStorage.removeItem("demo-enabled");
+    }
+    window.dispatchEvent(new CustomEvent("demo-toggle", { detail: { enabled: next } }));
+  };
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteModalTripId, setInviteModalTripId] = useState<string | null>(
     null,
@@ -193,6 +306,11 @@ const RootLayout = () => {
     return <Outlet />;
   }
 
+  const navLinkClass =
+    "no-underline px-2.5 py-1 rounded-md text-xs font-medium transition-colors text-gray-500 hover:text-gray-900 hover:bg-gray-100 [&.active]:text-teal-600 [&.active]:bg-teal-50";
+  const mobileNavLinkClass =
+    "no-underline block px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-gray-700 hover:text-gray-900 hover:bg-gray-100 [&.active]:text-teal-600 [&.active]:bg-teal-50";
+
   return (
     <div className="h-screen flex flex-col">
       <nav className="flex-shrink-0 relative z-[2000] border-b border-gray-200 bg-gray-50 px-4 py-2.5">
@@ -203,46 +321,36 @@ const RootLayout = () => {
             className="flex items-center gap-2 no-underline shrink-0"
           >
             <TripWeaveLogo />
-            <span className="text-base font-bold text-gray-900 tracking-tight">
+            <span className="text-base font-bold text-gray-900 tracking-tight hidden sm:inline">
               TripWeave
             </span>
           </Link>
-          <div className="ml-4 shrink-0">
+          <div className="ml-3 md:ml-4 shrink-0">
             <TripSwitcher />
           </div>
+
+          {/* Desktop: metadata pills */}
           {tripSummary && (
-            <div className="flex items-center gap-2 ml-6 shrink-0">
+            <div className="hidden md:flex items-center gap-2 ml-6 shrink-0">
               <TripMetadata summary={tripSummary} />
             </div>
           )}
 
-          {/* Right: Nav links + Auth */}
+          {/* Desktop: Nav links + trip actions + auth */}
           <div className="ml-auto flex items-center gap-4 shrink-0">
             <div className="hidden md:flex items-center gap-1">
-              <Link
-                to="/pretrip"
-                className="no-underline px-2.5 py-1 rounded-md text-xs font-medium transition-colors text-gray-500 hover:text-gray-900 hover:bg-gray-100 [&.active]:text-blue-600 [&.active]:bg-blue-50"
-                activeProps={{ className: "active" }}
-              >
+              <Link to="/pretrip" className={navLinkClass} activeProps={{ className: "active" }}>
                 Pre-Trip
               </Link>
-              <Link
-                to="/itinerary"
-                className="no-underline px-2.5 py-1 rounded-md text-xs font-medium transition-colors text-gray-500 hover:text-gray-900 hover:bg-gray-100 [&.active]:text-blue-600 [&.active]:bg-blue-50"
-                activeProps={{ className: "active" }}
-              >
+              <Link to="/itinerary" className={navLinkClass} activeProps={{ className: "active" }}>
                 Itinerary
               </Link>
-              <Link
-                to="/duringtrip"
-                className="no-underline px-2.5 py-1 rounded-md text-xs font-medium transition-colors text-gray-500 hover:text-gray-900 hover:bg-gray-100 [&.active]:text-blue-600 [&.active]:bg-blue-50"
-                activeProps={{ className: "active" }}
-              >
+              <Link to="/duringtrip" className={navLinkClass} activeProps={{ className: "active" }}>
                 During Trip
               </Link>
             </div>
             {tripSummary && (
-              <div className="flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-2">
                 <TripMemberAvatars tripId={tripSummary.id} />
                 <button
                   onClick={() =>
@@ -259,9 +367,92 @@ const RootLayout = () => {
                 </button>
               </div>
             )}
-            <AuthNav />
+            {showDemoToggle && (
+              <div className="hidden md:flex items-center">
+                <DemoToggle enabled={demoEnabled} onToggle={handleDemoToggle} />
+              </div>
+            )}
+            <div className="hidden md:flex items-center">
+              <AuthNav />
+            </div>
+
+            {/* Mobile: hamburger */}
+            <button
+              className="md:hidden p-1.5 rounded-md hover:bg-gray-200 transition-colors"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? (
+                <X size={20} className="text-gray-700" />
+              ) : (
+                <Menu size={20} className="text-gray-700" />
+              )}
+            </button>
           </div>
         </div>
+
+        {/* Mobile dropdown menu */}
+        {mobileMenuOpen && (
+          <div
+            ref={menuRef}
+            className="md:hidden absolute top-full left-0 right-0 bg-gray-50 border-b border-gray-200 shadow-lg"
+          >
+            <div className="px-4 py-3 space-y-1">
+              <Link to="/pretrip" className={mobileNavLinkClass} activeProps={{ className: "active" }}>
+                Pre-Trip
+              </Link>
+              <Link to="/itinerary" className={mobileNavLinkClass} activeProps={{ className: "active" }}>
+                Itinerary
+              </Link>
+              <Link to="/duringtrip" className={mobileNavLinkClass} activeProps={{ className: "active" }}>
+                During Trip
+              </Link>
+              {showDemoToggle && (
+                <div className="pt-1">
+                  <DemoToggle enabled={demoEnabled} onToggle={() => { handleDemoToggle(); setMobileMenuOpen(false); }} />
+                </div>
+              )}
+            </div>
+
+            {tripSummary && (
+              <div className="px-4 py-3 border-t border-gray-200 space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  <MetadataPill icon={Globe}>{tripSummary.destination}</MetadataPill>
+                  <MetadataPill icon={Calendar}>
+                    {tripSummary.startDate && tripSummary.endDate
+                      ? formatDateRange(tripSummary.startDate, tripSummary.endDate) ?? "Add dates"
+                      : "Add dates"}
+                  </MetadataPill>
+                  <MetadataPill icon={Users}>
+                    {tripSummary.memberCount}{" "}
+                    {tripSummary.memberCount === 1 ? "Traveler" : "Travelers"}
+                  </MetadataPill>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <TripMemberAvatars tripId={tripSummary.id} />
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      window.dispatchEvent(
+                        new CustomEvent("openTripModal", {
+                          detail: { modal: "tripSettings" },
+                        }),
+                      );
+                    }}
+                    className="p-1.5 rounded-md hover:bg-gray-200 transition-colors"
+                    title="Trip settings"
+                  >
+                    <Settings size={15} className="text-gray-500" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="px-4 py-3 border-t border-gray-200">
+              <AuthNav />
+            </div>
+          </div>
+        )}
       </nav>
       <main className="flex-1 overflow-hidden">
         <Outlet />

@@ -78,6 +78,13 @@ export const decideRequestSchema = baseDuringTripRequestSchema;
 export const foodRequestSchema = baseDuringTripRequestSchema;
 
 /**
+ * Chat request schema
+ */
+export const chatRequestSchema = baseDuringTripRequestSchema.extend({
+  message: z.string().min(1).max(1000),
+});
+
+/**
  * Map intelligence request schema
  */
 export const mapIntelligenceRequestSchema = baseDuringTripRequestSchema.extend({

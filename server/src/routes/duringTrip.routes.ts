@@ -9,6 +9,7 @@ import {
   getMapAnnotations,
   updateActivityStatus,
   acceptSuggestion,
+  chat,
 } from "../controllers/duringTrip.controller.js";
 
 const router = express.Router();
@@ -30,6 +31,9 @@ router.post("/map-intelligence", requireAuth, requireTripAccess, getMapAnnotatio
 
 // PATCH /during-trip/activity/:activityId/status - Update activity progress
 router.patch("/activity/:activityId/status", requireAuth, requireTripAccess, updateActivityStatus);
+
+// POST /during-trip/chat - Conversational AI chat (rate limited)
+router.post("/chat", requireAuth, requireTripAccess, rateLimitDuringTrip, chat);
 
 // POST /during-trip/suggestions/accept - Accept a suggestion and add to itinerary
 router.post("/suggestions/accept", requireAuth, requireTripAccess, acceptSuggestion);

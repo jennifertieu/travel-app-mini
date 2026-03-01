@@ -1,6 +1,7 @@
 interface IWeatherData {
   condition: string;
   temperature: number;
+  temperature_f: number;
   precipitation: boolean;
 }
 
@@ -66,9 +67,11 @@ export const getWeather = async (
 
     const data: IOpenMeteoResponse = await response.json();
 
+    const celsius = Math.round(data.current.temperature_2m);
     const weather: IWeatherData = {
       condition: mapWeatherCodeToCondition(data.current.weather_code),
-      temperature: Math.round(data.current.temperature_2m),
+      temperature: celsius,
+      temperature_f: Math.round(celsius * 9 / 5 + 32),
       precipitation: data.current.precipitation > 0,
     };
 

@@ -100,7 +100,7 @@ const buildContextSummary = (context: ITripContext): string => {
 
   // Weather if available
   if (environment.weather) {
-    summary += `It's ${environment.weather.temperature}°C and ${environment.weather.condition}. `;
+    summary += `It's ${environment.weather.temperature}°C (${environment.weather.temperature_f}°F) and ${environment.weather.condition}. `;
   }
 
   // Next activity if scheduled
@@ -224,7 +224,7 @@ Current Context:
 - Location: ${context.user.location.lat}, ${context.user.location.lng} (${context.user.location.is_approximate ? "approximate" : "accurate"})
 - Time: ${context.temporal.time_of_day} (${context.temporal.current_time})
 - Trip: Day ${context.trip.day_number} of ${context.trip.total_days} in ${context.trip.destination}
-- Weather: ${context.environment.weather ? `${context.environment.weather.condition}, ${context.environment.weather.temperature}°C` : "Unknown"}
+- Weather: ${context.environment.weather ? `${context.environment.weather.condition}, ${context.environment.weather.temperature}°C / ${context.environment.weather.temperature_f}°F` : "Unknown"}
 - User Style: ${context.user.preferences.travel_style}
 - Interests: ${context.user.preferences.interests.join(", ") || "General"}
 - Dietary: ${context.user.preferences.dietary.join(", ") || "None specified"}

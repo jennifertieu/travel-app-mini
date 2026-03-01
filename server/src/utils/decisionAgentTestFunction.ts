@@ -64,6 +64,7 @@ const mockContext: ITripContext = {
     weather: {
       condition: "sunny",
       temperature: 18,
+      temperature_f: 64,
       precipitation: false,
     },
   },
