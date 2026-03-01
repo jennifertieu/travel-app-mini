@@ -9,7 +9,7 @@ interface UserProfile {
 }
 import { ItineraryPanel } from "./components/ItineraryPanel";
 import { MapPanel } from "./components/MapPanel";
-import { BuildingState } from "./components/BuildingState";
+import { SkeletonLoader } from "./components/SkeletonLoader";
 import { EmptyState } from "./components/EmptyState";
 import { ChatPanel } from "./components/chat/ChatPanel";
 import { ActivityDetailModal } from "./components/ActivityDetailModal";
@@ -39,6 +39,24 @@ const DEBUG =
 const App = () => {
   const [tripId] = useState<string | null>(getTripId);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [destinationCenter, setDestinationCenter] = useState<
+    [number, number] | undefined
+  >();
+
+  // Fetch trip destination coords for the skeleton map
+  useEffect(() => {
+    if (!tripId) return;
+    supabase
+      .from("trips")
+      .select("destination_lat, destination_lng")
+      .eq("id", tripId)
+      .single()
+      .then(({ data }) => {
+        if (data?.destination_lat && data?.destination_lng) {
+          setDestinationCenter([data.destination_lat, data.destination_lng]);
+        }
+      });
+  }, [tripId]);
 
   // Bootstrap the Supabase session from the shell's window.__TRIPWEAVE_SESSION__.
   // mf-itinerary runs on a different port (3002) so it has its own empty localStorage —
@@ -155,11 +173,11 @@ const App = () => {
   );
 
   const fetchItinerary = useCallback(async (id: string) => {
-    if (DEBUG)
-      console.log("[mf-itinerary] fetchItinerary start", { tripId: id });
+    console.log("[mf-itinerary] fetchItinerary start", { tripId: id });
     setIsLoading(true);
     setError(null);
 
+    const fetchStart = performance.now();
     const { data, error: fetchError } = await supabase
       .from("trip_itineraries")
       .select("*")
@@ -168,24 +186,28 @@ const App = () => {
       .limit(1)
       .maybeSingle();
 
-    if (DEBUG) {
-      console.log("[mf-itinerary] fetchItinerary result", {
-        tripId: id,
-        hasData: !!data,
-        dataId: data?.id,
-        error: fetchError?.message ?? null,
-        code: fetchError?.code,
-      });
-      if (!data && !fetchError && isUsingFallbackSupabase) {
-        console.warn(
-          "[mf-itinerary] No itinerary row found and this MF is using the fallback Supabase project. Add client/mf-itinerary/.env.local with the same VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY as client/shell/.env.local so this MF queries the same project where your trip lives.",
-        );
-      }
-    }
+    const fetchMs = (performance.now() - fetchStart).toFixed(0);
+    console.log("[mf-itinerary] fetchItinerary result", {
+      tripId: id,
+      hasData: !!data,
+      dataId: data?.id,
+      fetchMs: `${fetchMs}ms`,
+      error: fetchError?.message ?? null,
+    });
 
     if (fetchError) {
       setError(fetchError.message);
     } else if (data) {
+      const startedAt = localStorage.getItem("building-itinerary-started");
+      if (startedAt) {
+        const elapsed = ((Date.now() - parseInt(startedAt, 10)) / 1000).toFixed(
+          1,
+        );
+        console.log(
+          `[mf-itinerary] ✅ Itinerary ready — total build time: ${elapsed}s`,
+        );
+        localStorage.removeItem("building-itinerary-started");
+      }
       setItinerary(data as Itinerary);
       localStorage.removeItem("building-itinerary");
       setIsBuilding(false);
@@ -204,16 +226,14 @@ const App = () => {
       return;
     }
 
-    if (DEBUG) console.log("[mf-itinerary] Mount effect", { tripId });
+    console.log("[mf-itinerary] Mount effect", { tripId });
 
     const buildingTripId = localStorage.getItem("building-itinerary");
     if (buildingTripId === tripId) {
       setIsBuilding(true);
-      if (DEBUG)
-        console.log(
-          "[mf-itinerary] building-itinerary flag set for this trip",
-          { tripId },
-        );
+      console.log("[mf-itinerary] 🔨 Building in progress for this trip", {
+        tripId,
+      });
     }
 
     fetchItinerary(tripId);
@@ -229,16 +249,27 @@ const App = () => {
           filter: `trip_id=eq.${tripId}`,
         },
         (payload) => {
-          if (DEBUG)
-            console.log(
-              "[mf-itinerary] Realtime itinerary update:",
-              payload.eventType,
-              payload,
-            );
+          console.log(
+            "[mf-itinerary] Realtime itinerary update:",
+            payload.eventType,
+          );
           if (
             payload.eventType === "INSERT" ||
             payload.eventType === "UPDATE"
           ) {
+            const startedAt = localStorage.getItem(
+              "building-itinerary-started",
+            );
+            if (startedAt) {
+              const elapsed = (
+                (Date.now() - parseInt(startedAt, 10)) /
+                1000
+              ).toFixed(1);
+              console.log(
+                `[mf-itinerary] ✅ Itinerary ready (realtime) — total build time: ${elapsed}s`,
+              );
+              localStorage.removeItem("building-itinerary-started");
+            }
             setItinerary(payload.new as Itinerary);
             setIsBuilding(false);
             localStorage.removeItem("building-itinerary");
@@ -246,12 +277,24 @@ const App = () => {
         },
       )
       .subscribe((status) => {
-        if (DEBUG)
-          console.log("[mf-itinerary] Realtime subscription status", status);
+        console.log("[mf-itinerary] Realtime subscription status:", status);
       });
+
+    // Polling fallback: if we're in building state, poll every 5s in case
+    // Realtime misses the event (e.g. connection hiccup).
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    if (buildingTripId === tripId) {
+      pollInterval = setInterval(() => {
+        console.log(
+          "[mf-itinerary] Polling fallback — checking for itinerary...",
+        );
+        fetchItinerary(tripId);
+      }, 5000);
+    }
 
     return () => {
       supabase.removeChannel(channel);
+      if (pollInterval) clearInterval(pollInterval);
     };
   }, [tripId, fetchItinerary]);
 
@@ -310,7 +353,12 @@ const App = () => {
   return (
     <div className="flex flex-col h-full">
       <Toaster position="bottom-right" richColors closeButton />
-      {isBuilding && <BuildingState />}
+      {isBuilding && !itineraryData && (
+        <SkeletonLoader
+          annotations={annotations}
+          initialCenter={destinationCenter}
+        />
+      )}
 
       {isLoading && !isBuilding && (
         <div className="flex items-center justify-center py-20">

@@ -20,6 +20,7 @@ export const createItinerary = async (
   const { id: tripId } = request.params;
   const userId = request.user?.id;
 
+  const totalStart = Date.now();
   console.log(
     `${LOG_PREFIX} POST /itinerary/${tripId} (user: ${userId ?? "unknown"})`,
   );
@@ -234,6 +235,7 @@ export const createItinerary = async (
 
     // ── Hotel recommendation ──────────────────────────────────────────────────
     // 2.1 Query hotel ideas (category='stay', enrichment_status='DONE')
+    const hotelStart = Date.now();
     try {
       const { data: hotelIdeas } = await supabase
         .from("trip_reel_ideas")
@@ -304,8 +306,12 @@ export const createItinerary = async (
       );
       enrichedItinerary.hotel = null;
     }
+    console.log(
+      `${LOG_PREFIX} Hotel recommendation done in ${((Date.now() - hotelStart) / 1000).toFixed(1)}s`,
+    );
     // ─────────────────────────────────────────────────────────────────────────
 
+    const saveStart = Date.now();
     const { error: saveItineraryError } = await supabase
       .from("trip_itineraries")
       .upsert({
@@ -320,12 +326,19 @@ export const createItinerary = async (
         details: saveItineraryError.message,
       });
     }
+    console.log(
+      `${LOG_PREFIX} DB save done in ${((Date.now() - saveStart) / 1000).toFixed(1)}s`,
+    );
 
-    console.log(`${LOG_PREFIX} Success: itinerary saved for trip ${trip.id}`);
+    const totalElapsed = ((Date.now() - totalStart) / 1000).toFixed(1);
+    console.log(
+      `${LOG_PREFIX} ✅ Success: itinerary saved for trip ${trip.id} — total time: ${totalElapsed}s`,
+    );
     return response.json({
       success: true,
       tripId: trip.id,
       activitiesCount: filteredIdeas.length,
+      elapsedSeconds: parseFloat(totalElapsed),
     });
   } catch (error: any) {
     console.error(`${LOG_PREFIX} Itinerary creation error:`, error);
