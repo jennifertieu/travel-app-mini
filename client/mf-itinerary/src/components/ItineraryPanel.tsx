@@ -17,8 +17,11 @@ import { groupActivitiesByTimeOfDay } from "../lib/utils";
 import { calculateBudgetFromDays } from "../lib/budget-utils";
 import { useItineraryDeletion } from "../hooks/useItineraryDeletion";
 import { useTripMembers } from "../hooks/useTripMembers";
+import { useTravelGuide } from "../hooks/useTravelGuide";
 import type {
   Activity,
+  ActivitySpotlight,
+  ActivitySpotlightsGuide,
   ItineraryData,
   TimeOfDay,
   FreeTimeSlot,
@@ -49,6 +52,18 @@ export function ItineraryPanel({
   const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   const { count: memberCount } = useTripMembers(tripId);
+  const spotlightsGuide = useTravelGuide(tripId, "spotlights");
+
+  const spotlightMap = useMemo(() => {
+    const map = new Map<string, ActivitySpotlight>();
+    const guide = spotlightsGuide.data as ActivitySpotlightsGuide | null;
+    if (guide?.spotlights) {
+      for (const s of guide.spotlights) {
+        map.set(s.activity_name.trim().toLowerCase(), s);
+      }
+    }
+    return map;
+  }, [spotlightsGuide.data]);
 
   // --- Deletion hook ---
   const {
@@ -434,7 +449,10 @@ export function ItineraryPanel({
       ) : activeSection === "guide" ? (
         /* Guide tab content */
         <div className="flex-1 overflow-y-auto">
-          <TravelGuidePanel tripId={tripId} destination={data.destination} />
+          <TravelGuidePanel
+            tripId={tripId}
+            destination={data.destination}
+          />
         </div>
       ) : activeSection === "photo" ? (
         /* Photo Guide tab content */
@@ -513,6 +531,8 @@ export function ItineraryPanel({
                   onToggleSelect={handleToggleSelect}
                   onOpenActivity={onOpenActivity}
                   deletedSlots={freeTimeSlotsBySection[tod]}
+                  spotlightMap={spotlightMap}
+                  onOpenGuide={() => setActiveSection("guide")}
                 />
               ))}
               {activeDayIndex === localDays.length - 1 && data.flights && (

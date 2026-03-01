@@ -1,7 +1,12 @@
 import { Sun, Sunset, Moon } from "lucide-react";
 import { ActivityCard } from "./ActivityCard";
 import { FreeTimeCard } from "./FreeTimeCard";
-import type { Activity, TimeOfDay, FreeTimeSlot } from "../types";
+import type {
+  Activity,
+  ActivitySpotlight,
+  TimeOfDay,
+  FreeTimeSlot,
+} from "../types";
 
 const SECTION_CONFIG: Record<TimeOfDay, { label: string; icon: typeof Sun }> = {
   morning: { label: "Morning", icon: Sun },
@@ -17,6 +22,8 @@ interface TimeOfDaySectionProps {
   onToggleSelect: (id: string) => void;
   onOpenActivity: (activity: Activity) => void;
   deletedSlots?: FreeTimeSlot[];
+  spotlightMap?: Map<string, ActivitySpotlight>;
+  onOpenGuide?: () => void;
 }
 
 export function TimeOfDaySection({
@@ -27,6 +34,8 @@ export function TimeOfDaySection({
   onToggleSelect,
   onOpenActivity,
   deletedSlots = [],
+  spotlightMap,
+  onOpenGuide,
 }: TimeOfDaySectionProps) {
   const hasActivities = activities.length > 0;
   const hasSlots = deletedSlots.length > 0;
@@ -87,6 +96,7 @@ export function TimeOfDaySection({
       const activityId = `${timeOfDay}-${idx}-${activity.name}`;
       const currentPreceding = precedingMinutes;
       precedingMinutes += activity.duration_minutes ?? 60;
+      const spotlight = spotlightMap?.get(activity.name.trim().toLowerCase());
 
       items.push(
         <div key={activityId} className="relative">
@@ -100,6 +110,8 @@ export function TimeOfDaySection({
             isSelectionMode={isSelectionMode}
             onToggleSelect={() => onToggleSelect(activityId)}
             onOpen={() => onOpenActivity(activity)}
+            spotlight={spotlight}
+            onOpenGuide={onOpenGuide}
           />
         </div>,
       );
