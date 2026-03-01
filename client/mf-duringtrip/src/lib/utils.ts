@@ -1,7 +1,9 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { format, parseISO } from "date-fns";
-import type { TimeOfDay, Activity } from "../types/itinerary";
+import type { TimeOfDay, Activity, ItineraryDay } from "../types/itinerary";
+
+export type ActivityStatus = "past" | "current" | "upcoming";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -85,4 +87,94 @@ export function groupActivitiesByTimeOfDay(
     }
   }
   return groups;
+}
+
+// --- Activity status utilities ---
+
+export function parseTimeToMinutes(time: string): number {
+  const match = time.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+  if (!match) return 0;
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const period = match[3].toUpperCase();
+  if (period === "PM" && hours !== 12) hours += 12;
+  if (period === "AM" && hours === 12) hours = 0;
+  return hours * 60 + minutes;
+}
+
+/**
+ * Returns the day number that matches today's date, or undefined if no match.
+ */
+export function getCurrentDayNumber(days: ItineraryDay[]): number | undefined {
+  const todayStr = new Date().toISOString().split("T")[0];
+  const match = days.find((d) => d.date === todayStr);
+  return match?.day;
+}
+
+/**
+ * Determines whether an activity is past, current, or upcoming based on
+ * day date and computed display time.
+ */
+export function getActivityStatus(
+  timeOfDay: TimeOfDay,
+  indexInSection: number,
+  precedingMinutes: number,
+  durationMinutes: number,
+  dayDate: string,
+): ActivityStatus {
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  if (dayDate < todayStr) return "past";
+  if (dayDate > todayStr) return "upcoming";
+
+  // Today — compare computed times to current time
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const { startTime, endTime } = computeDisplayTime(
+    timeOfDay,
+    indexInSection,
+    precedingMinutes,
+    durationMinutes,
+  );
+  const startMin = parseTimeToMinutes(startTime);
+  const endMin = parseTimeToMinutes(endTime);
+
+  if (nowMinutes >= endMin) return "past";
+  if (nowMinutes >= startMin && nowMinutes < endMin) return "current";
+  return "upcoming";
+}
+
+export type ActivityWithStatus = Activity & { status: ActivityStatus };
+
+/**
+ * Computes status for every activity across all days, returning a flat list.
+ */
+export function getAllActivitiesWithStatus(
+  data: ItineraryData,
+): ActivityWithStatus[] {
+  const result: ActivityWithStatus[] = [];
+
+  for (const day of data.days) {
+    const grouped = groupActivitiesByTimeOfDay(day.activities);
+    const order: TimeOfDay[] = ["morning", "afternoon", "evening"];
+
+    for (const tod of order) {
+      let precedingMinutes = 0;
+      for (let idx = 0; idx < grouped[tod].length; idx++) {
+        const activity = grouped[tod][idx];
+        const status = getActivityStatus(
+          tod,
+          idx,
+          precedingMinutes,
+          activity.duration_minutes,
+          day.date,
+        );
+        result.push({ ...activity, status });
+        precedingMinutes += activity.duration_minutes;
+      }
+    }
+  }
+
+  return result;
 }

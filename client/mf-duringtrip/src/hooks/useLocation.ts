@@ -17,15 +17,33 @@ export const useLocation = (): UseLocationReturn => {
   const [error, setError] = useState<string | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'prompt' | 'unavailable'>('prompt');
 
-  // Check permission status on mount
+  // Check permission on mount and auto-request location if allowed
   useEffect(() => {
-    const checkPermission = async () => {
+    const init = async () => {
       const status = await LocationService.checkPermissionStatus();
       setPermissionStatus(status);
+
+      // Auto-request if already granted or if browser will prompt
+      if ((status === 'granted' || status === 'prompt') && !position) {
+        setIsLoading(true);
+        try {
+          const coords = await LocationService.getCurrentPosition();
+          setPosition(coords);
+          setPermissionStatus('granted');
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Failed to get location';
+          setError(msg);
+          if (msg.includes('permission denied')) {
+            setPermissionStatus('denied');
+          }
+        } finally {
+          setIsLoading(false);
+        }
+      }
     };
 
-    checkPermission();
-  }, []);
+    init();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Request the user's current location

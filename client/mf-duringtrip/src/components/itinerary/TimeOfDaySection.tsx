@@ -1,5 +1,6 @@
 import { Sun, Sunset, Moon } from "lucide-react";
 import { ActivityCard } from "./ActivityCard";
+import { getActivityStatus } from "../../lib/utils";
 import type { Activity, TimeOfDay } from "../../types/itinerary";
 
 const SECTION_CONFIG: Record<
@@ -14,19 +15,23 @@ const SECTION_CONFIG: Record<
 interface TimeOfDaySectionProps {
   timeOfDay: TimeOfDay;
   activities: Activity[];
+  dayDate: string;
   selectedIds: Set<string>;
   isSelectionMode: boolean;
   onToggleSelect: (id: string) => void;
   onOpenActivity: (activity: Activity) => void;
+  onLocateActivity?: (activity: Activity) => void;
 }
 
 export function TimeOfDaySection({
   timeOfDay,
   activities,
+  dayDate,
   selectedIds,
   isSelectionMode,
   onToggleSelect,
   onOpenActivity,
+  onLocateActivity,
 }: TimeOfDaySectionProps) {
   if (activities.length === 0) return null;
 
@@ -48,6 +53,14 @@ export function TimeOfDaySection({
           const currentPreceding = precedingMinutes;
           precedingMinutes += activity.duration_minutes;
 
+          const status = getActivityStatus(
+            timeOfDay,
+            idx,
+            currentPreceding,
+            activity.duration_minutes,
+            dayDate,
+          );
+
           return (
             <ActivityCard
               key={activityId}
@@ -57,8 +70,10 @@ export function TimeOfDaySection({
               precedingMinutes={currentPreceding}
               isSelected={selectedIds.has(activityId)}
               isSelectionMode={isSelectionMode}
+              status={status}
               onToggleSelect={() => onToggleSelect(activityId)}
               onOpen={() => onOpenActivity(activity)}
+              onLocate={onLocateActivity ? () => onLocateActivity(activity) : undefined}
             />
           );
         })}

@@ -13,6 +13,7 @@ import { MobileItinerarySheet } from '../components/itinerary/MobileItineraryShe
 import { ChatPanel, type InitialSuggestions } from '../components/chat';
 import { AiTripAssistant } from '../components/map/AiTripAssistant';
 import { MobileTabBar, type MobileTab } from '../components/MobileTabBar';
+import { getAllActivitiesWithStatus } from '../lib/utils';
 import type { Activity, ItineraryData } from '../types/itinerary';
 import type { SuggestionCardData } from '../services/duringTripService';
 
@@ -42,6 +43,7 @@ export function ActiveTripView() {
   const [isBuilding, setIsBuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  const [focusedActivity, setFocusedActivity] = useState<Activity | null>(null);
   const [activeTab, setActiveTab] = useState<MobileTab>('map');
   const [initialSuggestions, setInitialSuggestions] = useState<InitialSuggestions | null>(null);
 
@@ -140,6 +142,11 @@ export function ActiveTripView() {
     () => itineraryData?.days.flatMap((d) => d.activities) ?? [],
     [itineraryData],
   );
+
+  const allActivitiesWithStatus = useMemo(
+    () => (itineraryData ? getAllActivitiesWithStatus(itineraryData) : []),
+    [itineraryData],
+  );
   const enrichmentMap = usePlacesEnrichment(allActivities);
 
   return (
@@ -171,12 +178,15 @@ export function ActiveTripView() {
               <ItineraryPanel
                 data={itineraryData}
                 onOpenActivity={setSelectedActivity}
+                onLocateActivity={setFocusedActivity}
               />
             </div>
             <div className="flex-1 relative">
               <MapPanel
-                activities={allActivities}
+                activities={allActivitiesWithStatus}
                 annotations={annotations}
+                userLocation={position}
+                focusedActivity={focusedActivity}
               />
               <AiTripAssistant tripId={tripId} location={chatLocation} onAskPress={handleAskWithSuggestions} />
               {selectedActivity && (
@@ -196,14 +206,17 @@ export function ActiveTripView() {
               <div className="flex-1 min-h-0 relative">
                 <div className="w-full h-full">
                   <MapPanel
-                    activities={allActivities}
+                    activities={allActivitiesWithStatus}
                     annotations={annotations}
+                    userLocation={position}
+                    focusedActivity={focusedActivity}
                   />
                 </div>
                 <AiTripAssistant tripId={tripId} location={chatLocation} onAskPress={handleMobileAskWithSuggestions} />
                 <MobileItinerarySheet
                   itineraryData={itineraryData}
                   onOpenActivity={setSelectedActivity}
+                  onLocateActivity={setFocusedActivity}
                 />
               </div>
             )}
@@ -214,6 +227,7 @@ export function ActiveTripView() {
                 <ItineraryPanel
                   data={itineraryData}
                   onOpenActivity={setSelectedActivity}
+                  onLocateActivity={setFocusedActivity}
                 />
               </div>
             )}

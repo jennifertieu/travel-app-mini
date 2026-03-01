@@ -18,19 +18,40 @@ export const createMarkerIcon = (
   category?: string | null,
   iconType?: string,
   confidence?: "low" | "medium" | "high",
+  status?: "past" | "current" | "upcoming",
 ) => {
   const colorConfig = getCategoryColor(category);
-  const fill = colorConfig.fill;
+  const isPast = status === "past";
+  const isCurrent = status === "current";
+  const fill = isPast ? "#9CA3AF" : colorConfig.fill;
   const iconPath = getIconSvgPath(iconType || category || undefined);
+  const opacity = isPast ? "0.5" : "1";
 
   return L.divIcon({
     html: `
-      <div class="map-pin-marker">
+      <div class="map-pin-marker" style="opacity:${opacity};position:relative;">
+        ${
+          isCurrent
+            ? `<div style="
+                position:absolute;top:-6px;left:-6px;width:52px;height:52px;
+                border-radius:50%;
+                border:3px solid #0D9488;
+                animation:marker-pulse 2s ease-out infinite;
+                pointer-events:none;
+              "></div>
+              <style>
+                @keyframes marker-pulse {
+                  0% { transform:scale(1); opacity:1; }
+                  100% { transform:scale(1.6); opacity:0; }
+                }
+              </style>`
+            : ""
+        }
         <svg width="40" height="52" viewBox="0 0 40 52" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M20 2C11.163 2 4 9.163 4 18C4 26 20 48 20 48C20 48 36 26 36 18C36 9.163 28.837 2 20 2Z"
                 fill="${fill}"
-                stroke="white"
-                stroke-width="2.5"/>
+                stroke="${isCurrent ? "#0D9488" : "white"}"
+                stroke-width="${isCurrent ? "3" : "2.5"}"/>
           <circle cx="20" cy="17" r="10" fill="white"/>
           <g transform="translate(20, 17) scale(0.58) translate(-12, -12)"
              stroke="${fill}" stroke-width="2" fill="none"

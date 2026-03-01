@@ -65,6 +65,7 @@ export interface ITripContext {
     weather: {
       condition: string;
       temperature: number;
+      temperature_f: number;
       precipitation: boolean;
     } | null; // null if weather API fails
   };

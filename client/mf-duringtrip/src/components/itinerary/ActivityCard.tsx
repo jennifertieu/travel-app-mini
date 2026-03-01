@@ -1,5 +1,6 @@
-import { MapPin, Clock, Camera } from "lucide-react";
+import { MapPin, Clock, Camera, Locate } from "lucide-react";
 import { cn, computeDisplayTime, formatDuration } from "../../lib/utils";
+import type { ActivityStatus } from "../../lib/utils";
 import type { Activity, ActivityLocation, TimeOfDay } from "../../types/itinerary";
 
 /** Location can be a string (display address) or an object from the API (e.g. { lat, lng, name }). */
@@ -9,6 +10,14 @@ function formatLocation(location: ActivityLocation | undefined): string {
   return location.name ?? location.address ?? "";
 }
 
+function hasCoordinates(activity: Activity): boolean {
+  if (activity.latitude != null && activity.longitude != null) return true;
+  if (activity.location && typeof activity.location === "object") {
+    return activity.location.lat != null && activity.location.lng != null;
+  }
+  return false;
+}
+
 interface ActivityCardProps {
   activity: Activity;
   timeOfDay: TimeOfDay;
@@ -16,8 +25,10 @@ interface ActivityCardProps {
   precedingMinutes: number;
   isSelected: boolean;
   isSelectionMode: boolean;
+  status?: ActivityStatus;
   onToggleSelect: () => void;
   onOpen: () => void;
+  onLocate?: () => void;
 }
 
 export function ActivityCard({
@@ -27,8 +38,10 @@ export function ActivityCard({
   precedingMinutes,
   isSelected,
   isSelectionMode,
+  status,
   onToggleSelect,
   onOpen,
+  onLocate,
 }: ActivityCardProps) {
   const { startTime, endTime } = computeDisplayTime(
     timeOfDay,
@@ -54,7 +67,10 @@ export function ActivityCard({
         "bg-card hover:bg-accent/50",
         isSelectionMode && isSelected
           ? "border-teal-500 ring-1 ring-teal-500"
-          : "border-border",
+          : status === "current"
+            ? "border-teal-500 border-l-4 ring-1 ring-teal-500/30"
+            : "border-border",
+        status === "past" && "opacity-50",
       )}
     >
       {/* Thumbnail */}
@@ -72,9 +88,16 @@ export function ActivityCard({
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <h4 className="text-sm font-semibold text-foreground truncate">
-          {activity.name}
-        </h4>
+        <div className="flex items-center gap-2">
+          <h4 className="text-sm font-semibold text-foreground truncate">
+            {activity.name}
+          </h4>
+          {status === "current" && (
+            <span className="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full bg-teal-600 text-white text-[10px] font-bold uppercase tracking-wide">
+              Now
+            </span>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground truncate mt-0.5">
           {formatLocation(activity.location)}
         </p>
@@ -94,6 +117,21 @@ export function ActivityCard({
           </span>
         )}
       </div>
+
+      {/* Locate on map button */}
+      {onLocate && hasCoordinates(activity) && (
+        <button
+          type="button"
+          aria-label="Show on map"
+          onClick={(e) => {
+            e.stopPropagation();
+            onLocate();
+          }}
+          className="flex-shrink-0 self-center w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-teal-600 hover:bg-teal-600/10 transition-colors"
+        >
+          <Locate className="w-4 h-4" />
+        </button>
+      )}
     </button>
   );
 }

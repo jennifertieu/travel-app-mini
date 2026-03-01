@@ -5,6 +5,8 @@ import { DayTabs } from "./DayTabs";
 import { TimeOfDaySection } from "./TimeOfDaySection";
 import {
   computeDisplayTime,
+  parseTimeToMinutes,
+  getCurrentDayNumber,
   groupActivitiesByTimeOfDay,
 } from "../../lib/utils";
 import type { Activity, ItineraryData, TimeOfDay } from "../../types/itinerary";
@@ -63,7 +65,6 @@ function getCurrentAndNextActivity(
       precedingMinutes,
       act.duration_minutes,
     );
-    // Parse start/end to minutes for comparison
     const startMin = parseTimeToMinutes(startTime);
     const endMin = parseTimeToMinutes(endTime);
 
@@ -73,7 +74,6 @@ function getCurrentAndNextActivity(
       break;
     }
     if (nowMinutes < startMin && !foundCurrent) {
-      // We haven't reached this activity yet — it's the next one
       foundNext = act;
       foundCurrent = i > 0 ? sectionActivities[i - 1] : null;
       break;
@@ -100,17 +100,6 @@ function getCurrentAndNextActivity(
   };
 }
 
-function parseTimeToMinutes(time: string): number {
-  const match = time.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
-  if (!match) return 0;
-  let hours = parseInt(match[1], 10);
-  const minutes = parseInt(match[2], 10);
-  const period = match[3].toUpperCase();
-  if (period === "PM" && hours !== 12) hours += 12;
-  if (period === "AM" && hours === 12) hours = 0;
-  return hours * 60 + minutes;
-}
-
 function formatLocation(
   location: Activity["location"],
 ): string {
@@ -122,17 +111,24 @@ function formatLocation(
 interface MobileItinerarySheetProps {
   itineraryData: ItineraryData;
   onOpenActivity: (activity: Activity) => void;
+  onLocateActivity?: (activity: Activity) => void;
   onNavigate?: (activity: Activity) => void;
 }
 
 export function MobileItinerarySheet({
   itineraryData,
   onOpenActivity,
+  onLocateActivity,
   onNavigate,
 }: MobileItinerarySheetProps) {
   const { current, next, currentDayNumber } = useMemo(
     () => getCurrentAndNextActivity(itineraryData),
     [itineraryData],
+  );
+
+  const todayDayNumber = useMemo(
+    () => getCurrentDayNumber(itineraryData.days),
+    [itineraryData.days],
   );
 
   const [activeDay, setActiveDay] = useState(currentDayNumber);
@@ -216,20 +212,23 @@ export function MobileItinerarySheet({
       <DayTabs
         days={itineraryData.days}
         activeDay={activeDay}
+        currentDayNumber={todayDayNumber}
         onSelectDay={setActiveDay}
       />
 
-      {grouped && (
+      {grouped && dayData && (
         <div className="px-4 pt-3">
           {TIME_OF_DAY_ORDER.map((tod) => (
             <TimeOfDaySection
               key={tod}
               timeOfDay={tod}
               activities={grouped[tod]}
+              dayDate={dayData.date}
               selectedIds={new Set()}
               isSelectionMode={false}
               onToggleSelect={() => {}}
               onOpenActivity={onOpenActivity}
+              onLocateActivity={onLocateActivity}
             />
           ))}
         </div>

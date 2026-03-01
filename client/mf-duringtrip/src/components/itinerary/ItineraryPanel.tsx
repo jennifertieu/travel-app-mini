@@ -3,7 +3,7 @@ import { DayTabs } from "./DayTabs";
 import { TimeOfDaySection } from "./TimeOfDaySection";
 import { TopToolbar } from "./TopToolbar";
 import { BottomBar } from "./BottomBar";
-import { groupActivitiesByTimeOfDay } from "../../lib/utils";
+import { groupActivitiesByTimeOfDay, getCurrentDayNumber } from "../../lib/utils";
 import type { Activity, ItineraryData, TimeOfDay } from "../../types/itinerary";
 
 const TIME_OF_DAY_ORDER: TimeOfDay[] = ["morning", "afternoon", "evening"];
@@ -11,10 +11,18 @@ const TIME_OF_DAY_ORDER: TimeOfDay[] = ["morning", "afternoon", "evening"];
 interface ItineraryPanelProps {
   data: ItineraryData;
   onOpenActivity: (activity: Activity) => void;
+  onLocateActivity?: (activity: Activity) => void;
 }
 
-export function ItineraryPanel({ data, onOpenActivity }: ItineraryPanelProps) {
-  const [activeDay, setActiveDay] = useState(data.days[0]?.day ?? 1);
+export function ItineraryPanel({ data, onOpenActivity, onLocateActivity }: ItineraryPanelProps) {
+  const currentDayNumber = useMemo(
+    () => getCurrentDayNumber(data.days),
+    [data.days],
+  );
+
+  const [activeDay, setActiveDay] = useState(
+    currentDayNumber ?? data.days[0]?.day ?? 1,
+  );
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
 
@@ -99,6 +107,7 @@ export function ItineraryPanel({ data, onOpenActivity }: ItineraryPanelProps) {
         <DayTabs
           days={data.days}
           activeDay={activeDay}
+          currentDayNumber={currentDayNumber}
           onSelectDay={(day) => {
             setActiveDay(day);
             setSelectedIds(new Set());
@@ -122,10 +131,12 @@ export function ItineraryPanel({ data, onOpenActivity }: ItineraryPanelProps) {
             key={tod}
             timeOfDay={tod}
             activities={grouped[tod]}
+            dayDate={currentDay.date}
             selectedIds={selectedIds}
             isSelectionMode={isSelectionMode}
             onToggleSelect={handleToggleSelect}
             onOpenActivity={onOpenActivity}
+            onLocateActivity={onLocateActivity}
           />
         ))}
       </div>
