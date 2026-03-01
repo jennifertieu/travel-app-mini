@@ -1,11 +1,11 @@
 import { useState, useMemo, useCallback } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, CheckSquare, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { getApiUrl } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { DayTabs } from "./DayTabs";
+import { SectionTabs, type Section } from "./SectionTabs";
 import { TimeOfDaySection } from "./TimeOfDaySection";
-import { TopToolbar } from "./TopToolbar";
 import { BottomBar } from "./BottomBar";
 import { PhotoGuideModal } from "./PhotoGuideModal";
 import { BudgetSummary } from "./BudgetSummary";
@@ -44,12 +44,9 @@ export function ItineraryPanel({
   onToggleChat,
 }: ItineraryPanelProps) {
   const [activeDayIndex, setActiveDayIndex] = useState(0);
-  const [budgetTabActive, setBudgetTabActive] = useState(false);
-  const [travelTabActive, setTravelTabActive] = useState(false);
-  const [guideTabActive, setGuideTabActive] = useState(false);
+  const [activeSection, setActiveSection] = useState<Section>("itinerary");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [showPhotoGuide, setShowPhotoGuide] = useState(false);
 
   const { count: memberCount } = useTripMembers(tripId);
 
@@ -280,52 +277,44 @@ export function ItineraryPanel({
 
   return (
     <div className="@container flex flex-col h-full">
-      {/* Header */}
-      <div className="flex-shrink-0 pt-4 pb-1">
+      {/* Header: title left, section tabs right */}
+      <div className="flex-shrink-0 h-11 flex items-center justify-between gap-4 px-4 border-b border-border">
         {data.destination && (
-          <h1 className="text-lg font-bold text-gray-900 dark:text-white px-4 mb-3">
+          <h1 className="text-lg font-bold text-gray-900 dark:text-white truncate min-w-0">
             {data.trip_name || data.destination}
           </h1>
         )}
-        <DayTabs
-          days={localDays}
-          activeDayIndex={activeDayIndex}
-          budgetTabActive={budgetTabActive}
-          travelTabActive={travelTabActive}
-          guideTabActive={guideTabActive}
-          hasFlights={!!data.flights}
-          onSelectDay={(index) => {
-            setActiveDayIndex(index);
-            setBudgetTabActive(false);
-            setTravelTabActive(false);
-            setGuideTabActive(false);
+        <SectionTabs
+          activeSection={activeSection}
+          onSectionChange={(section) => {
+            setActiveSection(section);
             setSelectedIds(new Set());
+            if (section !== "itinerary") setIsSelectionMode(false);
           }}
-          onSelectBudget={() => {
-            setBudgetTabActive(true);
-            setTravelTabActive(false);
-            setGuideTabActive(false);
-            setSelectedIds(new Set());
-            setIsSelectionMode(false);
-          }}
-          onSelectTravel={() => {
-            setTravelTabActive(true);
-            setBudgetTabActive(false);
-            setGuideTabActive(false);
-            setSelectedIds(new Set());
-            setIsSelectionMode(false);
-          }}
-          onSelectGuide={() => {
-            setGuideTabActive(true);
-            setBudgetTabActive(false);
-            setTravelTabActive(false);
-            setSelectedIds(new Set());
-            setIsSelectionMode(false);
-          }}
+          onToggleSelectionMode={handleToggleSelectionMode}
+          onOpenPhotoGuide={() => setActiveSection("photo")}
+          onRebuildItinerary={handleRebuildItinerary}
+          isRebuilding={isRebuilding}
+          isChatOpen={isChatOpen}
+          onToggleChatPanel={onToggleChat}
         />
       </div>
 
-      {budgetTabActive ? (
+      {/* Tier 2: Day pills (itinerary and photo guide) */}
+      {(activeSection === "itinerary" || activeSection === "photo") && (
+        <div className="flex-shrink-0 pt-2 pb-1">
+          <DayTabs
+            days={localDays}
+            activeDayIndex={activeDayIndex}
+            onSelectDay={(index) => {
+              setActiveDayIndex(index);
+              if (activeSection === "itinerary") setSelectedIds(new Set());
+            }}
+          />
+        </div>
+      )}
+
+      {activeSection === "budget" ? (
         /* Budget tab content */
         <div className="flex-1 overflow-y-auto">
           <BudgetSummary
@@ -337,7 +326,7 @@ export function ItineraryPanel({
             days={data.days}
           />
         </div>
-      ) : travelTabActive ? (
+      ) : activeSection === "travel" ? (
         /* Travel tab content */
         <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
           <div className="text-center space-y-1 mb-2">
@@ -400,37 +389,58 @@ export function ItineraryPanel({
             </div>
           )}
         </div>
-      ) : guideTabActive ? (
+      ) : activeSection === "guide" ? (
         /* Guide tab content */
         <div className="flex-1 overflow-y-auto">
           <TravelGuidePanel tripId={tripId} destination={data.destination} />
         </div>
+      ) : activeSection === "photo" ? (
+        /* Photo Guide tab content */
+        <div className="flex-1 min-h-0 flex flex-col">
+          <PhotoGuideModal
+            open
+            onClose={() => setActiveSection("itinerary")}
+            tripId={tripId}
+            dayNumber={activeDay}
+            inline
+          />
+        </div>
       ) : (
         <>
-          {/* Toolbar */}
-          <TopToolbar
-            selectedCount={selectedIds.size}
-            isSelectionMode={isSelectionMode}
-            onToggleSelectionMode={handleToggleSelectionMode}
-            onSelectAll={handleSelectAll}
-            onDelete={handleDelete}
-            onOpenPhotoGuide={() => setShowPhotoGuide(true)}
-            isChatOpen={isChatOpen}
-            onToggleChatPanel={onToggleChat}
-            onRebuildItinerary={handleRebuildItinerary}
-            isRebuilding={isRebuilding}
-          />
+          {/* Selection mode bar (itinerary view only) */}
+          {isSelectionMode && (
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border flex-shrink-0">
+              <button
+                type="button"
+                onClick={handleSelectAll}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <CheckSquare className="w-3.5 h-3.5" />
+                Select all
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={selectedIds.size === 0}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete{selectedIds.size > 0 && ` (${selectedIds.size})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleToggleSelectionMode}
+                  className="px-3 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground border border-border transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          )}
           {rebuildError && (
             <p className="text-xs text-red-500 px-4 py-1">{rebuildError}</p>
           )}
-
-          {/* Photo Guide modal */}
-          <PhotoGuideModal
-            open={showPhotoGuide}
-            onClose={() => setShowPhotoGuide(false)}
-            tripId={tripId}
-            dayNumber={activeDay}
-          />
 
           {/* Scrollable activities */}
           <div className="flex-1 overflow-y-auto px-4 py-4">

@@ -28,6 +28,8 @@ interface PhotoGuideModalProps {
   onClose: () => void;
   tripId: string | null;
   dayNumber: number;
+  /** When true, render content inline in the panel (no overlay/modal). */
+  inline?: boolean;
 }
 
 const DIFFICULTY_LABELS: Record<PhotoChallengeDifficulty, string> = {
@@ -417,6 +419,7 @@ export function PhotoGuideModal({
   onClose,
   tripId,
   dayNumber,
+  inline = false,
 }: PhotoGuideModalProps) {
   const {
     data,
@@ -448,69 +451,55 @@ export function PhotoGuideModal({
   ) ?? [];
   const canRegenerateAll = tipsWithImages.length > 0;
 
-  return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[1000000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      >
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 12 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 12 }}
-          transition={{ duration: 0.25, ease: "easeOut" }}
-          className="bg-background rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] flex flex-col overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-teal-600/10 flex items-center justify-center">
-                <Aperture className="w-[18px] h-[18px] text-teal-600" />
-              </div>
-              <div>
-                <h1 className="text-base font-semibold text-foreground tracking-tight">
-                  Day {dayNumber} Photo Guide
-                </h1>
-                {tipCount > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {tipCount} spot{tipCount !== 1 ? "s" : ""} to capture
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {data && canRegenerateAll && (
-                <button
-                  type="button"
-                  onClick={regenerateAllSelfies}
-                  disabled={regenerateAllLoading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 active:scale-[0.98] disabled:opacity-60 transition-all"
-                >
-                  {regenerateAllLoading ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-4 h-4" />
-                  )}
-                  Regenerate all
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+  const header = (
+    <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-border/60">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-teal-600/10 flex items-center justify-center">
+          <Aperture className="w-[18px] h-[18px] text-teal-600" />
+        </div>
+        <div>
+          <h1 className="text-base font-semibold text-foreground tracking-tight">
+            Day {dayNumber} Photo Guide
+          </h1>
+          {tipCount > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {tipCount} spot{tipCount !== 1 ? "s" : ""} to capture
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {data && canRegenerateAll && (
+          <button
+            type="button"
+            onClick={regenerateAllSelfies}
+            disabled={regenerateAllLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 active:scale-[0.98] disabled:opacity-60 transition-all"
+          >
+            {regenerateAllLoading ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
+            Regenerate all
+          </button>
+        )}
+        {!inline && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
-          {/* Body */}
-          <div className="flex-1 overflow-y-auto">
+  const body = (
+    <div className="flex-1 overflow-y-auto min-h-0">
             {error && (
               <div className="mx-6 mt-4 rounded-xl bg-red-500/10 text-red-700 dark:text-red-300 text-sm px-4 py-3">
                 {error}
@@ -577,7 +566,37 @@ export function PhotoGuideModal({
                 )}
               </div>
             )}
-          </div>
+    </div>
+  );
+
+  if (inline) {
+    return (
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-background">
+        {header}
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[1000000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 12 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 12 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="bg-background rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] flex flex-col overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {header}
+          {body}
         </motion.div>
       </motion.div>
     </AnimatePresence>
