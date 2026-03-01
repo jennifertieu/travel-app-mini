@@ -22,14 +22,14 @@ interface IToolCallResult {
 
 export const aiItineraryBuilderAgent = async (
   tripData: ITripData,
-  logger?: (...args: any[]) => void
+  logger?: (...args: any[]) => void,
 ) => {
   const { trip, tripIdeas } = tripData;
 
   const startDate = new Date(trip.start_date);
   const endDate = new Date(trip.end_date);
   const tripDays = Math.ceil(
-    (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+    (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
   );
 
   const itinerary: IItinerary = {
@@ -60,7 +60,7 @@ export const aiItineraryBuilderAgent = async (
     - Duration: ${Math.ceil(
       (new Date(trip.end_date).getTime() -
         new Date(trip.start_date).getTime()) /
-        (1000 * 60 * 60 * 24)
+        (1000 * 60 * 60 * 24),
     )} days
 
     Available Activities (${tripIdeas.length} activities):
@@ -75,7 +75,7 @@ export const aiItineraryBuilderAgent = async (
     - Preferred Time: ${idea.time_of_day || "Any"}
     - Description: ${idea.summary || idea.description}
     - Tags: ${idea.tags ? idea.tags.join(", ") : "None"}
-    `
+    `,
       )
       .join("\n")}
 
@@ -133,7 +133,7 @@ export const aiItineraryBuilderAgent = async (
     { role: "user", content: initialPrompt },
   ];
 
-  let maxIterations = 20;
+  let maxIterations = 10;
   let iterations = 0;
 
   while (iterations < maxIterations) {
@@ -141,15 +141,39 @@ export const aiItineraryBuilderAgent = async (
 
     if (logger)
       logger(
-        `[AI AGENT] Iteration ${iterations}: Requesting next step from LLM...`
+        `[AI AGENT] Iteration ${iterations}: Requesting next step from LLM...`,
       );
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages,
-      tools: itineraryAgentTools,
-      temperature: 0.1,
-    });
+    // Retry once on 429 rate limit using the retry-after header
+    let completion;
+    try {
+      completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages,
+        tools: itineraryAgentTools,
+        temperature: 0.1,
+      });
+    } catch (err: any) {
+      if (err?.status === 429) {
+        const retryAfterMs = parseInt(
+          err?.headers?.["retry-after-ms"] ?? "20000",
+          10,
+        );
+        if (logger)
+          logger(
+            `[AI AGENT] Rate limited, retrying after ${retryAfterMs}ms...`,
+          );
+        await new Promise((r) => setTimeout(r, retryAfterMs));
+        completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages,
+          tools: itineraryAgentTools,
+          temperature: 0.1,
+        });
+      } else {
+        throw err;
+      }
+    }
 
     const message = completion.choices[0]?.message;
     if (!message) {
@@ -166,7 +190,7 @@ export const aiItineraryBuilderAgent = async (
       // LLM returned final answer - fill empty slots and return itinerary
       if (logger) {
         logger(
-          `[AI AGENT] LLM returned final answer. Running post-processing...`
+          `[AI AGENT] LLM returned final answer. Running post-processing...`,
         );
       }
 
@@ -202,13 +226,13 @@ export const aiItineraryBuilderAgent = async (
 
       if (logger && filledSlots > 0) {
         logger(
-          `[AI AGENT] Post-processing: Added ${filledSlots} free time slots to fill empty periods.`
+          `[AI AGENT] Post-processing: Added ${filledSlots} free time slots to fill empty periods.`,
         );
       }
 
       if (logger && itinerary.activities_pool.length > 0) {
         logger(
-          `[AI AGENT] Note: ${itinerary.activities_pool.length} activities could not be scheduled.`
+          `[AI AGENT] Note: ${itinerary.activities_pool.length} activities could not be scheduled.`,
         );
       }
 
@@ -228,7 +252,7 @@ export const aiItineraryBuilderAgent = async (
         const parsedArgs = JSON.parse(args);
         if (logger)
           logger(
-            `[AI AGENT] Calling tool: ${name} with args: ${JSON.stringify(parsedArgs)}`
+            `[AI AGENT] Calling tool: ${name} with args: ${JSON.stringify(parsedArgs)}`,
           );
 
         switch (name) {
@@ -243,16 +267,16 @@ export const aiItineraryBuilderAgent = async (
               : { success: false, error: assignResult.error };
             if (logger)
               logger(
-                `[AI AGENT] assign_activity_to_day result: ${JSON.stringify(toolResult)}`
+                `[AI AGENT] assign_activity_to_day result: ${JSON.stringify(toolResult)}`,
               );
             break;
 
           case "get_travel_time_between_activities":
             const fromActivity = tripIdeas.find(
-              (idea) => idea.id === parsedArgs.from
+              (idea) => idea.id === parsedArgs.from,
             );
             const toActivity = tripIdeas.find(
-              (idea) => idea.id === parsedArgs.to
+              (idea) => idea.id === parsedArgs.to,
             );
 
             if (!fromActivity || !toActivity) {
@@ -280,20 +304,20 @@ export const aiItineraryBuilderAgent = async (
                   latitude: toActivity.latitude,
                   longitude: toActivity.longitude,
                 },
-                parsedArgs.travel_mode || "driving"
+                parsedArgs.travel_mode || "driving",
               );
               toolResult = { success: true, data: travelResult };
             }
             if (logger)
               logger(
-                `[AI AGENT] get_travel_time_between_activities result: ${JSON.stringify(toolResult)}`
+                `[AI AGENT] get_travel_time_between_activities result: ${JSON.stringify(toolResult)}`,
               );
             break;
 
           case "check_day_conflicts":
             // Find the day from our itinerary to get the date
             const dayFromItinerary = itinerary.days.find(
-              (d) => d.day_number === parsedArgs.day_number
+              (d) => d.day_number === parsedArgs.day_number,
             );
             if (!dayFromItinerary) {
               toolResult = {
@@ -307,7 +331,7 @@ export const aiItineraryBuilderAgent = async (
             const dayActivities = parsedArgs.activities
               .map((activityRef: any) => {
                 const activity = itinerary.activities_pool.find(
-                  (idea) => idea.id === activityRef.activity_id
+                  (idea) => idea.id === activityRef.activity_id,
                 );
                 return activity
                   ? { ...activity, time_of_day: activityRef.time_of_day }
@@ -325,13 +349,13 @@ export const aiItineraryBuilderAgent = async (
             toolResult = { success: true, data: conflictResult };
             if (logger)
               logger(
-                `[AI AGENT] check_day_conflicts result: ${JSON.stringify(toolResult)}`
+                `[AI AGENT] check_day_conflicts result: ${JSON.stringify(toolResult)}`,
               );
             break;
 
           case "get_activity_details":
             const activity_detail = tripIdeas.find(
-              (idea) => idea.id === parsedArgs.activity_id
+              (idea) => idea.id === parsedArgs.activity_id,
             );
             if (!activity_detail) {
               toolResult = { success: false, error: "Activity not found" };
@@ -341,16 +365,16 @@ export const aiItineraryBuilderAgent = async (
             }
             if (logger)
               logger(
-                `[AI AGENT] get_activity_details result: ${JSON.stringify(toolResult)}`
+                `[AI AGENT] get_activity_details result: ${JSON.stringify(toolResult)}`,
               );
             break;
 
           case "get_all_travel_times":
             const fromAct = tripIdeas.find(
-              (idea) => idea.id === parsedArgs.from_activity_id
+              (idea) => idea.id === parsedArgs.from_activity_id,
             );
             const toAct = tripIdeas.find(
-              (idea) => idea.id === parsedArgs.to_activity_id
+              (idea) => idea.id === parsedArgs.to_activity_id,
             );
 
             if (!fromAct || !toAct) {
@@ -372,7 +396,7 @@ export const aiItineraryBuilderAgent = async (
               const travelOptions = await findBestTravelMode(
                 { latitude: fromAct.latitude, longitude: fromAct.longitude },
                 { latitude: toAct.latitude, longitude: toAct.longitude },
-                parsedArgs.available_minutes
+                parsedArgs.available_minutes,
               );
               toolResult = {
                 success: true,
@@ -393,7 +417,7 @@ export const aiItineraryBuilderAgent = async (
             }
             if (logger)
               logger(
-                `[AI AGENT] get_all_travel_times result: ${JSON.stringify(toolResult)}`
+                `[AI AGENT] get_all_travel_times result: ${JSON.stringify(toolResult)}`,
               );
             break;
 
@@ -411,7 +435,7 @@ export const aiItineraryBuilderAgent = async (
               : { success: false, error: travelResult.error };
             if (logger)
               logger(
-                `[AI AGENT] add_travel_segment result: ${JSON.stringify(toolResult)}`
+                `[AI AGENT] add_travel_segment result: ${JSON.stringify(toolResult)}`,
               );
             break;
 

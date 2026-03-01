@@ -15,9 +15,14 @@ import {
 interface MapPanelProps {
   activities: Activity[];
   annotations?: Annotation[];
+  initialCenter?: [number, number];
 }
 
-export function MapPanel({ activities, annotations }: MapPanelProps) {
+export function MapPanel({
+  activities,
+  annotations,
+  initialCenter,
+}: MapPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.LayerGroup | null>(null);
@@ -28,7 +33,7 @@ export function MapPanel({ activities, annotations }: MapPanelProps) {
     if (!containerRef.current || mapRef.current) return;
 
     const map = L.map(containerRef.current, {
-      center: DEFAULT_MAP_CENTER,
+      center: initialCenter ?? DEFAULT_MAP_CENTER,
       zoom: DEFAULT_ZOOM,
       zoomControl: true,
     });
@@ -71,7 +76,7 @@ export function MapPanel({ activities, annotations }: MapPanelProps) {
     );
 
     if (validActivities.length === 0) {
-      map.setView(DEFAULT_MAP_CENTER, DEFAULT_ZOOM);
+      map.setView(initialCenter ?? DEFAULT_MAP_CENTER, DEFAULT_ZOOM);
       return;
     }
 

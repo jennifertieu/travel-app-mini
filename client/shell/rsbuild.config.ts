@@ -43,5 +43,6 @@ export default defineConfig({
   },
   html: {
     title: "TripWeave",
+    favicon: "./public/favicon.svg",
   },
 });

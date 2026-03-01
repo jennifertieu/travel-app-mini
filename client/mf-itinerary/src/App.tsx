@@ -1,14 +1,24 @@
 import "./globals.css";
-import { useEffect, useState, useCallback, useMemo } from "react";
-import { supabase } from "./lib/supabase";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { Toaster } from "sonner";
+import { supabase, isUsingFallbackSupabase } from "./lib/supabase";
+
+interface UserProfile {
+  display_name: string | null;
+  avatar_url: string | null;
+}
 import { ItineraryPanel } from "./components/ItineraryPanel";
 import { MapPanel } from "./components/MapPanel";
-import { BuildingState } from "./components/BuildingState";
+import { SkeletonLoader } from "./components/SkeletonLoader";
 import { EmptyState } from "./components/EmptyState";
+import { ChatPanel } from "./components/chat/ChatPanel";
 import { ActivityDetailModal } from "./components/ActivityDetailModal";
 import { useAnnotations } from "./hooks/useAnnotations";
+import { useChatAgent } from "./hooks/useChatAgent";
 import { usePlacesEnrichment } from "./hooks/usePlacesEnrichment";
+import { cn } from "./lib/utils";
 import type { Activity, ItineraryData } from "./types";
+import { parseDurationBucket } from "./lib/utils";
 
 type Itinerary = {
   id: string;
@@ -23,19 +33,151 @@ const getTripId = (): string | null => {
   return params.get("tripId") || localStorage.getItem("current-trip-id");
 };
 
+const DEBUG =
+  (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV ?? false;
+
 const App = () => {
   const [tripId] = useState<string | null>(getTripId);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [destinationCenter, setDestinationCenter] = useState<
+    [number, number] | undefined
+  >();
+
+  // Fetch trip destination coords for the skeleton map
+  useEffect(() => {
+    if (!tripId) return;
+    supabase
+      .from("trips")
+      .select("destination_lat, destination_lng")
+      .eq("id", tripId)
+      .single()
+      .then(({ data }) => {
+        if (data?.destination_lat && data?.destination_lng) {
+          setDestinationCenter([data.destination_lat, data.destination_lng]);
+        }
+      });
+  }, [tripId]);
+
+  // Bootstrap the Supabase session from the shell's window.__TRIPWEAVE_SESSION__.
+  // mf-itinerary runs on a different port (3002) so it has its own empty localStorage —
+  // the shell exposes its session via the window object so MFEs can hydrate their clients.
+  // After hydrating, fetch the user profile once via getUser() — a single shot call
+  // with no subscription, so it won't cause repeated re-renders.
+  useEffect(() => {
+    const shellSession = (
+      window as unknown as {
+        __TRIPWEAVE_SESSION__?: {
+          access_token: string;
+          refresh_token: string;
+        } | null;
+      }
+    ).__TRIPWEAVE_SESSION__;
+    if (shellSession?.access_token && shellSession?.refresh_token) {
+      supabase.auth
+        .setSession({
+          access_token: shellSession.access_token,
+          refresh_token: shellSession.refresh_token,
+        })
+        .then(async () => {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) return;
+          const { data } = await supabase
+            .from("member_profiles")
+            .select("display_name, avatar_url")
+            .eq("user_id", user.id)
+            .single();
+          if (data) setUserProfile(data);
+        });
+    }
+  }, []);
+
   const annotations = useAnnotations(tripId);
+  // Stable ref so useChatAgent can call fetchItinerary even though it's defined below
+  const fetchItineraryRef = useRef<((id: string) => void) | null>(null);
+  const {
+    messages,
+    status: chatStatus,
+    pendingChanges,
+    error: chatError,
+    isChatOpen,
+    toggleChat,
+    inputValue,
+    setInputValue,
+    sendMessage,
+    confirmChanges,
+    rejectChanges,
+    clearError: clearChatError,
+  } = useChatAgent({
+    tripId,
+    onItineraryUpdated: () => tripId && fetchItineraryRef.current?.(tripId),
+  });
+
+  // --- Chat panel resize drag state ---
+  const CHAT_MIN_WIDTH = 200;
+  const CHAT_DEFAULT_WIDTH = 320;
+  const [chatWidth, setChatWidth] = useState(CHAT_DEFAULT_WIDTH);
+  const [isDraggingHandle, setIsDraggingHandle] = useState(false);
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragStartWidth = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleDragStart = useCallback(
+    (clientX: number) => {
+      isDragging.current = true;
+      dragStartX.current = clientX;
+      dragStartWidth.current = chatWidth;
+      setIsDraggingHandle(true);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    },
+    [chatWidth],
+  );
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current) return;
+      const delta = e.clientX - dragStartX.current;
+      const containerWidth =
+        containerRef.current?.offsetWidth ?? window.innerWidth;
+      const maxWidth = Math.floor(containerWidth * 0.5);
+      setChatWidth(
+        Math.max(
+          CHAT_MIN_WIDTH,
+          Math.min(dragStartWidth.current + delta, maxWidth),
+        ),
+      );
+    };
+    const onMouseUp = () => {
+      if (!isDragging.current) return;
+      isDragging.current = false;
+      setIsDraggingHandle(false);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, []);
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isBuilding, setIsBuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(
+    null,
+  );
 
   const fetchItinerary = useCallback(async (id: string) => {
+    console.log("[mf-itinerary] fetchItinerary start", { tripId: id });
     setIsLoading(true);
     setError(null);
 
+    const fetchStart = performance.now();
     const { data, error: fetchError } = await supabase
       .from("trip_itineraries")
       .select("*")
@@ -44,9 +186,28 @@ const App = () => {
       .limit(1)
       .maybeSingle();
 
+    const fetchMs = (performance.now() - fetchStart).toFixed(0);
+    console.log("[mf-itinerary] fetchItinerary result", {
+      tripId: id,
+      hasData: !!data,
+      dataId: data?.id,
+      fetchMs: `${fetchMs}ms`,
+      error: fetchError?.message ?? null,
+    });
+
     if (fetchError) {
       setError(fetchError.message);
     } else if (data) {
+      const startedAt = localStorage.getItem("building-itinerary-started");
+      if (startedAt) {
+        const elapsed = ((Date.now() - parseInt(startedAt, 10)) / 1000).toFixed(
+          1,
+        );
+        console.log(
+          `[mf-itinerary] ✅ Itinerary ready — total build time: ${elapsed}s`,
+        );
+        localStorage.removeItem("building-itinerary-started");
+      }
       setItinerary(data as Itinerary);
       localStorage.removeItem("building-itinerary");
       setIsBuilding(false);
@@ -55,12 +216,24 @@ const App = () => {
     setIsLoading(false);
   }, []);
 
+  // Keep ref in sync so the chat agent can trigger a refetch after confirm
+  fetchItineraryRef.current = fetchItinerary;
+
   useEffect(() => {
-    if (!tripId) return;
+    if (!tripId) {
+      if (DEBUG)
+        console.log("[mf-itinerary] No tripId, skipping fetch and Realtime");
+      return;
+    }
+
+    console.log("[mf-itinerary] Mount effect", { tripId });
 
     const buildingTripId = localStorage.getItem("building-itinerary");
     if (buildingTripId === tripId) {
       setIsBuilding(true);
+      console.log("[mf-itinerary] 🔨 Building in progress for this trip", {
+        tripId,
+      });
     }
 
     fetchItinerary(tripId);
@@ -76,21 +249,52 @@ const App = () => {
           filter: `trip_id=eq.${tripId}`,
         },
         (payload) => {
-          console.log("Itinerary realtime update:", payload);
+          console.log(
+            "[mf-itinerary] Realtime itinerary update:",
+            payload.eventType,
+          );
           if (
             payload.eventType === "INSERT" ||
             payload.eventType === "UPDATE"
           ) {
+            const startedAt = localStorage.getItem(
+              "building-itinerary-started",
+            );
+            if (startedAt) {
+              const elapsed = (
+                (Date.now() - parseInt(startedAt, 10)) /
+                1000
+              ).toFixed(1);
+              console.log(
+                `[mf-itinerary] ✅ Itinerary ready (realtime) — total build time: ${elapsed}s`,
+              );
+              localStorage.removeItem("building-itinerary-started");
+            }
             setItinerary(payload.new as Itinerary);
             setIsBuilding(false);
             localStorage.removeItem("building-itinerary");
           }
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("[mf-itinerary] Realtime subscription status:", status);
+      });
+
+    // Polling fallback: if we're in building state, poll every 5s in case
+    // Realtime misses the event (e.g. connection hiccup).
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    if (buildingTripId === tripId) {
+      pollInterval = setInterval(() => {
+        console.log(
+          "[mf-itinerary] Polling fallback — checking for itinerary...",
+        );
+        fetchItinerary(tripId);
+      }, 5000);
+    }
 
     return () => {
       supabase.removeChannel(channel);
+      if (pollInterval) clearInterval(pollInterval);
     };
   }, [tripId, fetchItinerary]);
 
@@ -102,7 +306,27 @@ const App = () => {
       // Support both { days: [...] } and { itinerary: { days: [...] } } shapes
       const inner = (raw.itinerary ?? raw) as Record<string, unknown>;
       if (inner.days && Array.isArray(inner.days)) {
-        return inner as unknown as ItineraryData;
+        const parsed = inner as unknown as ItineraryData;
+        // Normalise fields coming from the server
+        for (const day of parsed.days) {
+          // Server uses day_number, client expects day
+          if (!day.day && (day as any).day_number) {
+            day.day = (day as any).day_number;
+          }
+          for (const act of day.activities) {
+            // Server uses title, client expects name
+            if (!act.name && (act as any).title) {
+              act.name = (act as any).title;
+            }
+            if (!act.duration_minutes || isNaN(act.duration_minutes)) {
+              act.duration_minutes = parseDurationBucket(
+                (act as unknown as Record<string, unknown>)
+                  .duration_bucket as string,
+              );
+            }
+          }
+        }
+        return parsed;
       }
       return null;
     } catch {
@@ -112,7 +336,7 @@ const App = () => {
 
   const allActivities = useMemo(
     () => itineraryData?.days.flatMap((d) => d.activities) ?? [],
-    [itineraryData]
+    [itineraryData],
   );
   const enrichmentMap = usePlacesEnrichment(allActivities);
 
@@ -128,7 +352,13 @@ const App = () => {
 
   return (
     <div className="flex flex-col h-full">
-      {isBuilding && <BuildingState />}
+      <Toaster position="bottom-right" richColors closeButton />
+      {isBuilding && !itineraryData && (
+        <SkeletonLoader
+          annotations={annotations}
+          initialCenter={destinationCenter}
+        />
+      )}
 
       {isLoading && !isBuilding && (
         <div className="flex items-center justify-center py-20">
@@ -142,17 +372,90 @@ const App = () => {
         </div>
       )}
 
-      {!isLoading && !itinerary && !isBuilding && <EmptyState />}
+      {!isLoading &&
+        !itinerary &&
+        !isBuilding &&
+        (() => {
+          if (DEBUG) {
+            console.log("[mf-itinerary] Showing EmptyState because", {
+              isLoading,
+              hasItinerary: !!itinerary,
+              isBuilding,
+              tripId,
+              error: error ?? null,
+            });
+          }
+          return <EmptyState />;
+        })()}
 
       {itineraryData && (
-        <div className="flex flex-1 min-h-0">
-          <div className="w-1/2 overflow-y-auto">
+        <div ref={containerRef} className="flex flex-1 min-h-0">
+          {/* Chat panel — slides in from the left when open */}
+          <div
+            className={cn(
+              "flex-shrink-0 overflow-hidden",
+              !isDraggingHandle &&
+                "transition-[width] duration-300 ease-in-out",
+            )}
+            style={{ width: isChatOpen ? chatWidth : 0 }}
+          >
+            <div style={{ width: chatWidth }} className="h-full">
+              <ChatPanel
+                messages={messages}
+                status={chatStatus}
+                pendingChanges={pendingChanges}
+                error={chatError}
+                inputValue={inputValue}
+                onInputChange={setInputValue}
+                onSend={sendMessage}
+                onConfirm={confirmChanges}
+                onReject={rejectChanges}
+                onDismissError={clearChatError}
+                userProfile={userProfile}
+              />
+            </div>
+          </div>
+
+          {/* Drag handle between chat and itinerary — only visible when chat is open */}
+          {isChatOpen && (
+            <div
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleDragStart(e.clientX);
+              }}
+              onDoubleClick={() => setChatWidth(CHAT_DEFAULT_WIDTH)}
+              className="flex-shrink-0 flex items-center justify-center w-3 cursor-col-resize group relative bg-border/40 hover:bg-teal-500/15 transition-colors duration-150 border-x border-border"
+            >
+              {/* Three-dot indicator */}
+              <svg
+                width="6"
+                height="24"
+                viewBox="0 0 6 24"
+                className="text-muted-foreground/60 group-hover:text-teal-500 transition-colors duration-150"
+                fill="currentColor"
+              >
+                <circle cx="3" cy="5" r="1.75" />
+                <circle cx="3" cy="12" r="1.75" />
+                <circle cx="3" cy="19" r="1.75" />
+              </svg>
+            </div>
+          )}
+
+          {/* Itinerary panel */}
+          <div
+            className={cn(isChatOpen ? "flex-1" : "w-1/2", "overflow-y-auto")}
+          >
             <ItineraryPanel
               data={itineraryData}
+              tripId={tripId}
+              itineraryRowId={itinerary!.id}
               onOpenActivity={setSelectedActivity}
+              isChatOpen={isChatOpen}
+              onToggleChat={toggleChat}
             />
           </div>
-          <div className="w-1/2 relative">
+
+          <div className={cn(isChatOpen ? "flex-1" : "w-1/2", "relative")}>
             <MapPanel
               activities={itineraryData.days.flatMap((d) => d.activities)}
               annotations={annotations}

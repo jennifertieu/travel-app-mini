@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { GoogleGenAI } from "@google/genai";
 import { OpenAI } from "openai";
 import dotenv from "dotenv";
 dotenv.config();
@@ -6,6 +7,7 @@ dotenv.config();
 // Use PORT from environment (required for Render), default to 5001 for local dev
 export const PORT = process.env.PORT || "5001";
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
+export const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
 export const GOOGLE_MAPS_PLATFORM_API_KEY =
   process.env.GOOGLE_MAPS_PLATFORM_API_KEY!;
 
@@ -27,3 +29,11 @@ export const supabase = createClient(
 export const openai = new OpenAI({
   apiKey: OPENAI_API_KEY,
 });
+
+export const gemini = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+
+// Amadeus Flight Search Configuration
+export const AMADEUS_API_KEY = process.env.AMADEUS_API_KEY || "";
+export const AMADEUS_API_SECRET = process.env.AMADEUS_API_SECRET || "";
+export const AMADEUS_BASE_URL =
+  process.env.AMADEUS_BASE_URL || "https://test.api.amadeus.com";

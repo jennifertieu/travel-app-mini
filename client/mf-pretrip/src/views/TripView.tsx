@@ -19,6 +19,8 @@ import {
   useStreamingSuggestions,
   type TripSuggestionInput,
 } from "../hooks/useStreamingSuggestions";
+import { useStreamingHotels } from "../hooks/useStreamingHotels";
+import { useHomeBase } from "../hooks/useHomeBase";
 import { useModals } from "../contexts/ModalContext";
 import { useMyReactions } from "../hooks/useMyReactions";
 import { queryKeys } from "../lib/queryKeys";
@@ -46,6 +48,15 @@ export function TripView() {
     startStreaming,
   } = useStreamingSuggestions();
 
+  const {
+    isStreaming: isHotelStreaming,
+    isComplete: isHotelStreamingComplete,
+    savedCount: hotelSavedCount,
+    startStreaming: startHotelStreaming,
+  } = useStreamingHotels();
+
+  const isAnyStreaming = isStreaming || isHotelStreaming;
+
   const { openModal } = useModals();
 
   // Listen for modal-open requests from the shell (cross-MFE communication)
@@ -60,12 +71,23 @@ export function TripView() {
     return () => window.removeEventListener("openTripModal", handler);
   }, [openModal]);
 
-  // Open create trip modal when navigated from shell (e.g. from itinerary page)
+  // Open modals when navigated from shell (e.g. + invite from itinerary/duringtrip)
   useEffect(() => {
     try {
       if (sessionStorage.getItem("pending-open-create-trip") === "1") {
         sessionStorage.removeItem("pending-open-create-trip");
         openModal("createTrip");
+        return;
+      }
+      const pendingModal = sessionStorage.getItem("pending-open-modal");
+      if (pendingModal === "inviteLink") {
+        const pendingTripId =
+          sessionStorage.getItem("pending-open-modal-tripId") ?? undefined;
+        sessionStorage.removeItem("pending-open-modal");
+        sessionStorage.removeItem("pending-open-modal-tripId");
+        if (pendingTripId) {
+          openModal("inviteLink", { tripId: pendingTripId });
+        }
       }
     } catch {
       // ignore
@@ -73,8 +95,8 @@ export function TripView() {
   }, [openModal]);
 
   const handleOpenAddIdea = useCallback(() => {
-    openModal("addIdea", { startStreaming, isStreaming });
-  }, [openModal, startStreaming, isStreaming]);
+    openModal("addIdea", { startStreaming, isStreaming: isAnyStreaming });
+  }, [openModal, startStreaming, isAnyStreaming]);
 
   // Use the enhanced current trip management
   const {
@@ -86,6 +108,32 @@ export function TripView() {
     error: tripError,
     isTripIdInitialized,
   } = useCurrentTrip();
+
+  const { homeBaseId, setHomeBase } = useHomeBase(tripId);
+
+  const handleMoreIdeas = useCallback(() => {
+    if (!tripId || !trip || !member) return;
+    startStreaming({
+      tripId,
+      destination: trip.destination,
+      durationDays: trip.duration_days ?? null,
+      budgetLevel: trip.budget_level ?? null,
+      interests: trip.interests ?? null,
+      createdBy: member.id,
+    });
+  }, [tripId, trip, member, startStreaming]);
+
+  const handleMoreHotels = useCallback(() => {
+    if (!tripId || !trip || !member) return;
+    startHotelStreaming({
+      tripId,
+      destination: trip.destination,
+      interests: trip.interests ?? null,
+      budgetLevel: trip.budget_level ?? null,
+      durationDays: trip.duration_days ?? null,
+      createdBy: member.id,
+    });
+  }, [tripId, trip, member, startHotelStreaming]);
 
   const { data: members = [] } = useTripMembers(tripId);
   useBroadcastTripSummary(trip, members.length);
@@ -116,6 +164,8 @@ export function TripView() {
   // Keep a stable ref to startStreaming so useEffects don't re-fire on every render
   const startStreamingRef = useRef(startStreaming);
   startStreamingRef.current = startStreaming;
+  const startHotelStreamingRef = useRef(startHotelStreaming);
+  startHotelStreamingRef.current = startHotelStreaming;
 
   // When trip changes, check if there's a pending streaming request (e.g. from CreateTripModal)
   useEffect(() => {
@@ -131,52 +181,59 @@ export function TripView() {
         if (generating === "true" || pendingInput) {
           setIsGenerating(true);
           // Check for pending suggestion input from CreateTripModal
-          if (pendingInput && !isStreaming) {
+          if (pendingInput && !isAnyStreaming) {
             try {
               const suggestionInput = JSON.parse(pendingInput);
               localStorage.removeItem("pending-suggestion-input");
               startStreamingRef.current(suggestionInput);
+              startHotelStreamingRef.current(suggestionInput);
             } catch {
               // bad JSON, clear it
               localStorage.removeItem("pending-suggestion-input");
             }
           }
-        } else if (!isStreaming) {
+        } else if (!isAnyStreaming) {
           setIsGenerating(false);
         }
       }
-    } else if (!isStreaming) {
+    } else if (!isAnyStreaming) {
       setIsGenerating(false);
     }
-  }, [tripId, isStreaming]);
+  }, [tripId, isAnyStreaming]);
 
   // Keep generating state aligned with streaming lifecycle
   useEffect(() => {
-    if (isStreaming) {
+    if (isAnyStreaming) {
       setIsGenerating(true);
     }
-  }, [isStreaming]);
+  }, [isAnyStreaming]);
 
-  // Stop showing generating state once streaming is complete and we have ideas
+  // Stop showing generating state once both streams are complete and we have ideas
   useEffect(() => {
     if (
       isGenerating &&
-      !isStreaming &&
-      (isStreamingComplete || ideas.length > 0)
+      !isAnyStreaming &&
+      ((isStreamingComplete && isHotelStreamingComplete) || ideas.length > 0)
     ) {
       setIsGenerating(false);
       if (typeof window !== "undefined") {
         localStorage.removeItem("generating-suggestions");
       }
     }
-  }, [ideas.length, isGenerating, isStreaming, isStreamingComplete]);
+  }, [
+    ideas.length,
+    isGenerating,
+    isAnyStreaming,
+    isStreamingComplete,
+    isHotelStreamingComplete,
+  ]);
 
   // Invalidate ideas query when streaming completes to catch any ideas missed by realtime
   useEffect(() => {
-    if (isStreamingComplete && tripId) {
+    if ((isStreamingComplete || isHotelStreamingComplete) && tripId) {
       queryClient.invalidateQueries({ queryKey: queryKeys.ideas(tripId) });
     }
-  }, [isStreamingComplete, tripId, queryClient]);
+  }, [isStreamingComplete, isHotelStreamingComplete, tripId, queryClient]);
 
   const handleTripCreatedWrapper = useCallback(
     (newTripId: string, suggestionInput: TripSuggestionInput) => {
@@ -185,14 +242,13 @@ export function TripView() {
       if (typeof window !== "undefined") {
         localStorage.setItem("generating-suggestions", "true");
       }
-      // The useCurrentTrip hook will handle the trip creation logic
-      // We just need to find the trip object to pass to handleTripCreated
-      // For now, we'll create a minimal trip object
       const newTrip = { id: newTripId } as any;
       handleTripCreated(newTrip);
+      // Fire both streams in parallel
       startStreaming(suggestionInput);
+      startHotelStreaming(suggestionInput);
     },
-    [handleTripCreated, startStreaming],
+    [handleTripCreated, startStreaming, startHotelStreaming],
   );
 
   // Show skeleton while initializing (reading tripId from URL/localStorage) or loading trip
@@ -264,7 +320,7 @@ export function TripView() {
 
   // Show the full-screen generating overlay only when generating AND no ideas yet
   const showGeneratingEmpty =
-    (isGenerating || isStreaming) && ideas.length === 0;
+    (isGenerating || isAnyStreaming) && ideas.length === 0;
 
   // Annotation handlers
   const handleAnnotationClick = (annotation: Annotation) => {
@@ -308,7 +364,7 @@ export function TripView() {
         </div>
       ) : (
         /* Expanded sidebar */
-        <div className="flex-shrink-0 w-96 relative">
+        <div className="flex-shrink-0 w-[500px] relative">
           <button
             onClick={() => setSidebarCollapsed(true)}
             className="absolute -right-3 top-20 z-10 bg-background border rounded-full p-1 shadow-sm hover:bg-muted transition-colors"
@@ -320,7 +376,7 @@ export function TripView() {
             ideas={ideas}
             annotations={realtimeAnnotations}
             isLoading={ideasLoading}
-            isGenerating={isGenerating || isStreaming}
+            isGenerating={isGenerating || isAnyStreaming}
             tripId={tripId}
             memberId={member?.id ?? null}
             memberName={member?.displayName ?? null}
@@ -332,6 +388,12 @@ export function TripView() {
             onDrawModeToggle={handleDrawModeToggle}
             onOpenAddIdea={handleOpenAddIdea}
             totalExpected={5}
+            startHotelStreaming={startHotelStreaming}
+            isHotelStreaming={isHotelStreaming}
+            homeBaseId={homeBaseId}
+            onSetHomeBase={setHomeBase}
+            onMoreIdeas={handleMoreIdeas}
+            onMoreHotels={handleMoreHotels}
           />
         </div>
       )}
@@ -345,6 +407,7 @@ export function TripView() {
             center={mapCenter}
             tripId={tripId}
             highlightedAnnotationId={highlightedAnnotationId}
+            homeBaseId={homeBaseId}
             ref={mapViewRef}
           />
           {showGeneratingEmpty && (

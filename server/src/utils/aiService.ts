@@ -21,7 +21,7 @@ interface AIEnrichmentOutput {
   placeQuery: string;
   category?: IdeaCategory;
   costGuess?: "$" | "$" | "$$";
-  durationGuess?: "30m" | "1-2h" | "half-day";
+  durationGuess?: "30m" | "1-2h" | "half-day" | "overnight";
   iconType?: string;
 }
 
@@ -36,8 +36,8 @@ export interface ActivitySuggestion {
   name: string;
   summary: string;
   category: IdeaCategory;
-  costGuess: "$" | "$" | "$$";
-  durationGuess: "30m" | "1-2h" | "half-day";
+  costGuess: "$" | "$" | "$";
+  durationGuess: "30m" | "1-2h" | "half-day" | "overnight";
   placeQuery: string;
   tags: string[];
   iconType: string;
@@ -307,8 +307,13 @@ function validateCostGuess(value: any): "$" | "$" | "$$" | undefined {
  */
 function validateDurationGuess(
   value: any,
-): "30m" | "1-2h" | "half-day" | undefined {
-  if (value === "30m" || value === "1-2h" || value === "half-day") {
+): "30m" | "1-2h" | "half-day" | "overnight" | undefined {
+  if (
+    value === "30m" ||
+    value === "1-2h" ||
+    value === "half-day" ||
+    value === "overnight"
+  ) {
     return value;
   }
   return undefined;
@@ -745,4 +750,189 @@ CATEGORY RULES:
 - other: anything that doesn't fit above
 
 Generate exactly 3 suggestions now.`;
+}
+
+/**
+ * Price level → estimated nightly rate mapping for hotels.
+ * Google Places price_level ranges from 0 (free/cheap) to 4 (luxury).
+ */
+export const PRICE_LEVEL_TO_NIGHTLY_RATE: Record<number, number> = {
+  0: 50,
+  1: 80,
+  2: 130,
+  3: 200,
+  4: 350,
+};
+
+/**
+ * Convert a Google Places price_level to an estimated nightly rate in dollars.
+ */
+export function getNightlyRate(
+  priceLevel: number | null | undefined,
+): number | null {
+  if (priceLevel == null) return null;
+  return PRICE_LEVEL_TO_NIGHTLY_RATE[priceLevel] ?? null;
+}
+
+/**
+ * Build a hotel-specific prompt for OpenAI.
+ */
+function buildHotelPrompt(input: TripSuggestionsInput): string {
+  const { destination, durationDays, budgetLevel, interests } = input;
+
+  const durationText = durationDays
+    ? `${durationDays} day${durationDays !== 1 ? "s" : ""}`
+    : "a few days";
+  const budgetText = budgetLevel || "various price ranges";
+  const interestsText =
+    interests && interests.length > 0 ? interests.join(", ") : "general travel";
+
+  const vibeMap: Record<string, string> = {
+    art: "boutique & artsy",
+    culture: "boutique & culturally rich",
+    nightlife: "party-friendly & central",
+    nature: "eco-lodge & nature retreat",
+    adventure: "adventure-base & outdoorsy",
+    relaxation: "spa & wellness",
+    food: "foodie-friendly & neighborhood-centric",
+    shopping: "centrally located & walkable",
+  };
+
+  const vibes: string[] = [];
+  if (interests) {
+    for (const interest of interests) {
+      const key = interest.toLowerCase().trim();
+      if (vibeMap[key]) vibes.push(vibeMap[key]);
+    }
+  }
+  const vibeText =
+    vibes.length > 0 ? vibes.join(", ") : "well-rounded & comfortable";
+
+  return `Generate exactly 5 hotel/accommodation suggestions for a trip to ${destination} for ${durationText}.
+
+Traveler Preferences:
+- Budget: ${budgetText}
+- Interests: ${interestsText}
+- Trip vibe: ${vibeText}
+
+HOTEL MIX (one of each):
+1. A boutique hotel with character
+2. A well-known chain hotel (Marriott, Hilton, Hyatt, etc.)
+3. A unique/quirky stay (treehouse, capsule hotel, converted warehouse, etc.)
+4. A budget-friendly option (hostel, budget hotel, guesthouse)
+5. A luxury option (5-star, resort, premium)
+
+CRITICAL REQUIREMENTS:
+1. Use REAL hotel names that actually exist in ${destination}
+2. Suggest hotels in neighborhoods close to the main tourist/interest areas
+3. Each hotel must be a distinct, real property
+
+Return EXACTLY this JSON format:
+{
+  "suggestions": [
+    {
+      "name": "Exact hotel name",
+      "summary": "2-3 sentences. What makes it special, neighborhood, key amenities.",
+      "category": "stay",
+      "costGuess": "$|$$|$$$",
+      "durationGuess": "overnight",
+      "placeQuery": "Exact hotel name + city (e.g., 'Hotel Negresco Nice France')",
+      "tags": ["hotel-type", "neighborhood", "amenity"],
+      "iconType": "hotel"
+    }
+  ]
+}
+
+COST GUESS RULES (nightly rate):
+- "$" = under $80/night
+- "$$" = $80-200/night
+- "$$$" = over $200/night
+
+ALL suggestions must have category "stay", durationGuess "overnight", iconType "hotel".
+
+Generate 5 hotels now.`;
+}
+
+/**
+ * Generate AI hotel suggestions for a trip.
+ */
+export async function generateHotelSuggestions(
+  input: TripSuggestionsInput,
+): Promise<ActivitySuggestion[]> {
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  console.log("🏨 [Hotel Suggestions] Starting hotel suggestion generation...");
+  const fnStartTime = Date.now();
+
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is not configured");
+  }
+
+  const prompt = buildHotelPrompt(input);
+
+  try {
+    const fetchStartTime = Date.now();
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an expert travel planning assistant specializing in hotel and accommodation recommendations. You have deep knowledge of hotels worldwide. Always provide real hotel names. Respond in JSON format.",
+          },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 1200,
+        response_format: { type: "json_object" },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        `OpenAI API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`,
+      );
+    }
+
+    const data = await response.json();
+    console.log(
+      `⏱️ [TIMING] OpenAI hotel fetch: ${Date.now() - fetchStartTime}ms`,
+    );
+
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) throw new Error("No content in OpenAI response");
+
+    const parsed = JSON.parse(content);
+    if (!parsed.suggestions || !Array.isArray(parsed.suggestions)) {
+      throw new Error("Invalid response format from OpenAI");
+    }
+
+    const validatedSuggestions: ActivitySuggestion[] = parsed.suggestions.map(
+      (s: any, i: number) => ({
+        name: s.name || `Hotel ${i + 1}`,
+        summary: s.summary || "A great place to stay.",
+        category: "stay" as IdeaCategory,
+        costGuess: validateCostGuess(s.costGuess) || "$$",
+        durationGuess: "overnight" as const,
+        placeQuery: s.placeQuery || `${s.name} ${input.destination}`,
+        tags: Array.isArray(s.tags) ? s.tags.slice(0, 5) : [],
+        iconType: "hotel",
+      }),
+    );
+
+    console.log(
+      `🏨 [Hotel Suggestions] Generated ${validatedSuggestions.length} hotels in ${Date.now() - fnStartTime}ms`,
+    );
+    return validatedSuggestions;
+  } catch (error) {
+    console.error("💥 [Hotel Suggestions] Error:", error);
+    throw error;
+  }
 }

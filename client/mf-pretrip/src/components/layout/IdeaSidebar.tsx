@@ -1,46 +1,26 @@
 "use client";
 
-import { useMemo, useState, useRef, useEffect, useLayoutEffect } from "react";
-import { createPortal } from "react-dom";
+import { useMemo, useState } from "react";
 
 import { IdeaCard } from "../cards/IdeaCard";
 import { IdeaCardSkeleton } from "../cards/IdeaCardSkeleton";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import {
-  Search,
-  SlidersHorizontal,
-  Sparkles,
-  ChevronDown,
-  Clock,
-  Vote,
-} from "lucide-react";
+import { Search, Sparkles, Vote, PlusCircle, Hotel, Plus } from "lucide-react";
 import { useModals } from "../../contexts/ModalContext";
 import { AnnotationList } from "./AnnotationList";
 import { useAllTripReactions } from "../../hooks/useAllTripReactions";
 import { useTripMembers } from "../../hooks/useTripMembers";
 import { useSaveIdea } from "../../hooks/useSaveIdea";
 import { useStartItineraryBuild } from "../../hooks/useStartItineraryBuild";
+import { CategoryFilterBar } from "../filters/CategoryFilterBar";
+import { EmptyStateStays } from "../EmptyStateStays";
 import type { Database } from "@travel-app/shared-types";
 import type { Annotation } from "../../hooks/useRealtimeTrip";
 
 type Idea = Database["public"]["Tables"]["trip_reel_ideas"]["Row"];
 
 type Tab = "explore" | "saved" | "notes";
-
-/** Map trip interest (UI) → idea categories (AI). Ideas use: food, sightseeing, nature, shopping, nightlife, activity, stay, other. */
-const INTEREST_TO_IDEA_CATEGORIES: Record<string, string[]> = {
-  culture: ["sightseeing"],
-  history: ["sightseeing"],
-  art: ["sightseeing"],
-  adventure: ["activity"],
-  relaxation: ["nature", "stay"],
-  photography: ["nature", "sightseeing", "other"],
-  food: ["food"],
-  nature: ["nature"],
-  nightlife: ["nightlife"],
-  shopping: ["shopping"],
-};
 
 interface TripInfo {
   title?: string | null;
@@ -66,6 +46,19 @@ export interface IdeaSidebarProps {
   onAnnotationDelete?: (annotationId: string) => void;
   onDrawModeToggle?: (enabled: boolean) => void;
   onOpenAddIdea?: () => void;
+  startHotelStreaming?: (input: {
+    tripId: string;
+    destination: string;
+    interests?: string[];
+    budget_level?: string;
+    duration_days?: number;
+  }) => void;
+  isHotelStreaming?: boolean;
+  homeBaseId?: string | null;
+  onSetHomeBase?: (ideaId: string) => void;
+  tripDurationDays?: number | null;
+  onMoreIdeas?: () => void;
+  onMoreHotels?: () => void;
 }
 
 export function IdeaSidebar({
@@ -84,58 +77,19 @@ export function IdeaSidebar({
   onAnnotationDelete,
   onDrawModeToggle,
   onOpenAddIdea,
+  startHotelStreaming,
+  isHotelStreaming,
+  homeBaseId,
+  onSetHomeBase,
+  tripDurationDays,
+  onMoreIdeas,
+  onMoreHotels,
 }: IdeaSidebarProps) {
   const { openModal } = useModals();
   const { startBuild, isStarting } = useStartItineraryBuild();
   const [activeTab, setActiveTab] = useState<Tab>("explore");
   const [searchQuery, setSearchQuery] = useState("");
-
-  // Filter state
-  const [activeFilters, setActiveFilters] = useState<{
-    interests: boolean;
-    budget: boolean;
-    duration: boolean;
-  }>({ interests: false, budget: false, duration: false });
-
-  const [interestsDropdownOpen, setInterestsDropdownOpen] = useState(false);
-  const interestsTriggerRef = useRef<HTMLButtonElement>(null);
-  const interestsPanelRef = useRef<HTMLDivElement>(null);
-  const [interestsPanelPosition, setInterestsPanelPosition] = useState<{
-    top: number;
-    left: number;
-  } | null>(null);
-  const [portalMounted, setPortalMounted] = useState(false);
-
-  useEffect(() => {
-    setPortalMounted(true);
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!interestsDropdownOpen || !interestsTriggerRef.current) return;
-    const rect = interestsTriggerRef.current.getBoundingClientRect();
-    setInterestsPanelPosition({ top: rect.bottom + 6, left: rect.left });
-  }, [interestsDropdownOpen]);
-
-  useEffect(() => {
-    if (!interestsDropdownOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (
-        interestsTriggerRef.current?.contains(target) ||
-        interestsPanelRef.current?.contains(target)
-      ) {
-        return;
-      }
-      setInterestsDropdownOpen(false);
-    };
-    const id = setTimeout(() => {
-      document.addEventListener("mousedown", handleClickOutside);
-    }, 0);
-    return () => {
-      clearTimeout(id);
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [interestsDropdownOpen]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   const ideaIds = useMemo(() => ideas.map((i) => i.id), [ideas]);
   const { data: allReactions } = useAllTripReactions(tripId ?? null, ideaIds);
@@ -155,7 +109,7 @@ export function IdeaSidebar({
     ? Math.max(totalExpected - ideas.length, 0)
     : 0;
 
-  // Filtered ideas based on search and active filters
+  // Filtered ideas based on search and active category
   const filteredIdeas = useMemo(() => {
     let result = ideas;
 
@@ -169,48 +123,29 @@ export function IdeaSidebar({
       );
     }
 
-    // Category / interests filter (trip interests map to idea categories)
-    if (activeFilters.interests && trip?.interests?.length) {
-      const allowedCategories = new Set<string>();
-      for (const interest of trip.interests) {
-        const key = interest.toLowerCase().trim();
-        const categories = INTEREST_TO_IDEA_CATEGORIES[key];
-        if (categories) {
-          categories.forEach((c) => allowedCategories.add(c));
-        } else {
-          allowedCategories.add("other");
-        }
+    // Category filter
+    if (activeCategory) {
+      if (activeCategory === "activities") {
+        // Merged category: matches sightseeing, activity, nature, shopping, nightlife
+        const activityCats = new Set([
+          "sightseeing",
+          "activity",
+          "nature",
+          "shopping",
+          "nightlife",
+        ]);
+        result = result.filter((idea) =>
+          activityCats.has(idea.category?.trim().toLowerCase() ?? ""),
+        );
+      } else {
+        result = result.filter(
+          (idea) => idea.category?.trim().toLowerCase() === activeCategory,
+        );
       }
-      result = result.filter((idea) => {
-        const cat = idea.category?.trim().toLowerCase();
-        if (!cat) return true; // no category: keep so list doesn't empty
-        return allowedCategories.has(cat);
-      });
-    }
-
-    // Budget filter
-    if (activeFilters.budget && trip?.budget_level) {
-      result = result.filter(
-        (idea) =>
-          idea.cost_bucket?.toLowerCase() ===
-          trip.budget_level?.toLowerCase(),
-      );
-    }
-
-    // Duration filter: show only ideas with duration info; for short trips (≤2 days) prefer shorter activities
-    if (activeFilters.duration) {
-      result = result.filter((idea) => {
-        if (!idea.duration_bucket) return false;
-        if (trip?.duration_days != null && trip.duration_days <= 2) {
-          const d = idea.duration_bucket.toLowerCase();
-          return d === "30m" || d === "1-2h";
-        }
-        return true;
-      });
     }
 
     return result;
-  }, [ideas, searchQuery, activeFilters, trip]);
+  }, [ideas, searchQuery, activeCategory]);
 
   const savedIdeas = useMemo(
     () => filteredIdeas.filter((idea) => savedIdeaIds.has(idea.id)),
@@ -225,29 +160,14 @@ export function IdeaSidebar({
     }
   };
 
-  const toggleFilter = (key: "interests" | "budget" | "duration") => {
-    setActiveFilters((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const hasAnyFilterOn =
-    activeFilters.interests || activeFilters.budget || activeFilters.duration;
-  const toggleAllFilters = () => {
-    if (hasAnyFilterOn) {
-      setActiveFilters({
-        interests: false,
-        budget: false,
-        duration: false,
-      });
-    } else {
-      setActiveFilters({
-        interests: !!(trip?.interests && trip.interests.length > 0),
-        budget: !!trip?.budget_level,
-        duration: true,
-      });
-    }
-  };
-
   const displayIdeas = activeTab === "saved" ? savedIdeas : filteredIdeas;
+
+  // Check if we're filtering to stays with no results (for EmptyStateStays)
+  const isStaysCategoryEmpty =
+    activeCategory === "stay" &&
+    displayIdeas.length === 0 &&
+    !showSkeletons &&
+    !showStreaming;
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "explore", label: "Explore", count: filteredIdeas.length },
@@ -280,30 +200,22 @@ export function IdeaSidebar({
 
   return (
     <div className="h-full flex flex-col bg-background border-r">
-      {/* Trip Title */}
+      {/* Trip Title + Add button */}
       {trip?.title && (
-        <div className="flex-shrink-0 px-4 pt-4 pb-2">
-          <div className="flex items-start justify-between gap-2">
-            <h1 className="text-xl font-bold leading-tight min-w-0">
-              {trip.title}
-            </h1>
-            {!!unratedCount && unratedCount > 0 && onOpenRating && (
-              <button
-                onClick={onOpenRating}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors shrink-0"
-              >
-                <Vote className="h-3 w-3" />
-                Rate {unratedCount} left
-              </button>
-            )}
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            {activeTab === "saved"
-              ? "Your saved ideas!"
-              : activeTab === "notes"
-                ? "Your trip notes."
-                : "Let\u2019s start by brainstorming some ideas."}
-          </p>
+        <div className="flex-shrink-0 px-4 pt-4 pb-1 flex items-center justify-between gap-2">
+          <h1 className="text-xl font-bold leading-tight min-w-0 truncate">
+            {trip.title}
+          </h1>
+          {activeTab !== "notes" && (
+            <Button
+              onClick={handleAddClick}
+              size="sm"
+              className="bg-[#13BFB0] hover:bg-[#11a89b] text-white h-8 px-3 shrink-0"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Add
+            </Button>
+          )}
         </div>
       )}
 
@@ -330,149 +242,20 @@ export function IdeaSidebar({
           ))}
         </div>
 
-        {/* Search Bar + Add */}
+        {/* Category Filter Bar */}
         {activeTab !== "notes" && (
-          <div className="flex items-center gap-2 mt-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search for ideas"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-            <Button
-              onClick={handleAddClick}
-              size="sm"
-              className="bg-emerald-500 hover:bg-emerald-600 text-white h-9 px-4 shrink-0"
-            >
-              Add
-            </Button>
-          </div>
-        )}
-
-        {/* Filter Chips */}
-        {activeTab !== "notes" && (
-          <div className="flex items-center gap-2 mt-3 pb-3 overflow-x-auto">
-            <button
-              type="button"
-              onClick={toggleAllFilters}
-              className={`p-1.5 rounded-md border transition-colors shrink-0 ${
-                hasAnyFilterOn
-                  ? "border-emerald-500 bg-emerald-500/10 text-emerald-600"
-                  : "border-input hover:bg-muted text-muted-foreground"
-              }`}
-              title={hasAnyFilterOn ? "Clear all filters" : "Turn on all filters"}
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-            </button>
-
-            {trip?.interests && trip.interests.length > 0 && (
-              <div className="relative shrink-0">
-                <button
-                  ref={interestsTriggerRef}
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setInterestsDropdownOpen((open) => !open);
-                  }}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                    activeFilters.interests
-                      ? "bg-emerald-500 text-white border-emerald-500"
-                      : "bg-muted text-foreground border-transparent hover:border-border"
-                  }`}
-                  aria-expanded={interestsDropdownOpen}
-                  aria-haspopup="listbox"
-                >
-                  Interests
-                  <ChevronDown
-                    className={`h-3 w-3 transition-transform ${
-                      interestsDropdownOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-                {portalMounted &&
-                  interestsDropdownOpen &&
-                  interestsPanelPosition &&
-                  createPortal(
-                    <div
-                      ref={interestsPanelRef}
-                      className="fixed min-w-[180px] rounded-lg border border-border bg-background shadow-lg py-2 z-[9999]"
-                      style={{
-                        top: interestsPanelPosition.top,
-                        left: interestsPanelPosition.left,
-                      }}
-                      role="listbox"
-                      onMouseDown={(e) => e.stopPropagation()}
-                    >
-                      <p className="px-3 py-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-                        Trip interests
-                      </p>
-                      <ul className="max-h-48 overflow-y-auto">
-                        {trip.interests.map((interest) => (
-                          <li
-                            key={interest}
-                            className="px-3 py-1.5 text-sm capitalize"
-                          >
-                            {interest}
-                          </li>
-                        ))}
-                      </ul>
-                      <div className="border-t border-border mt-2 pt-2 px-3">
-                        <label className="flex items-center gap-2 cursor-pointer text-sm">
-                          <input
-                            type="checkbox"
-                            checked={activeFilters.interests}
-                            onChange={(e) => {
-                              setActiveFilters((prev) => ({
-                                ...prev,
-                                interests: e.target.checked,
-                              }));
-                            }}
-                            className="rounded border-input"
-                          />
-                          Filter by these interests
-                        </label>
-                      </div>
-                    </div>,
-                    document.body,
-                  )}
-              </div>
-            )}
-
-            {trip?.budget_level && (
-              <button
-                onClick={() => toggleFilter("budget")}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors shrink-0 ${
-                  activeFilters.budget
-                    ? "bg-emerald-500 text-white border-emerald-500"
-                    : "bg-muted text-foreground border-transparent hover:border-border"
-                }`}
-              >
-                Budget {trip.budget_level}
-              </button>
-            )}
-
-            <button
-              onClick={() => toggleFilter("duration")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors shrink-0 ${
-                activeFilters.duration
-                  ? "bg-emerald-500 text-white border-emerald-500"
-                  : "bg-muted text-foreground border-transparent hover:border-border"
-              }`}
-            >
-              <Clock className="h-3 w-3" />
-              Duration
-            </button>
+          <div className="mt-3 pb-3">
+            <CategoryFilterBar
+              ideas={ideas}
+              activeCategory={activeCategory}
+              onCategoryChange={setActiveCategory}
+            />
           </div>
         )}
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto min-h-0">
+      <div className="flex-1 overflow-y-auto min-h-0 scrollbar-hide">
         {activeTab === "notes" ? (
           <div className="py-4">
             <AnnotationList
@@ -497,6 +280,21 @@ export function IdeaSidebar({
                     <IdeaCardSkeleton key={`streaming-skeleton-${index}`} />
                   ))}
               </>
+            ) : isStaysCategoryEmpty && activeTab === "explore" ? (
+              <EmptyStateStays
+                onFindHotels={() => {
+                  if (startHotelStreaming && tripId && trip?.destination) {
+                    startHotelStreaming({
+                      tripId,
+                      destination: trip.destination,
+                      interests: trip.interests ?? undefined,
+                      budget_level: trip.budget_level ?? undefined,
+                      duration_days: trip.duration_days ?? undefined,
+                    });
+                  }
+                }}
+                isSearching={isHotelStreaming ?? false}
+              />
             ) : displayIdeas.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="text-4xl mb-3">
@@ -505,22 +303,22 @@ export function IdeaSidebar({
                 <p className="text-sm text-muted-foreground mb-4">
                   {activeTab === "saved"
                     ? "No saved ideas yet"
-                    : hasAnyFilterOn
-                      ? "No ideas match your filters"
+                    : activeCategory
+                      ? "No ideas in this category"
                       : searchQuery
                         ? "No ideas match your search"
                         : "No ideas yet"}
                 </p>
-                {activeTab === "explore" && hasAnyFilterOn && (
+                {activeTab === "explore" && activeCategory && (
                   <Button
-                    onClick={toggleAllFilters}
+                    onClick={() => setActiveCategory(null)}
                     size="sm"
                     variant="outline"
                   >
-                    Clear filters
+                    Show all ideas
                   </Button>
                 )}
-                {activeTab === "explore" && !searchQuery && !hasAnyFilterOn && (
+                {activeTab === "explore" && !searchQuery && !activeCategory && (
                   <Button
                     onClick={() => openModal("addIdea")}
                     size="sm"
@@ -545,16 +343,57 @@ export function IdeaSidebar({
             <span>Generating...</span>
           </div>
         )}
-        <Button
-          className="w-full bg-foreground hover:bg-foreground/90 text-background rounded-full h-11 text-sm font-medium"
-          disabled={!tripId || isStarting}
-          onClick={() => {
-            if (tripId) startBuild(tripId);
-          }}
-        >
-          <Sparkles className="h-4 w-4 mr-2" />
-          {isStarting ? "Starting…" : "Build Itinerary"}
-        </Button>
+        {/* More Ideas / More Hotels row */}
+        {(onMoreIdeas || onMoreHotels) && (
+          <div className="flex items-center gap-2">
+            {onMoreIdeas && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 h-8 text-xs font-medium"
+                disabled={isGenerating}
+                onClick={onMoreIdeas}
+              >
+                <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+                More Ideas
+              </Button>
+            )}
+            {onMoreHotels && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 h-8 text-xs font-medium"
+                disabled={isHotelStreaming}
+                onClick={onMoreHotels}
+              >
+                <Hotel className="h-3.5 w-3.5 mr-1.5" />
+                {isHotelStreaming ? "Searching…" : "More Hotels"}
+              </Button>
+            )}
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          {onOpenRating && (
+            <Button
+              variant="outline"
+              className="rounded-full h-11 px-4 text-sm font-medium text-muted-foreground border-border bg-muted hover:bg-muted/80 shrink-0"
+              onClick={onOpenRating}
+            >
+              <Vote className="h-4 w-4 mr-2" />
+              Rate
+            </Button>
+          )}
+          <Button
+            className="flex-1 bg-foreground hover:bg-foreground/90 text-background rounded-full h-11 text-sm font-medium"
+            disabled={!tripId || isStarting}
+            onClick={() => {
+              if (tripId) startBuild(tripId);
+            }}
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            {isStarting ? "Starting…" : "Build Itinerary"}
+          </Button>
+        </div>
       </div>
     </div>
   );

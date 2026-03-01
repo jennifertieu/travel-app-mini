@@ -41,6 +41,7 @@ export default defineConfig(() => {
     },
     html: {
       title: "During Trip MFE",
+      favicon: "./public/favicon.svg",
     },
     output: {
       assetPrefix: "auto",

@@ -127,6 +127,41 @@ export type Database = {
           },
         ];
       };
+      trip_photo_guides: {
+        Row: {
+          id: string;
+          trip_id: string;
+          day_number: number;
+          guide_data: Json;
+          created_at: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          trip_id: string;
+          day_number: number;
+          guide_data: Json;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          trip_id?: string;
+          day_number?: number;
+          guide_data?: Json;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "trip_photo_guides_trip_id_fkey";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       trip_members: {
         Row: {
           id: string;

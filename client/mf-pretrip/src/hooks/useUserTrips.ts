@@ -37,6 +37,7 @@ export function useUserTrips(userId: string | null) {
         `,
         )
         .eq("created_by", userId)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
       if (ownedError) throw ownedError;
@@ -53,6 +54,7 @@ export function useUserTrips(userId: string | null) {
           )
           .neq("created_by", userId)
           .eq("trip_collaborators.user_id", userId)
+          .is("deleted_at", null)
           .order("created_at", { ascending: false });
 
       if (collaborativeError) throw collaborativeError;

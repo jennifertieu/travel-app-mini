@@ -43,6 +43,7 @@ export default defineConfig({
   },
   html: {
     title: "Pre-Trip MFE",
+    favicon: "./public/favicon.svg",
   },
   output: {
     assetPrefix: "auto",

@@ -23,7 +23,7 @@ const fetchNearbyPlaces = async (
   lat: number,
   lng: number,
   placeType: string,
-  radiusMeters: number = 1500
+  radiusMeters: number = 1500,
 ): Promise<IGooglePlaceResult[]> => {
   try {
     const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radiusMeters}&type=${placeType}&key=${GOOGLE_MAPS_PLATFORM_API_KEY}`;
@@ -44,23 +44,22 @@ const fetchNearbyPlaces = async (
 
     return data.results || [];
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.error(
-      `[Decision Agent] Failed to fetch places: ${errorMessage}`
-    );
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    console.error(`[Decision Agent] Failed to fetch places: ${errorMessage}`);
     return [];
   }
 };
 
 /**
  * Calculate distance in km using Haversine formula
- * The Haversine formula calculates the great-circle distance between two points on a sphere (e.g., Earth) using their latitude and longitude. 
+ * The Haversine formula calculates the great-circle distance between two points on a sphere (e.g., Earth) using their latitude and longitude.
  */
 const calculateDistanceKm = (
   lat1: number,
   lng1: number,
   lat2: number,
-  lng2: number
+  lng2: number,
 ): number => {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -122,9 +121,7 @@ const buildContextSummary = (context: ITripContext): string => {
 /**
  * Generate rule-based fallback suggestions when AI times out
  */
-const generateFallbackResponse = (
-  context: ITripContext
-): IDecisionResponse => {
+const generateFallbackResponse = (context: ITripContext): IDecisionResponse => {
   const { schedule } = context;
   const options: IDecisionOption[] = [];
 
@@ -134,7 +131,7 @@ const generateFallbackResponse = (
       context.user.location.lat,
       context.user.location.lng,
       schedule.next_activity.location.lat,
-      schedule.next_activity.location.lng
+      schedule.next_activity.location.lng,
     );
 
     options.push({
@@ -188,24 +185,24 @@ const generateFallbackResponse = (
 
 /**
  * Run the Decision Agent to get "What Now?" suggestions
- * 
+ *
  * This is the primary AI agent for during-trip decision making. It uses OpenAI GPT-4o
  * with function calling to:
  * 1. Analyze current trip context (location, time, weather, schedule)
  * 2. Call tools to gather nearby places, travel times, food recommendations
  * 3. Generate 3-5 personalized activity suggestions
- * 
+ *
  * The agent has a 10-second timeout and maximum 10 iterations. If it times out or fails,
  * a rule-based fallback is returned with basic suggestions (next scheduled activity, rest, explore).
- * 
+ *
  * @param context - Complete trip context from buildTripContext()
  * @param logger - Optional logging function for debugging (defaults to no-op)
- * 
+ *
  * @returns Promise resolving to decision response with options and context summary
  * @returns options - Array of 3-5 activity suggestions (IDecisionOption[])
  * @returns context_summary - Human-readable summary of current situation
  * @returns fallback_used - True if AI timed out and rule-based fallback was used
- * 
+ *
  * @example
  * ```typescript
  * const response = await runDecisionAgent(context);
@@ -215,7 +212,7 @@ const generateFallbackResponse = (
  */
 export const runDecisionAgent = async (
   context: ITripContext,
-  logger?: (message: string, ...args: unknown[]) => void
+  logger?: (message: string, ...args: unknown[]) => void,
 ): Promise<IDecisionResponse> => {
   const TIMEOUT_MS = 10000; // 10 second timeout
   const MAX_ITERATIONS = 10;
@@ -264,7 +261,9 @@ When you have gathered enough information, respond with a JSON object in this ex
   "context_summary": "Brief friendly summary of the current situation"
 }`;
 
-  type Message = Parameters<typeof openai.chat.completions.create>[0]["messages"][number];
+  type Message = Parameters<
+    typeof openai.chat.completions.create
+  >[0]["messages"][number];
   const messages: Message[] = [
     { role: "system", content: systemPrompt },
     {
@@ -288,7 +287,7 @@ When you have gathered enough information, respond with a JSON object in this ex
       if (logger) logger(`[Decision Agent] Iteration ${iterations}`);
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages,
         tools: duringTripAgentTools,
         temperature: 0.3,
@@ -311,10 +310,10 @@ When you have gathered enough information, respond with a JSON object in this ex
             const jsonMatch = message.content.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
               const parsed = JSON.parse(jsonMatch[0]);
-              
+
               // Validate with zod schema
               const validated = decisionResponseSchema.parse(parsed);
-              
+
               return {
                 options: validated.options,
                 context_summary: validated.context_summary,
@@ -323,10 +322,13 @@ When you have gathered enough information, respond with a JSON object in this ex
             }
           } catch (parseError) {
             if (logger) {
-              const errorMessage = parseError instanceof Error 
-                ? parseError.message 
-                : String(parseError);
-              logger(`[Decision Agent] Failed to parse/validate response: ${errorMessage}`);
+              const errorMessage =
+                parseError instanceof Error
+                  ? parseError.message
+                  : String(parseError);
+              logger(
+                `[Decision Agent] Failed to parse/validate response: ${errorMessage}`,
+              );
             }
           }
         }
@@ -344,7 +346,9 @@ When you have gathered enough information, respond with a JSON object in this ex
         try {
           const parsedArgs = JSON.parse(args);
           if (logger)
-            logger(`[Decision Agent] Tool: ${name}, Args: ${JSON.stringify(parsedArgs)}`);
+            logger(
+              `[Decision Agent] Tool: ${name}, Args: ${JSON.stringify(parsedArgs)}`,
+            );
 
           switch (name) {
             case "get_nearby_places":
@@ -352,7 +356,7 @@ When you have gathered enough information, respond with a JSON object in this ex
                 context.user.location.lat,
                 context.user.location.lng,
                 parsedArgs.place_type,
-                parsedArgs.radius_meters || 1500
+                parsedArgs.radius_meters || 1500,
               );
               toolResult = {
                 success: true,
@@ -376,7 +380,7 @@ When you have gathered enough information, respond with a JSON object in this ex
                   latitude: parsedArgs.destination_lat,
                   longitude: parsedArgs.destination_lng,
                 },
-                parsedArgs.travel_mode || "walking"
+                parsedArgs.travel_mode || "walking",
               );
               toolResult = { success: true, data: travelResult };
               break;
@@ -395,7 +399,7 @@ When you have gathered enough information, respond with a JSON object in this ex
 
             case "get_itinerary_activity_details":
               const activity = context.schedule.today_activities.find(
-                (a) => a.id === parsedArgs.activity_id
+                (a) => a.id === parsedArgs.activity_id,
               );
               if (activity) {
                 toolResult = { success: true, data: activity };
@@ -408,7 +412,8 @@ When you have gathered enough information, respond with a JSON object in this ex
               toolResult = { success: false, error: `Unknown tool: ${name}` };
           }
         } catch (error: unknown) {
-          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
           toolResult = { success: false, error: errorMessage };
         }
 
@@ -424,7 +429,8 @@ When you have gathered enough information, respond with a JSON object in this ex
     if (logger) logger("[Decision Agent] Max iterations - using fallback");
     return generateFallbackResponse(context);
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     console.error(`[Decision Agent] Error: ${errorMessage}`);
     return generateFallbackResponse(context);
   }

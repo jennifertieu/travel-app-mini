@@ -481,10 +481,11 @@ export const MapView = forwardRef<
       }
     }
 
-    const mapInstance = L.map(mapContainerRef.current).setView(
-      initialCenter,
-      initialZoom,
-    );
+    const mapInstance = L.map(mapContainerRef.current, {
+      zoomControl: false,
+    }).setView(initialCenter, initialZoom);
+
+    L.control.zoom({ position: "topright" }).addTo(mapInstance);
 
     L.tileLayer(TILE_LAYER_CONFIG.url, {
       attribution: TILE_LAYER_CONFIG.attribution,
