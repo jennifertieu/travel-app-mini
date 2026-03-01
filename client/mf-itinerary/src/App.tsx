@@ -96,6 +96,8 @@ const App = () => {
   const annotations = useAnnotations(tripId);
   // Stable ref so useChatAgent can call fetchItinerary even though it's defined below
   const fetchItineraryRef = useRef<((id: string) => void) | null>(null);
+  // Holds the polling fallback interval so fetchItinerary can cancel it when data arrives
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const {
     messages,
     status: chatStatus,
@@ -172,10 +174,10 @@ const App = () => {
     null,
   );
 
-  const fetchItinerary = useCallback(async (id: string) => {
-    console.log("[mf-itinerary] fetchItinerary start", { tripId: id });
-    setIsLoading(true);
-    setError(null);
+  const fetchItinerary = useCallback(async (id: string, silent = false) => {
+    if (DEBUG) console.log("[mf-itinerary] fetchItinerary start", { tripId: id, silent });
+    if (!silent) setIsLoading(true);
+    if (!silent) setError(null);
 
     const fetchStart = performance.now();
     const { data, error: fetchError } = await supabase
@@ -186,17 +188,19 @@ const App = () => {
       .limit(1)
       .maybeSingle();
 
-    const fetchMs = (performance.now() - fetchStart).toFixed(0);
-    console.log("[mf-itinerary] fetchItinerary result", {
-      tripId: id,
-      hasData: !!data,
-      dataId: data?.id,
-      fetchMs: `${fetchMs}ms`,
-      error: fetchError?.message ?? null,
-    });
+    if (DEBUG) {
+      const fetchMs = (performance.now() - fetchStart).toFixed(0);
+      console.log("[mf-itinerary] fetchItinerary result", {
+        tripId: id,
+        hasData: !!data,
+        dataId: data?.id,
+        fetchMs: `${fetchMs}ms`,
+        error: fetchError?.message ?? null,
+      });
+    }
 
     if (fetchError) {
-      setError(fetchError.message);
+      if (!silent) setError(fetchError.message);
     } else if (data) {
       const startedAt = localStorage.getItem("building-itinerary-started");
       if (startedAt) {
@@ -211,9 +215,14 @@ const App = () => {
       setItinerary(data as Itinerary);
       localStorage.removeItem("building-itinerary");
       setIsBuilding(false);
+      // Stop the polling fallback now that we have data
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
     }
 
-    setIsLoading(false);
+    if (!silent) setIsLoading(false);
   }, []);
 
   // Keep ref in sync so the chat agent can trigger a refetch after confirm
@@ -282,19 +291,21 @@ const App = () => {
 
     // Polling fallback: if we're in building state, poll every 5s in case
     // Realtime misses the event (e.g. connection hiccup).
-    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    // Uses pollIntervalRef so fetchItinerary can cancel it as soon as data arrives,
+    // without waiting for the effect to tear down.
     if (buildingTripId === tripId) {
-      pollInterval = setInterval(() => {
-        console.log(
-          "[mf-itinerary] Polling fallback — checking for itinerary...",
-        );
-        fetchItinerary(tripId);
+      pollIntervalRef.current = setInterval(() => {
+        if (DEBUG) console.log("[mf-itinerary] Polling fallback — checking for itinerary...");
+        fetchItinerary(tripId, true); // silent — no loading flash while polling
       }, 5000);
     }
 
     return () => {
       supabase.removeChannel(channel);
-      if (pollInterval) clearInterval(pollInterval);
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
     };
   }, [tripId, fetchItinerary]);
 
