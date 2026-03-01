@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Navigation } from "lucide-react";
 import { MobileBottomSheet } from "./MobileBottomSheet";
 import { DayTabs } from "./DayTabs";
@@ -9,6 +9,7 @@ import {
   getCurrentDayNumber,
   groupActivitiesByTimeOfDay,
 } from "../../lib/utils";
+import { useDemoContext } from "../../demo/DemoContext";
 import type { Activity, ItineraryData, TimeOfDay } from "../../types/itinerary";
 
 interface CurrentAndNext {
@@ -27,10 +28,11 @@ const SECTION_HOUR_RANGES: Record<TimeOfDay, [number, number]> = {
 
 function getCurrentAndNextActivity(
   data: ItineraryData,
+  now?: Date,
 ): CurrentAndNext {
-  const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
+  const effectiveNow = now ?? new Date();
+  const currentHour = effectiveNow.getHours();
+  const currentMinute = effectiveNow.getMinutes();
   const nowMinutes = currentHour * 60 + currentMinute;
 
   // Find which time-of-day section "now" falls in
@@ -44,7 +46,7 @@ function getCurrentAndNextActivity(
   }
 
   // Try to match today's date, otherwise default to day 1
-  const todayStr = now.toISOString().split("T")[0];
+  const todayStr = effectiveNow.toISOString().split("T")[0];
   let dayData = data.days.find((d) => d.date === todayStr);
   if (!dayData) dayData = data.days[0];
   if (!dayData) return { current: null, next: null, currentDayNumber: 1 };
@@ -121,17 +123,25 @@ export function MobileItinerarySheet({
   onLocateActivity,
   onNavigate,
 }: MobileItinerarySheetProps) {
+  const { isDemo, demoTime } = useDemoContext();
+  const effectiveNow = isDemo ? demoTime : undefined;
+
   const { current, next, currentDayNumber } = useMemo(
-    () => getCurrentAndNextActivity(itineraryData),
-    [itineraryData],
+    () => getCurrentAndNextActivity(itineraryData, effectiveNow),
+    [itineraryData, effectiveNow],
   );
 
   const todayDayNumber = useMemo(
-    () => getCurrentDayNumber(itineraryData.days),
-    [itineraryData.days],
+    () => getCurrentDayNumber(itineraryData.days, effectiveNow),
+    [itineraryData.days, effectiveNow],
   );
 
   const [activeDay, setActiveDay] = useState(currentDayNumber);
+
+  // Sync activeDay when demo time changes the current day (or demo is toggled off)
+  useEffect(() => {
+    setActiveDay(currentDayNumber);
+  }, [currentDayNumber]);
 
   const dayData = itineraryData.days.find((d) => d.day === activeDay) ??
     itineraryData.days[0];
@@ -229,6 +239,7 @@ export function MobileItinerarySheet({
               onToggleSelect={() => {}}
               onOpenActivity={onOpenActivity}
               onLocateActivity={onLocateActivity}
+              now={effectiveNow}
             />
           ))}
         </div>

@@ -11,6 +11,7 @@ import {
 import { Globe, Calendar, Users, Settings, Menu, X } from "lucide-react";
 import { AuthProvider } from "./contexts/AuthContext";
 import { AuthNav } from "./components/AuthNav";
+import { supabase } from "./lib/supabase";
 import { AuthGuard } from "./components/AuthGuard";
 import { LandingPage } from "./components/LandingPage";
 import { TripMemberAvatars } from "./components/TripMemberAvatars";
@@ -100,12 +101,78 @@ const TripMetadata = ({ summary }: { summary: TripSummary }) => {
   );
 };
 
+const DemoToggle = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
+  <button
+    type="button"
+    onClick={onToggle}
+    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+      enabled
+        ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
+        : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+    }`}
+    aria-label={enabled ? "Disable demo mode" : "Enable demo mode"}
+  >
+    <span
+      className={`relative inline-flex w-6 h-3.5 rounded-full transition-colors ${
+        enabled ? "bg-amber-500" : "bg-gray-300"
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 w-2.5 h-2.5 bg-white rounded-full shadow transition-transform ${
+          enabled ? "translate-x-2.5" : "translate-x-0"
+        }`}
+      />
+    </span>
+    Demo
+  </button>
+);
+
 const RootLayout = () => {
   const routerState = useRouterState();
   const isLandingPage = routerState.location.pathname === "/";
   const tripSummary = useTripSummary();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [demoAccess, setDemoAccess] = useState(
+    () => localStorage.getItem("demo-access") === "true",
+  );
+  const [demoEnabled, setDemoEnabled] = useState(
+    () => localStorage.getItem("demo-enabled") === "true",
+  );
+
+  const isDuringTrip = routerState.location.pathname === "/duringtrip";
+  const showDemoToggle = isDuringTrip && demoAccess;
+
+  // Check demo access via API when on /duringtrip (falls back to localStorage cache)
+  useEffect(() => {
+    if (!isDuringTrip) return;
+    if (localStorage.getItem("demo-access") === "true") {
+      setDemoAccess(true);
+      return;
+    }
+    const checkAccess = async () => {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s?.access_token) return;
+      const apiBase =
+        (import.meta.env.PUBLIC_API_URL as string | undefined) ??
+        (import.meta.env.PUBLIC_BACKEND_URL as string | undefined) ??
+        "http://localhost:5001";
+      try {
+        const res = await fetch(`${apiBase}/demo/access`, {
+          headers: { Authorization: `Bearer ${s.access_token}` },
+        });
+        if (!res.ok) return;
+        const { allowed } = await res.json();
+        if (allowed) {
+          localStorage.setItem("demo-access", "true");
+          setDemoAccess(true);
+        }
+      } catch {
+        // fail silently
+      }
+    };
+    checkAccess();
+  }, [isDuringTrip]);
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -123,6 +190,34 @@ const RootLayout = () => {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [mobileMenuOpen]);
+
+  // Sync demo state with mf-duringtrip via custom events
+  useEffect(() => {
+    const onAccessGranted = () => {
+      setDemoAccess(true);
+      setDemoEnabled(localStorage.getItem("demo-enabled") === "true");
+    };
+    const onToggle = (e: Event) => {
+      setDemoEnabled((e as CustomEvent<{ enabled: boolean }>).detail.enabled);
+    };
+    window.addEventListener("demo-access-granted", onAccessGranted);
+    window.addEventListener("demo-toggle", onToggle);
+    return () => {
+      window.removeEventListener("demo-access-granted", onAccessGranted);
+      window.removeEventListener("demo-toggle", onToggle);
+    };
+  }, []);
+
+  const handleDemoToggle = () => {
+    const next = !demoEnabled;
+    setDemoEnabled(next);
+    if (next) {
+      localStorage.setItem("demo-enabled", "true");
+    } else {
+      localStorage.removeItem("demo-enabled");
+    }
+    window.dispatchEvent(new CustomEvent("demo-toggle", { detail: { enabled: next } }));
+  };
 
   if (isLandingPage) {
     return <Outlet />;
@@ -186,7 +281,12 @@ const RootLayout = () => {
                 </button>
               </div>
             )}
-            <div className="hidden md:block">
+            {showDemoToggle && (
+              <div className="hidden md:flex items-center">
+                <DemoToggle enabled={demoEnabled} onToggle={handleDemoToggle} />
+              </div>
+            )}
+            <div className="hidden md:flex items-center">
               <AuthNav />
             </div>
 
@@ -221,6 +321,11 @@ const RootLayout = () => {
               <Link to="/duringtrip" className={mobileNavLinkClass} activeProps={{ className: "active" }}>
                 During Trip
               </Link>
+              {showDemoToggle && (
+                <div className="pt-1">
+                  <DemoToggle enabled={demoEnabled} onToggle={() => { handleDemoToggle(); setMobileMenuOpen(false); }} />
+                </div>
+              )}
             </div>
 
             {tripSummary && (

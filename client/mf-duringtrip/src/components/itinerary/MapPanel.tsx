@@ -18,6 +18,7 @@ interface MapPanelProps {
   annotations?: Annotation[];
   userLocation?: { latitude: number; longitude: number } | null;
   focusedActivity?: Activity | null;
+  locateTrigger?: number;
 }
 
 const USER_LOCATION_ICON = L.divIcon({
@@ -49,7 +50,7 @@ const USER_LOCATION_ICON = L.divIcon({
   iconAnchor: [10, 10],
 });
 
-export function MapPanel({ activities, annotations, userLocation, focusedActivity }: MapPanelProps) {
+export function MapPanel({ activities, annotations, userLocation, focusedActivity, locateTrigger }: MapPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.LayerGroup | null>(null);
@@ -202,6 +203,20 @@ export function MapPanel({ activities, annotations, userLocation, focusedActivit
       );
     }
   }, [userLocation]);
+
+  // Fly to user location when triggered
+  useEffect(() => {
+    if (!locateTrigger || !userLocation) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const size = map.getSize();
+    const latLng = L.latLng(userLocation.latitude, userLocation.longitude);
+    if (!size.x || !size.y) {
+      map.setView(latLng, 16);
+    } else {
+      map.flyTo(latLng, 16, { duration: 0.8 });
+    }
+  }, [locateTrigger]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }

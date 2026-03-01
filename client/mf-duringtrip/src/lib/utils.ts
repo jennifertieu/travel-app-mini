@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { format, parseISO } from "date-fns";
-import type { TimeOfDay, Activity, ItineraryDay } from "../types/itinerary";
+import type { TimeOfDay, Activity, ItineraryDay, ItineraryData } from "../types/itinerary";
 
 export type ActivityStatus = "past" | "current" | "upcoming";
 
@@ -105,8 +105,8 @@ export function parseTimeToMinutes(time: string): number {
 /**
  * Returns the day number that matches today's date, or undefined if no match.
  */
-export function getCurrentDayNumber(days: ItineraryDay[]): number | undefined {
-  const todayStr = new Date().toISOString().split("T")[0];
+export function getCurrentDayNumber(days: ItineraryDay[], now?: Date): number | undefined {
+  const todayStr = (now ?? new Date()).toISOString().split("T")[0];
   const match = days.find((d) => d.date === todayStr);
   return match?.day;
 }
@@ -121,15 +121,16 @@ export function getActivityStatus(
   precedingMinutes: number,
   durationMinutes: number,
   dayDate: string,
+  now?: Date,
 ): ActivityStatus {
-  const todayStr = new Date().toISOString().split("T")[0];
+  const effectiveNow = now ?? new Date();
+  const todayStr = effectiveNow.toISOString().split("T")[0];
 
   if (dayDate < todayStr) return "past";
   if (dayDate > todayStr) return "upcoming";
 
   // Today — compare computed times to current time
-  const now = new Date();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const nowMinutes = effectiveNow.getHours() * 60 + effectiveNow.getMinutes();
 
   const { startTime, endTime } = computeDisplayTime(
     timeOfDay,
@@ -152,6 +153,7 @@ export type ActivityWithStatus = Activity & { status: ActivityStatus };
  */
 export function getAllActivitiesWithStatus(
   data: ItineraryData,
+  now?: Date,
 ): ActivityWithStatus[] {
   const result: ActivityWithStatus[] = [];
 
@@ -169,6 +171,7 @@ export function getAllActivitiesWithStatus(
           precedingMinutes,
           activity.duration_minutes,
           day.date,
+          now,
         );
         result.push({ ...activity, status });
         precedingMinutes += activity.duration_minutes;

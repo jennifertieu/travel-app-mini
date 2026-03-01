@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { LocationService } from '../services/locationService';
 import { UseLocationReturn } from '../types/location';
+import { useDemoContext } from '../demo/DemoContext';
 
 /**
  * Hook for managing geolocation state and permissions
@@ -12,6 +13,7 @@ import { UseLocationReturn } from '../types/location';
  * - Provide loading and error states
  */
 export const useLocation = (): UseLocationReturn => {
+  const { isDemo, demoLocation } = useDemoContext();
   const [position, setPosition] = useState(() => LocationService.getCachedLocation());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +77,22 @@ export const useLocation = (): UseLocationReturn => {
   const clearError = useCallback(() => {
     setError(null);
   }, []);
+
+  if (isDemo) {
+    return {
+      position: {
+        latitude: demoLocation.lat,
+        longitude: demoLocation.lng,
+        accuracy: 10,
+        timestamp: Date.now(),
+      },
+      isLoading: false,
+      error: null,
+      permissionStatus: 'granted',
+      requestLocation: async () => {},
+      clearError: () => {},
+    };
+  }
 
   return {
     position,

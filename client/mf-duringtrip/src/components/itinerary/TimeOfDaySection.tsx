@@ -21,6 +21,7 @@ interface TimeOfDaySectionProps {
   onToggleSelect: (id: string) => void;
   onOpenActivity: (activity: Activity) => void;
   onLocateActivity?: (activity: Activity) => void;
+  now?: Date;
 }
 
 export function TimeOfDaySection({
@@ -32,6 +33,7 @@ export function TimeOfDaySection({
   onToggleSelect,
   onOpenActivity,
   onLocateActivity,
+  now,
 }: TimeOfDaySectionProps) {
   if (activities.length === 0) return null;
 
@@ -59,6 +61,7 @@ export function TimeOfDaySection({
             currentPreceding,
             activity.duration_minutes,
             dayDate,
+            now,
           );
 
           return (

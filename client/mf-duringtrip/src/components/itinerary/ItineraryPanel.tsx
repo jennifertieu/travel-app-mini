@@ -1,9 +1,10 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { DayTabs } from "./DayTabs";
 import { TimeOfDaySection } from "./TimeOfDaySection";
 import { TopToolbar } from "./TopToolbar";
 import { BottomBar } from "./BottomBar";
 import { groupActivitiesByTimeOfDay, getCurrentDayNumber } from "../../lib/utils";
+import { useDemoContext } from "../../demo/DemoContext";
 import type { Activity, ItineraryData, TimeOfDay } from "../../types/itinerary";
 
 const TIME_OF_DAY_ORDER: TimeOfDay[] = ["morning", "afternoon", "evening"];
@@ -15,14 +16,22 @@ interface ItineraryPanelProps {
 }
 
 export function ItineraryPanel({ data, onOpenActivity, onLocateActivity }: ItineraryPanelProps) {
+  const { isDemo, demoTime } = useDemoContext();
+  const effectiveNow = isDemo ? demoTime : undefined;
+
   const currentDayNumber = useMemo(
-    () => getCurrentDayNumber(data.days),
-    [data.days],
+    () => getCurrentDayNumber(data.days, effectiveNow),
+    [data.days, effectiveNow],
   );
 
   const [activeDay, setActiveDay] = useState(
     currentDayNumber ?? data.days[0]?.day ?? 1,
   );
+
+  // Sync activeDay when demo time changes the current day (or demo is toggled off)
+  useEffect(() => {
+    setActiveDay(currentDayNumber ?? data.days[0]?.day ?? 1);
+  }, [currentDayNumber]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
 
@@ -137,6 +146,7 @@ export function ItineraryPanel({ data, onOpenActivity, onLocateActivity }: Itine
             onToggleSelect={handleToggleSelect}
             onOpenActivity={onOpenActivity}
             onLocateActivity={onLocateActivity}
+            now={effectiveNow}
           />
         ))}
       </div>
