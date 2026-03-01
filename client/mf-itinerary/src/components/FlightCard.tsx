@@ -50,13 +50,13 @@ function FlightDetails({
   const nextDay = isNextDay(first.departureTime, last.arrivalTime);
 
   return (
-    <div className={cn("flex flex-col gap-1.5", compact && "text-xs")}>
-      {/* Airline row */}
+    <div className={cn("flex flex-col", compact ? "gap-1.5 text-xs" : "gap-3")}>
+      {/* Airline + flight number */}
       <div className="flex items-center gap-2">
         <img
           src={flight.airlineLogo}
           alt={first.airline}
-          className="h-5 w-auto object-contain"
+          className={cn("object-contain", compact ? "h-4" : "h-5")}
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = "none";
           }}
@@ -74,40 +74,53 @@ function FlightDetails({
         </span>
       </div>
 
-      {/* Route + times */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span
-          className={cn(
-            "font-semibold text-foreground",
-            compact ? "text-xs" : "text-sm",
-          )}
-        >
-          {depTime}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {first.departureAirport}
-        </span>
-        <ArrowRight className="w-3 h-3 text-muted-foreground" />
-        <span
-          className={cn(
-            "font-semibold text-foreground",
-            compact ? "text-xs" : "text-sm",
-          )}
-        >
-          {arrTime}
-          {nextDay && (
-            <sup className="text-[10px] text-orange-500 ml-0.5">+1</sup>
-          )}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {last.arrivalAirport}
-        </span>
+      {/* Route: departure | arrow + duration | arrival */}
+      <div
+        className={cn(
+          "flex items-center gap-2",
+          compact ? "flex-wrap" : "flex-wrap sm:flex-nowrap",
+        )}
+      >
+        <div className="flex flex-col min-w-0">
+          <span
+            className={cn(
+              "font-semibold text-foreground tabular-nums",
+              compact ? "text-xs" : "text-base",
+            )}
+          >
+            {depTime}
+          </span>
+          <span className="text-xs text-muted-foreground font-medium">
+            {first.departureAirport}
+          </span>
+        </div>
+        <div className="shrink-0 flex items-center self-center">
+          <ArrowRight className="w-4 h-4 text-muted-foreground" />
+        </div>
+        <div className="flex flex-col min-w-0 text-right">
+          <span
+            className={cn(
+              "font-semibold text-foreground tabular-nums",
+              compact ? "text-xs" : "text-base",
+            )}
+          >
+            {arrTime}
+            {nextDay && (
+              <sup className="text-[10px] text-amber-600 dark:text-amber-400 ml-0.5 font-normal">
+                +1
+              </sup>
+            )}
+          </span>
+          <span className="text-xs text-muted-foreground font-medium">
+            {last.arrivalAirport}
+          </span>
+        </div>
       </div>
 
-      {/* Duration + stops + cabin + price */}
+      {/* Meta: duration, stops, cabin, price */}
       <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
         <span className="flex items-center gap-1">
-          <Clock className="w-3 h-3" />
+          <Clock className="w-3.5 h-3.5 shrink-0" />
           {formatDuration(flight.totalDurationMinutes)}
         </span>
         <span>
@@ -116,10 +129,11 @@ function FlightDetails({
             : `${flight.stops} stop${flight.stops > 1 ? "s" : ""}`}
         </span>
         <span className="capitalize">{flight.cabinClass}</span>
-        <span className="font-semibold text-foreground">
+        <span className="font-semibold text-foreground ml-auto tabular-nums">
           $
           {flight.priceTotal.toLocaleString("en-US", {
             minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
           })}
         </span>
       </div>
@@ -176,47 +190,53 @@ export function FlightCard({
   const label = direction === "outbound" ? "Outbound Flight" : "Return Flight";
 
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-zinc-700/60 bg-gray-50 dark:bg-zinc-800/60 p-3 shadow-sm">
+    <div className="rounded-xl border border-gray-200 dark:border-zinc-700/60 bg-white dark:bg-zinc-800/50 shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-2">
-        <Plane
+      <div className="flex items-center gap-2 px-4 py-3 bg-gray-50/80 dark:bg-zinc-800/80 border-b border-gray-100 dark:border-zinc-700/50">
+        <div
           className={cn(
-            "w-4 h-4",
-            direction === "outbound" ? "text-teal-600" : "text-indigo-500",
+            "flex items-center justify-center w-8 h-8 rounded-lg",
+            direction === "outbound"
+              ? "bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400"
+              : "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400",
           )}
-        />
-        <span className="text-xs font-semibold text-foreground uppercase tracking-wide">
+        >
+          <Plane className="w-4 h-4" />
+        </div>
+        <span className="text-sm font-semibold text-foreground">
           {label}
         </span>
         {selected.recommended && (
-          <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-600/10 text-teal-700 dark:text-teal-400 text-[10px] font-medium">
+          <span className="ml-auto inline-flex items-center px-2.5 py-1 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 text-xs font-medium">
             Recommended
           </span>
         )}
       </div>
 
       {/* Selected flight details */}
-      <FlightDetails flight={selected} />
+      <div className="p-4">
+        <FlightDetails flight={selected} />
 
-      {/* LLM summary */}
-      {selected.summary && (
-        <p className="mt-2 text-xs italic text-muted-foreground">
-          {selected.summary}
-        </p>
-      )}
+        {/* LLM summary */}
+        {selected.summary && (
+          <p className="mt-3 text-xs italic text-muted-foreground leading-relaxed">
+            {selected.summary}
+          </p>
+        )}
+      </div>
 
       {/* Alternatives toggle */}
       {alternatives.length > 0 && (
-        <div className="mt-3 border-t border-gray-200 dark:border-zinc-700/40 pt-2">
+        <div className="px-4 pb-4 pt-0">
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1 text-xs text-teal-600 dark:text-teal-400 hover:underline font-medium"
+            className="flex items-center gap-1.5 w-full py-2.5 rounded-lg text-xs font-medium text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors"
           >
             {expanded ? (
-              <ChevronUp className="w-3.5 h-3.5" />
+              <ChevronUp className="w-4 h-4 shrink-0" />
             ) : (
-              <ChevronDown className="w-3.5 h-3.5" />
+              <ChevronDown className="w-4 h-4 shrink-0" />
             )}
             {alternatives.length} other option
             {alternatives.length > 1 ? "s" : ""}
@@ -229,16 +249,16 @@ export function FlightCard({
                 return (
                   <div
                     key={alt.id}
-                    className="rounded-lg border border-gray-200 dark:border-zinc-700/40 bg-white dark:bg-zinc-900/40 p-2.5"
+                    className="rounded-lg border border-gray-200 dark:border-zinc-700/50 bg-gray-50/50 dark:bg-zinc-900/50 p-3"
                   >
                     <FlightDetails flight={alt} compact />
                     {alt.summary && (
-                      <p className="mt-1 text-[11px] italic text-muted-foreground">
+                      <p className="mt-2 text-[11px] italic text-muted-foreground leading-snug">
                         {alt.summary}
                       </p>
                     )}
                     {alt.recommended && (
-                      <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-600/10 text-teal-700 dark:text-teal-400 text-[10px] font-medium">
+                      <span className="inline-flex items-center mt-2 px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 text-[10px] font-medium">
                         Recommended
                       </span>
                     )}
@@ -246,9 +266,9 @@ export function FlightCard({
                       type="button"
                       disabled={selecting}
                       onClick={() => handleSelect(realIndex)}
-                      className="mt-2 w-full text-center text-xs font-medium py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white disabled:opacity-50 transition-colors"
+                      className="mt-3 w-full text-center text-xs font-medium py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white disabled:opacity-50 transition-colors"
                     >
-                      {selecting ? "Selecting…" : "Select"}
+                      {selecting ? "Selecting…" : "Select this flight"}
                     </button>
                   </div>
                 );

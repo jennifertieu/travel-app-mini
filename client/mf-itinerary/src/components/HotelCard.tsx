@@ -1,4 +1,4 @@
-import { Star } from "lucide-react";
+import { Star, Lightbulb } from "lucide-react";
 import type { HotelRecommendation } from "../types";
 
 interface HotelCardProps {
@@ -35,8 +35,9 @@ export function HotelCard({ hotel }: HotelCardProps) {
             {hotel.address}
           </p>
         )}
-        <p className="text-xs text-muted-foreground italic">
-          💡 {hotel.reason}
+        <p className="text-xs text-muted-foreground italic flex items-center gap-1">
+          <Lightbulb className="w-3.5 h-3.5 flex-shrink-0" />
+          {hotel.reason}
         </p>
       </div>
     </div>

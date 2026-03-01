@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { RefreshCw, CheckSquare, Trash2 } from "lucide-react";
+import { RefreshCw, CheckSquare, Trash2, Hotel, Plane } from "lucide-react";
 import { toast } from "sonner";
 import { getApiUrl } from "../lib/api";
 import { supabase } from "../lib/supabase";
@@ -380,8 +380,9 @@ export function ItineraryPanel({
             <HotelCard hotel={data.hotel} />
           ) : (
             <div className="rounded-xl border border-dashed border-gray-300 dark:border-zinc-600 bg-gray-50 dark:bg-zinc-800/40 p-4 text-center space-y-1">
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                🏨 Hotel info coming soon
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1.5">
+                <Hotel className="w-4 h-4" />
+                Hotel info coming soon
               </p>
               <p className="text-xs text-gray-400 dark:text-gray-500">
                 Hotel search and booking details will appear here
@@ -444,38 +445,49 @@ export function ItineraryPanel({
 
           {/* Scrollable activities */}
           <div className="flex-1 overflow-y-auto px-4 py-4">
-            {activeDayIndex === 0 && data.flights && (
-              <div className="mb-4">
-                <FlightCard
-                  direction="outbound"
-                  flights={data.flights}
-                  tripId={tripId}
-                  onFlightSwap={handleFlightSwap}
+            <div className="relative pl-8">
+              {/* Continuous vertical timeline line */}
+              <div className="absolute left-[11px] top-4 bottom-4 w-0.5 bg-teal-500/30" />
+
+              {activeDayIndex === 0 && data.flights && (
+                <div className="relative mb-4">
+                  <div className="absolute -left-8 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-teal-100 dark:bg-teal-900/40 border-2 border-teal-500 flex items-center justify-center z-10">
+                    <Plane className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                  </div>
+                  <FlightCard
+                    direction="outbound"
+                    flights={data.flights}
+                    tripId={tripId}
+                    onFlightSwap={handleFlightSwap}
+                  />
+                </div>
+              )}
+              {TIME_OF_DAY_ORDER.map((tod) => (
+                <TimeOfDaySection
+                  key={tod}
+                  timeOfDay={tod}
+                  activities={grouped[tod]}
+                  selectedIds={selectedIds}
+                  isSelectionMode={isSelectionMode}
+                  onToggleSelect={handleToggleSelect}
+                  onOpenActivity={onOpenActivity}
+                  deletedSlots={freeTimeSlotsBySection[tod]}
                 />
-              </div>
-            )}
-            {TIME_OF_DAY_ORDER.map((tod) => (
-              <TimeOfDaySection
-                key={tod}
-                timeOfDay={tod}
-                activities={grouped[tod]}
-                selectedIds={selectedIds}
-                isSelectionMode={isSelectionMode}
-                onToggleSelect={handleToggleSelect}
-                onOpenActivity={onOpenActivity}
-                deletedSlots={freeTimeSlotsBySection[tod]}
-              />
-            ))}
-            {activeDayIndex === localDays.length - 1 && data.flights && (
-              <div className="mt-4">
-                <FlightCard
-                  direction="return"
-                  flights={data.flights}
-                  tripId={tripId}
-                  onFlightSwap={handleFlightSwap}
-                />
-              </div>
-            )}
+              ))}
+              {activeDayIndex === localDays.length - 1 && data.flights && (
+                <div className="relative mt-4">
+                  <div className="absolute -left-8 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-teal-100 dark:bg-teal-900/40 border-2 border-teal-500 flex items-center justify-center z-10">
+                    <Plane className="w-3 h-3 text-teal-600 dark:text-teal-400 rotate-90" />
+                  </div>
+                  <FlightCard
+                    direction="return"
+                    flights={data.flights}
+                    tripId={tripId}
+                    onFlightSwap={handleFlightSwap}
+                  />
+                </div>
+              )}
+            </div>
             <DayTotalBar
               activityTotal={dayActivityTotal}
               transportTotal={dayTransportTotal}

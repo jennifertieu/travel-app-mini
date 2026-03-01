@@ -41,14 +41,19 @@ export function TimeOfDaySection({
     const totalFreed = deletedSlots.reduce((sum, s) => sum + s.freedMinutes, 0);
     return (
       <div className="mb-6">
-        <div className="flex items-center gap-2 mb-3">
-          <Icon className="w-4 h-4 text-teal-600" />
+        <div className="relative flex items-center gap-2 mb-3">
+          <div className="absolute -left-8 w-6 h-6 rounded-full bg-teal-100 dark:bg-teal-900/40 border-2 border-teal-500 flex items-center justify-center z-10">
+            <Icon className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+          </div>
           <h3 className="text-sm font-semibold text-teal-600 uppercase tracking-wide">
             {label}
           </h3>
         </div>
         <div className="flex flex-col gap-2">
-          <FreeTimeCard freedMinutes={totalFreed} />
+          <div className="relative">
+            <div className="absolute -left-8 top-1/2 -translate-y-1/2 ml-[7px] w-2.5 h-2.5 rounded-full bg-teal-500/40 border-2 border-teal-500/60 z-10" />
+            <FreeTimeCard freedMinutes={totalFreed} />
+          </div>
         </div>
       </div>
     );
@@ -67,11 +72,13 @@ export function TimeOfDaySection({
   const items: React.ReactNode[] = [];
 
   for (let idx = 0; idx <= activities.length; idx++) {
-    // Insert free time card before this index if a slot exists here
     const freed = slotsByPosition.get(idx);
     if (freed) {
       items.push(
-        <FreeTimeCard key={`free-${timeOfDay}-${idx}`} freedMinutes={freed} />,
+        <div key={`free-${timeOfDay}-${idx}`} className="relative">
+          <div className="absolute -left-8 top-1/2 -translate-y-1/2 ml-[7px] w-2.5 h-2.5 rounded-full bg-teal-500/40 border-2 border-teal-500/60 z-10" />
+          <FreeTimeCard freedMinutes={freed} />
+        </div>,
       );
     }
 
@@ -82,25 +89,29 @@ export function TimeOfDaySection({
       precedingMinutes += activity.duration_minutes ?? 60;
 
       items.push(
-        <ActivityCard
-          key={activityId}
-          activity={activity}
-          timeOfDay={timeOfDay}
-          indexInSection={idx}
-          precedingMinutes={currentPreceding}
-          isSelected={selectedIds.has(activityId)}
-          isSelectionMode={isSelectionMode}
-          onToggleSelect={() => onToggleSelect(activityId)}
-          onOpen={() => onOpenActivity(activity)}
-        />,
+        <div key={activityId} className="relative">
+          <div className="absolute -left-8 top-1/2 -translate-y-1/2 ml-[7px] w-2.5 h-2.5 rounded-full bg-teal-500/40 border-2 border-teal-500/60 z-10" />
+          <ActivityCard
+            activity={activity}
+            timeOfDay={timeOfDay}
+            indexInSection={idx}
+            precedingMinutes={currentPreceding}
+            isSelected={selectedIds.has(activityId)}
+            isSelectionMode={isSelectionMode}
+            onToggleSelect={() => onToggleSelect(activityId)}
+            onOpen={() => onOpenActivity(activity)}
+          />
+        </div>,
       );
     }
   }
 
   return (
     <div className="mb-6">
-      <div className="flex items-center gap-2 mb-3">
-        <Icon className="w-4 h-4 text-teal-600" />
+      <div className="relative flex items-center gap-2 mb-3">
+        <div className="absolute -left-8 w-6 h-6 rounded-full bg-teal-100 dark:bg-teal-900/40 border-2 border-teal-500 flex items-center justify-center z-10">
+          <Icon className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+        </div>
         <h3 className="text-sm font-semibold text-teal-600 uppercase tracking-wide">
           {label}
         </h3>
