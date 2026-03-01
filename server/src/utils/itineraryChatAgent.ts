@@ -1,7 +1,11 @@
 import { openai } from "../config.js";
 import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { itineraryChatAgentTools } from "../tools/itineraryChatAgentTools.js";
-import { IChatSession, computeChanges, IItineraryChange } from "./chatSessionManager.js";
+import {
+  IChatSession,
+  computeChanges,
+  IItineraryChange,
+} from "./chatSessionManager.js";
 import { assignActivityToDay, IItinerary } from "./assignActivityToDay.js";
 import { removeActivityFromDay } from "./removeActivityFromDay.js";
 import { moveActivity } from "./moveActivity.js";
@@ -27,7 +31,7 @@ const buildSystemPrompt = (itinerary: IItinerary): string => {
       const activities = day.activities
         .map(
           (a) =>
-            `    - [${a.time_of_day || "unset"}] ${a.title || a.name || a.id} (ID: ${a.id})${a.type === "travel" ? " [TRAVEL]" : ""}`
+            `    - [${a.time_of_day || "unset"}] ${a.title || a.name || a.id} (ID: ${a.id})${a.type === "travel" ? " [TRAVEL]" : ""}`,
         )
         .join("\n");
       return `  Day ${day.day_number} (${day.date}):\n${activities || "    (empty)"}`;
@@ -79,14 +83,14 @@ Important rules:
  */
 const findActivityInItinerary = (
   itinerary: IItinerary,
-  activityId: string
+  activityId: string,
 ): any | null => {
   for (const day of itinerary.days) {
     const activity = day.activities.find((a) => a.id === activityId);
     if (activity) return activity;
   }
   const poolActivity = itinerary.activities_pool.find(
-    (a) => a.id === activityId
+    (a) => a.id === activityId,
   );
   if (poolActivity) return poolActivity;
   return null;
@@ -99,7 +103,7 @@ const findActivityInItinerary = (
 const executeToolCall = async (
   name: string,
   parsedArgs: any,
-  itinerary: IItinerary
+  itinerary: IItinerary,
 ): Promise<IToolCallResult> => {
   switch (name) {
     case "assign_activity_to_day": {
@@ -161,7 +165,7 @@ const executeToolCall = async (
 
     case "check_day_conflicts": {
       const dayFromItinerary = itinerary.days.find(
-        (d) => d.day_number === parsedArgs.day_number
+        (d) => d.day_number === parsedArgs.day_number,
       );
       if (!dayFromItinerary) {
         return {
@@ -190,7 +194,7 @@ const executeToolCall = async (
     case "get_activity_details": {
       const activity = findActivityInItinerary(
         itinerary,
-        parsedArgs.activity_id
+        parsedArgs.activity_id,
       );
       if (!activity) {
         return { success: false, error: "Activity not found" };
@@ -202,11 +206,11 @@ const executeToolCall = async (
     case "get_all_travel_times": {
       const fromAct = findActivityInItinerary(
         itinerary,
-        parsedArgs.from_activity_id
+        parsedArgs.from_activity_id,
       );
       const toAct = findActivityInItinerary(
         itinerary,
-        parsedArgs.to_activity_id
+        parsedArgs.to_activity_id,
       );
 
       if (!fromAct || !toAct) {
@@ -230,7 +234,7 @@ const executeToolCall = async (
       const travelOptions = await findBestTravelMode(
         { latitude: fromAct.latitude, longitude: fromAct.longitude },
         { latitude: toAct.latitude, longitude: toAct.longitude },
-        parsedArgs.available_minutes
+        parsedArgs.available_minutes,
       );
       return {
         success: true,
@@ -268,7 +272,7 @@ const executeToolCall = async (
 export const streamItineraryChatAgent = async (
   session: IChatSession,
   userMessage: string,
-  emitter: (event: string, data: any) => void
+  emitter: (event: string, data: any) => void,
 ): Promise<void> => {
   const { draftItinerary, messages } = session;
 
@@ -296,7 +300,7 @@ export const streamItineraryChatAgent = async (
     iterations++;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages,
       tools: itineraryChatAgentTools,
       temperature: 0.3,

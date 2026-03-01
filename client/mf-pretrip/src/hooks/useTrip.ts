@@ -20,6 +20,7 @@ export function useTrip(tripId: string | null) {
         .from("trips")
         .select("*")
         .eq("id", tripId)
+        .is("deleted_at", null)
         .maybeSingle();
 
       if (error) throw error;
@@ -77,14 +78,17 @@ export function useUpdateTrip(tripId: string) {
 }
 
 /**
- * Hard delete an existing trip
+ * Soft delete an existing trip (sets deleted_at timestamp)
  */
 export function useDeleteTrip(tripId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("trips").delete().eq("id", tripId);
+      const { error } = await supabase
+        .from("trips")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", tripId);
 
       if (error) throw error;
       return true;

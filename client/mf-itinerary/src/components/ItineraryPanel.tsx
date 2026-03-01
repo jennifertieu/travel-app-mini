@@ -8,6 +8,7 @@ import { TopToolbar } from "./TopToolbar";
 import { BottomBar } from "./BottomBar";
 import { PhotoGuideModal } from "./PhotoGuideModal";
 import { BudgetSummary } from "./BudgetSummary";
+import { TravelGuidePanel } from "./TravelGuidePanel";
 import { DayTotalBar } from "./DayTotalBar";
 import { FlightCard } from "./FlightCard";
 import { HotelCard } from "./HotelCard";
@@ -44,6 +45,7 @@ export function ItineraryPanel({
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [budgetTabActive, setBudgetTabActive] = useState(false);
   const [travelTabActive, setTravelTabActive] = useState(false);
+  const [guideTabActive, setGuideTabActive] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [showPhotoGuide, setShowPhotoGuide] = useState(false);
@@ -246,22 +248,33 @@ export function ItineraryPanel({
           activeDayIndex={activeDayIndex}
           budgetTabActive={budgetTabActive}
           travelTabActive={travelTabActive}
+          guideTabActive={guideTabActive}
           hasFlights={!!data.flights}
           onSelectDay={(index) => {
             setActiveDayIndex(index);
             setBudgetTabActive(false);
             setTravelTabActive(false);
+            setGuideTabActive(false);
             setSelectedIds(new Set());
           }}
           onSelectBudget={() => {
             setBudgetTabActive(true);
             setTravelTabActive(false);
+            setGuideTabActive(false);
             setSelectedIds(new Set());
             setIsSelectionMode(false);
           }}
           onSelectTravel={() => {
             setTravelTabActive(true);
             setBudgetTabActive(false);
+            setGuideTabActive(false);
+            setSelectedIds(new Set());
+            setIsSelectionMode(false);
+          }}
+          onSelectGuide={() => {
+            setGuideTabActive(true);
+            setBudgetTabActive(false);
+            setTravelTabActive(false);
             setSelectedIds(new Set());
             setIsSelectionMode(false);
           }}
@@ -342,6 +355,11 @@ export function ItineraryPanel({
               </p>
             </div>
           )}
+        </div>
+      ) : guideTabActive ? (
+        /* Guide tab content */
+        <div className="flex-1 overflow-y-auto">
+          <TravelGuidePanel tripId={tripId} destination={data.destination} />
         </div>
       ) : (
         <>

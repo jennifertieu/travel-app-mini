@@ -180,43 +180,31 @@ export interface PhotoGuideData {
   tips: PhotoTip[];
 }
 
-/** Describes a free time slot to render where deleted activities were */
-export interface FreeTimeSlot {
-  timeOfDay: TimeOfDay;
-  position: number; // index in the section where the card appears
-  freedMinutes: number; // total freed duration
-}
-
-// Photo Guide (selfie tips, poses, challenges)
-export type PhotoChallengeDifficulty = "easy" | "medium" | "silly";
-
-export interface PhotoChallenge {
-  description: string;
-  difficulty: PhotoChallengeDifficulty;
-}
-
-export interface PhotoTip {
-  activity_name: string;
-  image_url?: string;
-  /** Multiple Google (Places) photos for this activity; first is used for selfie generation. */
-  image_urls?: string[];
-  /** Cached AI-generated selfie image (base64), when available. */
-  generated_selfie_base64?: string;
-  selfie_tip: string;
-  pose_idea: string;
-  best_time: string;
-  is_group_spot: boolean;
-  group_tip?: string;
-  challenge?: PhotoChallenge;
-}
-
-export interface PoseOfTheDay {
+export interface GuideSection {
+  id: string;
+  icon: string;
   title: string;
-  description: string;
-  difficulty: PhotoChallengeDifficulty;
+  tips: string[];
 }
 
-export interface PhotoGuideData {
-  pose_of_the_day: PoseOfTheDay;
-  tips: PhotoTip[];
+export interface DestinationGuide {
+  destination: string;
+  sections: GuideSection[];
+  generated_at: string;
+}
+
+export interface ActivitySpotlight {
+  activity_name: string;
+  hero_photo?: string;
+  editorial_blurb: string;
+  insider_tips: string[];
+  best_time: string;
+  budget_tip: string;
+  etiquette_tip?: string;
+}
+
+export interface ActivitySpotlightsGuide {
+  destination: string;
+  spotlights: ActivitySpotlight[];
+  generated_at: string;
 }

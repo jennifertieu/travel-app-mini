@@ -6,6 +6,7 @@ import duringTripRoutes from "./routes/duringTrip.routes.js";
 import suggestionsRoutes from "./routes/suggestions.routes.js";
 import areaSearchRoutes from "./routes/areaSearch.routes.js";
 import placesRoutes from "./routes/places.routes.js";
+import travelGuideRoutes from "./routes/travelGuide.routes.js";
 import express from "express";
 import { PORT } from "./config.js";
 import cors from "cors";
@@ -31,6 +32,7 @@ app.use("/during-trip", duringTripRoutes);
 app.use("/suggestions", suggestionsRoutes);
 app.use("/suggestions/area-search", areaSearchRoutes);
 app.use("/places", placesRoutes);
+app.use("/travel-guide", travelGuideRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on Port: ${PORT}`);
