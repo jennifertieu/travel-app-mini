@@ -126,6 +126,16 @@ const App = () => {
   const dragStartWidth = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // --- Itinerary / Map panel resize drag state ---
+  const ITINERARY_MIN_WIDTH = 280;
+  const MAP_MIN_WIDTH = 240;
+  const [itineraryWidth, setItineraryWidth] = useState<number | null>(null);
+  const [isDraggingMapHandle, setIsDraggingMapHandle] = useState(false);
+  const isDraggingMap = useRef(false);
+  const dragStartMapX = useRef(0);
+  const dragStartItineraryWidth = useRef(0);
+  const itineraryPanelRef = useRef<HTMLDivElement>(null);
+
   const handleDragStart = useCallback(
     (clientX: number) => {
       isDragging.current = true;
@@ -166,6 +176,40 @@ const App = () => {
       document.removeEventListener("mouseup", onMouseUp);
     };
   }, []);
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDraggingMap.current) return;
+      const delta = e.clientX - dragStartMapX.current;
+      const containerWidth =
+        containerRef.current?.offsetWidth ?? window.innerWidth;
+      const chatPanelWidth = isChatOpen ? chatWidth + 12 : 0;
+      const availableWidth = containerWidth - chatPanelWidth - 12;
+      setItineraryWidth(
+        Math.max(
+          ITINERARY_MIN_WIDTH,
+          Math.min(
+            dragStartItineraryWidth.current + delta,
+            availableWidth - MAP_MIN_WIDTH,
+          ),
+        ),
+      );
+    };
+    const onMouseUp = () => {
+      if (!isDraggingMap.current) return;
+      isDraggingMap.current = false;
+      setIsDraggingMapHandle(false);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [isChatOpen, chatWidth]);
+
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isBuilding, setIsBuilding] = useState(false);
@@ -454,7 +498,16 @@ const App = () => {
 
           {/* Itinerary panel */}
           <div
-            className={cn(isChatOpen ? "flex-1" : "w-1/2", "overflow-y-auto")}
+            ref={itineraryPanelRef}
+            style={
+              itineraryWidth != null
+                ? { width: itineraryWidth, flexShrink: 0 }
+                : undefined
+            }
+            className={cn(
+              itineraryWidth == null && (isChatOpen ? "flex-1" : "w-1/2"),
+              "overflow-y-auto",
+            )}
           >
             <ItineraryPanel
               data={itineraryData}
@@ -466,7 +519,35 @@ const App = () => {
             />
           </div>
 
-          <div className={cn(isChatOpen ? "flex-1" : "w-1/2", "relative")}>
+          {/* Drag handle between itinerary and map — always visible */}
+          <div
+            onMouseDown={(e) => {
+              e.preventDefault();
+              dragStartItineraryWidth.current =
+                itineraryPanelRef.current?.offsetWidth ?? 0;
+              isDraggingMap.current = true;
+              dragStartMapX.current = e.clientX;
+              setIsDraggingMapHandle(true);
+              document.body.style.cursor = "col-resize";
+              document.body.style.userSelect = "none";
+            }}
+            onDoubleClick={() => setItineraryWidth(null)}
+            className="flex-shrink-0 flex items-center justify-center w-3 cursor-col-resize group relative bg-border/40 hover:bg-teal-500/15 transition-colors duration-150 border-x border-border"
+          >
+            <svg
+              width="6"
+              height="24"
+              viewBox="0 0 6 24"
+              className="text-muted-foreground/60 group-hover:text-teal-500 transition-colors duration-150"
+              fill="currentColor"
+            >
+              <circle cx="3" cy="5" r="1.75" />
+              <circle cx="3" cy="12" r="1.75" />
+              <circle cx="3" cy="19" r="1.75" />
+            </svg>
+          </div>
+
+          <div className="flex-1 relative">
             <MapPanel
               activities={itineraryData.days.flatMap((d) => d.activities)}
               annotations={annotations}
