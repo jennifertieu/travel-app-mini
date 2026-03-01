@@ -1,4 +1,13 @@
 // Service Worker for During Trip PWA
+
+// Dev mode: bypass all caching to avoid interfering with Rsbuild HMR WebSocket reconnections.
+// The SW install/activate still runs so navigator.serviceWorker.ready resolves, but no
+// fetch interception occurs — every request goes straight to the network.
+if (self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1') {
+  self.addEventListener('install', () => self.skipWaiting());
+  self.addEventListener('activate', () => self.clients.claim());
+} else {
+
 const CACHE_NAME = 'duringtrip-v1';
 const urlsToCache = [
   '/',
@@ -131,3 +140,5 @@ self.addEventListener('notificationclick', (event) => {
     );
   }
 });
+
+} // end production-only block

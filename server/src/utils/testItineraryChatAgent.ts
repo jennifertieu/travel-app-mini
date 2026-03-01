@@ -92,7 +92,10 @@ const printItinerary = (label: string, itinerary: IItinerary) => {
 };
 
 const createSession = async (userId: string): Promise<IChatSession> => {
-  return getOrCreateSession(TRIP_ID, userId, async () => createMockItinerary());
+  return getOrCreateSession(TRIP_ID, userId, async () => ({
+    id: "test-row-id",
+    itinerary: createMockItinerary(),
+  }));
 };
 
 const sendMessage = async (session: IChatSession, userMessage: string) => {
@@ -246,7 +249,7 @@ const test10EmptyPool = async () => {
   const session = await getOrCreateSession(
     TRIP_ID,
     "test-user-empty-pool",
-    async () => emptyPoolItinerary
+    async () => ({ id: "test-row-id-empty-pool", itinerary: emptyPoolItinerary })
   );
   printItinerary("Before", session.draftItinerary);
   await sendMessage(session, "Add the Palace of Versailles to day 1 morning");

@@ -38,7 +38,7 @@ export const chatWithAgent = async (
     const session = await getOrCreateSession(tripId, userId, async () => {
       const { data, error } = await supabase
         .from("trip_itineraries")
-        .select("itinerary")
+        .select("id, itinerary")
         .eq("trip_id", tripId)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -48,7 +48,7 @@ export const chatWithAgent = async (
         throw new Error("Itinerary not found for this trip");
       }
 
-      return data.itinerary as IItinerary;
+      return { id: data.id as string, itinerary: data.itinerary as IItinerary };
     });
 
     await streamItineraryChatAgent(session, message, sendEvent);
@@ -81,7 +81,7 @@ export const confirmChanges = async (
   const { error } = await supabase
     .from("trip_itineraries")
     .update({ itinerary: session.draftItinerary })
-    .eq("trip_id", tripId);
+    .eq("id", session.itineraryRowId);
 
   if (error) {
     console.error("Failed to save itinerary changes:", error);

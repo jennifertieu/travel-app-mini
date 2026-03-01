@@ -19,20 +19,24 @@ export const removeActivityFromDay = (
   args: IRemoveActivityArgs
 ) => {
   try {
-    const { activity_id, day_number, return_to_pool } = args;
+    const { activity_id, return_to_pool } = args;
 
-    const day = itinerary.days.find((d) => d.day_number === day_number);
-    if (!day) {
-      return { success: false, error: "Day not found in itinerary" };
+    // Search all days for the activity (day_number hint is unreliable after swaps/moves)
+    let day = null;
+    let activityIndex = -1;
+    for (const d of itinerary.days) {
+      const idx = d.activities.findIndex((a) => a.id === activity_id);
+      if (idx !== -1) {
+        day = d;
+        activityIndex = idx;
+        break;
+      }
     }
 
-    const activityIndex = day.activities.findIndex(
-      (a) => a.id === activity_id
-    );
-    if (activityIndex === -1) {
+    if (!day || activityIndex === -1) {
       return {
         success: false,
-        error: `Activity ${activity_id} not found on day ${day_number}`,
+        error: `Activity ${activity_id} not found in any day`,
       };
     }
 
@@ -45,7 +49,7 @@ export const removeActivityFromDay = (
 
     return {
       success: true,
-      message: `Removed activity ${activity_id} from day ${day_number}${return_to_pool ? " (returned to pool)" : " (discarded)"}`,
+      message: `Removed activity ${activity_id} from day ${day.day_number}${return_to_pool ? " (returned to pool)" : " (discarded)"}`,
     };
   } catch (error: any) {
     return {

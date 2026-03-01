@@ -1,4 +1,5 @@
-import { lazy, Suspense, useState, useRef, useEffect } from "react";
+import { lazy, Suspense, useState, useRef, useEffect, useCallback, Component } from "react";
+import type { ReactNode } from "react";
 import {
   createRouter,
   createRootRoute,
@@ -33,12 +34,96 @@ const ItineraryApp = lazy(() =>
     return { default: () => <div>Error loading Itinerary app</div> };
   }),
 );
-const DuringtripApp = lazy(() =>
-  import("duringtrip_main/App").catch((err) => {
+// DuringtripLoader: retries the Module Federation import when 3003 is slow to start.
+// MF marks a failed remote as permanently broken in memory, so we force a re-import by
+// creating a new lazy() promise on each retry attempt.
+// Uses a class ErrorBoundary to catch Suspense/lazy errors (React requires class components for this).
+
+interface ErrorBoundaryProps {
+  onError: () => void;
+  children: ReactNode;
+  retryKey: number;
+}
+interface ErrorBoundaryState { hasError: boolean }
+
+class DuringtripErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(err: Error) {
     console.error("Failed to load duringtrip app:", err);
-    return { default: () => <div>Error loading During Trip app</div> };
-  }),
-);
+    this.props.onError();
+  }
+
+  componentDidUpdate(prev: ErrorBoundaryProps) {
+    if (prev.retryKey !== this.props.retryKey) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
+const makeDuringtripApp = () => lazy(() => import("duringtrip_main/App"));
+
+const DuringtripLoader = () => {
+  const [retryKey, setRetryKey] = useState(0);
+  const [failed, setFailed] = useState(false);
+  const AppRef = useRef(makeDuringtripApp());
+  const retried = useRef(false);
+
+  const retry = useCallback(() => {
+    AppRef.current = makeDuringtripApp();
+    retried.current = false;
+    setFailed(false);
+    setRetryKey((k) => k + 1);
+  }, []);
+
+  // Auto-retry once after 2s to handle the case where 3003 started slowly
+  useEffect(() => {
+    if (!failed || retried.current) return;
+    retried.current = true;
+    const t = setTimeout(retry, 2000);
+    return () => clearTimeout(t);
+  }, [failed, retry]);
+
+  if (failed) {
+    return (
+      <div style={{ padding: "2rem", textAlign: "center" }}>
+        <p style={{ marginBottom: "1rem", color: "#6b7280" }}>
+          During Trip is taking a moment to load...
+        </p>
+        <button
+          onClick={retry}
+          style={{
+            padding: "0.5rem 1.25rem",
+            borderRadius: "0.375rem",
+            border: "1px solid #d1d5db",
+            cursor: "pointer",
+            fontSize: "0.875rem",
+          }}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const App = AppRef.current;
+  return (
+    <DuringtripErrorBoundary retryKey={retryKey} onError={() => setFailed(true)}>
+      <Suspense fallback={<LoadingFallback name="During Trip" />}>
+        <App key={retryKey} />
+      </Suspense>
+    </DuringtripErrorBoundary>
+  );
+};
 
 // Loading fallback component
 const LoadingFallback = ({ name }: { name: string }) => (
@@ -523,9 +608,7 @@ const duringtripRoute = createRoute({
   path: "/duringtrip",
   component: () => (
     <AuthGuard>
-      <Suspense fallback={<LoadingFallback name="During Trip" />}>
-        <DuringtripApp />
-      </Suspense>
+      <DuringtripLoader />
     </AuthGuard>
   ),
 });

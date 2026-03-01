@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import type { Json } from "@travel-app/shared-types";
 import type {
@@ -46,6 +46,15 @@ export function useItineraryDeletion(
   const [savedSnapshot, setSavedSnapshot] = useState<ItineraryDay[]>(
     initialData.days,
   );
+
+  // Sync localDays when the upstream itinerary data changes (e.g. after chat agent confirm).
+  // Only reset if there are no pending local edits — prevents blowing away in-progress deletions.
+  useEffect(() => {
+    if (deletionStack.length === 0) {
+      setLocalDays(initialData.days);
+      setSavedSnapshot(initialData.days);
+    }
+  }, [initialData.days]);
 
   // --- deleteSelected: removes selected activities, pushes to undo stack ---
   const deleteSelected = useCallback(

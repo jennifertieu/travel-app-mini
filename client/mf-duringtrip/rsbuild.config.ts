@@ -36,8 +36,15 @@ export default defineConfig(() => {
       }),
       ...(useZephyr ? [withZephyr()] : []),
     ],
+    dev: {
+      // Pin HMR to avoid auto-detected URLs mismatching in Module Federation setups.
+      // Disable liveReload so non-JS changes don't trigger full process restarts.
+      hmr: true,
+      liveReload: false,
+    },
     server: {
       port: 3003,
+      host: "localhost",
     },
     html: {
       title: "During Trip MFE",

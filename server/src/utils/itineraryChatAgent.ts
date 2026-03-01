@@ -73,7 +73,22 @@ Important rules:
 - CORRECT example (after calling swap_activities tool):
   Swapping morning and afternoon on Day 1. Here's the proposal:
   - **Ben Thanh Market** → Morning
-  - **Bitexco Financial Tower Sky Deck** → Afternoon`;
+  - **Bitexco Financial Tower Sky Deck** → Afternoon
+- CORRECT example (after calling remove_activity_from_day tool):
+  Removed Bitexco Financial Tower Sky Deck from Day 1 evening. Here's the updated Day 1:
+  - **Morning**: Free Time
+  - **Afternoon**: Ngon Villa
+  - **Evening**: (empty)
+- CORRECT example (after calling move_activity tool):
+  Moved Ben Thanh Market to Day 2 morning. Here's the updated Day 2:
+  - **Morning**: Ben Thanh Market
+  - **Afternoon**: Free Time
+  - **Evening**: Saigon River Dinner Cruise
+- CORRECT example (after calling assign_activity_to_day tool):
+  Added Ngon Villa to Day 3 morning. Here's the updated Day 3:
+  - **Morning**: Ngon Villa
+  - **Afternoon**: Free Time
+  - **Evening**: Free Time`;
 };
 
 /**

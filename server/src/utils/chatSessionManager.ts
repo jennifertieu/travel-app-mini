@@ -32,6 +32,7 @@ export interface ISystemEvent {
 export interface IChatSession {
   tripId: string;
   userId: string;
+  itineraryRowId: string;
   originalItinerary: IItinerary;
   draftItinerary: IItinerary;
   messages: ChatCompletionMessageParam[];
@@ -53,7 +54,7 @@ const sessionKey = (tripId: string, userId: string) =>
 export const getOrCreateSession = async (
   tripId: string,
   userId: string,
-  fetchItinerary: () => Promise<IItinerary>
+  fetchItinerary: () => Promise<{ id: string; itinerary: IItinerary }>
 ): Promise<IChatSession> => {
   const key = sessionKey(tripId, userId);
   const existing = sessions.get(key);
@@ -63,11 +64,12 @@ export const getOrCreateSession = async (
     return existing;
   }
 
-  const savedItinerary = await fetchItinerary();
+  const { id: itineraryRowId, itinerary: savedItinerary } = await fetchItinerary();
 
   const session: IChatSession = {
     tripId,
     userId,
+    itineraryRowId,
     originalItinerary: structuredClone(savedItinerary),
     draftItinerary: structuredClone(savedItinerary),
     messages: [],
