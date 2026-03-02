@@ -3,7 +3,7 @@ import {
   AMADEUS_API_SECRET,
   AMADEUS_BASE_URL,
   openai,
-} from "../config";
+} from "../config.js";
 
 // ── Server-side flight types (mirrors client types) ──────────────────────
 

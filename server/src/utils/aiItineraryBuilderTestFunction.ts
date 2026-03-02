@@ -1,5 +1,5 @@
-import { ITripIdea } from "../types/interface";
-import { aiItineraryBuilderAgent } from "./aiItineraryBuilderAgent";
+import { ITripIdea } from "../types/interface.js";
+import { aiItineraryBuilderAgent } from "./aiItineraryBuilderAgent.js";
 
 // Mock trip data - 5 day trip through Southern France
 const mockTrip = {
@@ -70,7 +70,7 @@ const mockIdeas: ITripIdea[] = [
     summary: "Stroll down the famous avenue and climb the Arc de Triomphe",
     location: "Champs-Élysées, Paris, France",
     latitude: 48.8738,
-    longitude: 2.2950,
+    longitude: 2.295,
     time_of_day: "afternoon",
     duration_bucket: "2h",
     cost_bucket: "$",
@@ -117,7 +117,7 @@ const mockIdeas: ITripIdea[] = [
     title: "Vieux Lyon (Old Town)",
     summary: "Wander through Renaissance-era streets and traboules passages",
     location: "Vieux Lyon, Lyon, France",
-    latitude: 45.7620,
+    latitude: 45.762,
     longitude: 4.8271,
     time_of_day: "afternoon",
     duration_bucket: "2h",
@@ -129,10 +129,11 @@ const mockIdeas: ITripIdea[] = [
     id: "lyon-3",
     trip_id: "mock-trip-id",
     title: "Les Halles de Lyon Paul Bocuse",
-    summary: "Famous food market - taste local cheeses, charcuterie, and pastries",
+    summary:
+      "Famous food market - taste local cheeses, charcuterie, and pastries",
     location: "Les Halles, Lyon, France",
-    latitude: 45.7630,
-    longitude: 4.8520,
+    latitude: 45.763,
+    longitude: 4.852,
     time_of_day: "morning",
     duration_bucket: "1h",
     cost_bucket: "$$",
@@ -163,7 +164,8 @@ const mockIdeas: ITripIdea[] = [
     id: "marseille-2",
     trip_id: "mock-trip-id",
     title: "Le Panier (Old Quarter)",
-    summary: "Oldest neighborhood in Marseille with colorful streets and artisan shops",
+    summary:
+      "Oldest neighborhood in Marseille with colorful streets and artisan shops",
     location: "Le Panier, Marseille, France",
     latitude: 43.2984,
     longitude: 5.3687,
@@ -208,18 +210,28 @@ function printTestOverview() {
     activities.forEach((a) => {
       console.log(`  • ${a.title} [${a.time_of_day}, ${a.duration_bucket}]`);
       console.log(
-        `    └─ https://www.google.com/maps/search/?api=1&query=${a.latitude},${a.longitude}`
+        `    └─ https://www.google.com/maps/search/?api=1&query=${a.latitude},${a.longitude}`,
       );
     });
   }
 
   console.log("\n🧪 TEST SCENARIOS:");
   console.log("─".repeat(40));
-  console.log("1. Within-city optimization: Should NOT schedule Paris→Lyon→Paris in one day");
-  console.log("2. Walking priority: Nearby activities should be grouped without travel segments");
-  console.log("3. Travel segments: Should add 'Travel to Lyon' and 'Travel to Marseille'");
-  console.log("4. Time conflicts: Two morning activities in Paris (Eiffel + Trocadéro)");
-  console.log("5. Optimal ordering: Trocadéro→Eiffel→Champs→Louvre is better than array order");
+  console.log(
+    "1. Within-city optimization: Should NOT schedule Paris→Lyon→Paris in one day",
+  );
+  console.log(
+    "2. Walking priority: Nearby activities should be grouped without travel segments",
+  );
+  console.log(
+    "3. Travel segments: Should add 'Travel to Lyon' and 'Travel to Marseille'",
+  );
+  console.log(
+    "4. Time conflicts: Two morning activities in Paris (Eiffel + Trocadéro)",
+  );
+  console.log(
+    "5. Optimal ordering: Trocadéro→Eiffel→Champs→Louvre is better than array order",
+  );
 }
 
 function formatItineraryOutput(result: any) {
@@ -248,7 +260,7 @@ function formatItineraryOutput(result: any) {
       const sorted = [...day.activities].sort(
         (a: any, b: any) =>
           (timeOrder[a.time_of_day as keyof typeof timeOrder] || 4) -
-          (timeOrder[b.time_of_day as keyof typeof timeOrder] || 4)
+          (timeOrder[b.time_of_day as keyof typeof timeOrder] || 4),
       );
 
       sorted.forEach((activity: any) => {
@@ -257,7 +269,9 @@ function formatItineraryOutput(result: any) {
         const icon = isTravelSegment ? "🚆" : isOpenSlot ? "🕐" : "📍";
         const timeSlot = activity.time_of_day?.toUpperCase() || "???";
 
-        console.log(`  ${icon} [${timeSlot}] ${activity.title || activity.name}`);
+        console.log(
+          `  ${icon} [${timeSlot}] ${activity.title || activity.name}`,
+        );
         if (activity.description) {
           console.log(`      └─ ${activity.description}`);
         }
@@ -308,7 +322,7 @@ async function main() {
       } else {
         console.log(msg);
       }
-    }
+    },
   );
 
   formatItineraryOutput(result);
