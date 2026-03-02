@@ -261,8 +261,9 @@ const App = () => {
         localStorage.removeItem("building-itinerary-started");
       }
       setItinerary(data as Itinerary);
-      // Don't clear building state — user must refresh to see the result.
-      // This prevents showing a broken/empty itinerary while the AI is still working.
+      // Clear building state now that we have data
+      localStorage.removeItem("building-itinerary");
+      setIsBuilding(false);
       // Stop the polling fallback now that we have data
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
@@ -328,7 +329,9 @@ const App = () => {
               localStorage.removeItem("building-itinerary-started");
             }
             setItinerary(payload.new as Itinerary);
-            // Don't clear building state — user must refresh to see the result.
+            // Clear building state now that we have data via realtime
+            localStorage.removeItem("building-itinerary");
+            setIsBuilding(false);
           }
         },
       )
