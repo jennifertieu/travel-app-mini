@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useIdeas } from "../hooks/useIdeas";
-import { TripHeader } from "../components/layout/TripHeader";
+
 import { IdeaSidebar } from "../components/layout/IdeaSidebar";
 import { MapView } from "../components/layout/MapView";
 import { useCreateTrip } from "../hooks/useTrip";
@@ -276,7 +276,6 @@ export function TripView() {
   if (tripId && !trip && !tripLoading && !tripError) {
     return (
       <div className="h-full flex flex-col bg-background">
-        <TripHeader trip={null} onTripSelect={setCurrentTrip} />
         <div className="flex-1 flex items-center justify-center">
           <p className="text-muted-foreground text-sm">
             This trip is no longer available. Select a trip above.
@@ -290,7 +289,6 @@ export function TripView() {
   if (tripError && tripId) {
     return (
       <div className="h-full flex flex-col bg-background">
-        <TripHeader trip={null} onTripSelect={setCurrentTrip} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <p className="text-destructive">Failed to load trip</p>
@@ -398,9 +396,8 @@ export function TripView() {
         </div>
       )}
 
-      {/* Right: Header + Map */}
+      {/* Right: Map */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <TripHeader trip={trip} onTripSelect={setCurrentTrip} />
         {/* Map — always mounted so ideas appear instantly when they arrive */}
         <div className="flex-1 relative">
           <MapView

@@ -1,6 +1,5 @@
 "use client";
 
-import { TripHeader } from "../layout/TripHeader";
 import { IdeaCardSkeleton } from "../cards/IdeaCardSkeleton";
 
 function Skeleton({ className }: { className?: string }) {
@@ -46,10 +45,8 @@ export function TripViewSkeleton({
         </div>
       </div>
 
-      {/* Right: Header + Map */}
+      {/* Right: Map */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <TripHeader trip={null} onTripSelect={onTripSelect} />
-
         {/* Map area skeleton */}
         <div className="flex-1 relative">
           <Skeleton className="w-full h-full min-h-0 rounded-none" />
