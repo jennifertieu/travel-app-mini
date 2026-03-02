@@ -398,8 +398,9 @@ export function TripView() {
         </div>
       )}
 
-      {/* Right: Map */}
+      {/* Right: Header + Map */}
       <div className="flex-1 flex flex-col overflow-hidden">
+        <TripHeader trip={trip} onTripSelect={setCurrentTrip} />
         {/* Map — always mounted so ideas appear instantly when they arrive */}
         <div className="flex-1 relative">
           <MapView

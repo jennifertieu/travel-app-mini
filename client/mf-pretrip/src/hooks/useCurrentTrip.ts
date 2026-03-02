@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTrip } from "./useTrip";
 import { Database } from "@travel-app/shared-types";
@@ -45,6 +45,13 @@ export function useCurrentTrip() {
   const queryClient = useQueryClient();
   const tripCacheManager = getTripCacheManager(queryClient);
 
+  // Keep a ref in sync so event listeners always see the latest trip ID
+  const currentTripIdRef = useRef(currentTripId);
+  currentTripIdRef.current = currentTripId;
+
+  // Guard to prevent the currentTripChanged listener from reacting to our own dispatches
+  const selfDispatchRef = useRef(false);
+
   // Use the existing useTrip hook to fetch trip data
   const { data: currentTrip, isLoading, error } = useTrip(currentTripId);
 
@@ -83,7 +90,7 @@ export function useCurrentTrip() {
     return urlParams.get("tripId");
   }, []);
 
-  // Update URL with trip ID and notify other hook instances
+  // Update URL with trip ID and notify the shell
   const updateUrlWithTripId = useCallback((tripId: string | null) => {
     if (typeof window === "undefined") return;
 
@@ -97,43 +104,17 @@ export function useCurrentTrip() {
     // Update URL without triggering a page reload
     window.history.replaceState({}, "", url.toString());
 
-    // Notify other useCurrentTrip instances about the change
+    // Notify the shell (TripSwitcher, useTripSummary) about the change.
+    // Set the guard so our own listener ignores this dispatch.
+    selfDispatchRef.current = true;
     window.dispatchEvent(
       new CustomEvent("currentTripChanged", { detail: { tripId } }),
     );
+    // Reset guard asynchronously after the event has been processed synchronously
+    Promise.resolve().then(() => {
+      selfDispatchRef.current = false;
+    });
   }, []);
-
-  // Clear stale trip ID when trip doesn't exist (deleted, or user lost access)
-  // Prevents "Failed to load trip" when localStorage/URL references a removed trip
-  // Must run after updateUrlWithTripId is defined
-  useEffect(() => {
-    if (
-      currentTripId &&
-      !isLoading &&
-      !error &&
-      currentTrip === null
-    ) {
-      console.warn(
-        `Trip ${currentTripId} not found (deleted or inaccessible) — clearing stale reference`,
-      );
-      setCurrentTripId(null);
-      updateUrlWithTripId(null);
-      if (isLocalStorageAvailable) {
-        try {
-          localStorage.removeItem(CURRENT_TRIP_KEY);
-        } catch (e) {
-          /* ignore */
-        }
-      }
-    }
-  }, [
-    currentTripId,
-    currentTrip,
-    isLoading,
-    error,
-    isLocalStorageAvailable,
-    updateUrlWithTripId,
-  ]);
 
   // Sync URL when trip ID came from localStorage (URL didn't have it)
   useEffect(() => {
@@ -159,13 +140,13 @@ export function useCurrentTrip() {
     }
   }, [currentTripId, getTripIdFromUrl, updateUrlWithTripId]);
 
-  // Listen for URL changes (browser back/forward) and cross-instance trip changes
+  // Listen for URL changes (browser back/forward) and cross-MFE trip switches from shell
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const handlePopState = () => {
       const urlTripId = getTripIdFromUrl();
-      if (urlTripId !== currentTripId) {
+      if (urlTripId !== currentTripIdRef.current) {
         setCurrentTripId(urlTripId);
         if (urlTripId && isLocalStorageAvailable) {
           try {
@@ -177,11 +158,23 @@ export function useCurrentTrip() {
       }
     };
 
+    // The shell's TripSwitcher dispatches this event when the user picks a trip
+    // from the global header. We need to pick it up here.
+    // Skip events we dispatched ourselves (selfDispatchRef guard).
     const handleTripChanged = (e: Event) => {
+      if (selfDispatchRef.current) return;
       const customEvent = e as CustomEvent<{ tripId: string | null }>;
       const newTripId = customEvent.detail?.tripId ?? null;
-      if (newTripId !== currentTripId) {
+      if (newTripId && newTripId !== currentTripIdRef.current) {
         setCurrentTripId(newTripId);
+        updateUrlWithTripId(newTripId);
+        if (isLocalStorageAvailable) {
+          try {
+            localStorage.setItem(CURRENT_TRIP_KEY, newTripId);
+          } catch {
+            /* ignore */
+          }
+        }
       }
     };
 
@@ -191,7 +184,7 @@ export function useCurrentTrip() {
       window.removeEventListener("popstate", handlePopState);
       window.removeEventListener("currentTripChanged", handleTripChanged);
     };
-  }, [currentTripId, getTripIdFromUrl, isLocalStorageAvailable]);
+  }, [getTripIdFromUrl, isLocalStorageAvailable, updateUrlWithTripId]);
 
   /**
    * Set the current trip and persist to URL and localStorage
