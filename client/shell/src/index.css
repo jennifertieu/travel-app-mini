@@ -18,3 +18,22 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/*
+ * Shell-specific responsive helpers.
+ * Plain CSS so MFE Tailwind resets can't clobber them.
+ */
+.shell-desktop-only {
+  display: flex;
+}
+.shell-mobile-only {
+  display: none;
+}
+@media (max-width: 767px) {
+  .shell-desktop-only {
+    display: none !important;
+  }
+  .shell-mobile-only {
+    display: flex !important;
+  }
+}
+

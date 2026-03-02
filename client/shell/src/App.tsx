@@ -1,4 +1,12 @@
-import { lazy, Suspense, useState, useRef, useEffect, useCallback, Component } from "react";
+import {
+  lazy,
+  Suspense,
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  Component,
+} from "react";
 import type { ReactNode } from "react";
 import {
   createRouter,
@@ -44,9 +52,14 @@ interface ErrorBoundaryProps {
   children: ReactNode;
   retryKey: number;
 }
-interface ErrorBoundaryState { hasError: boolean }
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
 
-class DuringtripErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class DuringtripErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(): ErrorBoundaryState {
@@ -117,7 +130,10 @@ const DuringtripLoader = () => {
 
   const App = AppRef.current;
   return (
-    <DuringtripErrorBoundary retryKey={retryKey} onError={() => setFailed(true)}>
+    <DuringtripErrorBoundary
+      retryKey={retryKey}
+      onError={() => setFailed(true)}
+    >
       <Suspense fallback={<LoadingFallback name="During Trip" />}>
         <App key={retryKey} />
       </Suspense>
@@ -229,7 +245,13 @@ const TripMetadata = ({ summary }: { summary: TripSummary }) => {
   );
 };
 
-const DemoToggle = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
+const DemoToggle = ({
+  enabled,
+  onToggle,
+}: {
+  enabled: boolean;
+  onToggle: () => void;
+}) => (
   <button
     type="button"
     onClick={onToggle}
@@ -282,7 +304,9 @@ const RootLayout = () => {
       return;
     }
     const checkAccess = async () => {
-      const { data: { session: s } } = await supabase.auth.getSession();
+      const {
+        data: { session: s },
+      } = await supabase.auth.getSession();
       if (!s?.access_token) return;
       const apiBase =
         (import.meta.env.PUBLIC_API_URL as string | undefined) ??
@@ -347,7 +371,9 @@ const RootLayout = () => {
     } else {
       localStorage.removeItem("demo-enabled");
     }
-    window.dispatchEvent(new CustomEvent("demo-toggle", { detail: { enabled: next } }));
+    window.dispatchEvent(
+      new CustomEvent("demo-toggle", { detail: { enabled: next } }),
+    );
   };
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteModalTripId, setInviteModalTripId] = useState<string | null>(
@@ -406,36 +432,48 @@ const RootLayout = () => {
             className="flex items-center gap-2 no-underline shrink-0"
           >
             <TripWeaveLogo />
-            <span className="text-base font-bold text-gray-900 tracking-tight hidden sm:inline">
+            <span className="text-base font-bold text-gray-900 tracking-tight">
               TripWeave
             </span>
           </Link>
-          <div className="ml-3 md:ml-4 shrink-0">
+          <div className="ml-4 shrink-0">
             <TripSwitcher />
           </div>
 
           {/* Desktop: metadata pills */}
           {tripSummary && (
-            <div className="hidden md:flex items-center gap-2 ml-6 shrink-0">
+            <div className="shell-desktop-only items-center gap-2 ml-6 shrink-0">
               <TripMetadata summary={tripSummary} />
             </div>
           )}
 
           {/* Desktop: Nav links + trip actions + auth */}
           <div className="ml-auto flex items-center gap-4 shrink-0">
-            <div className="hidden md:flex items-center gap-1">
-              <Link to="/pretrip" className={navLinkClass} activeProps={{ className: "active" }}>
+            <div className="shell-desktop-only items-center gap-1">
+              <Link
+                to="/pretrip"
+                className={navLinkClass}
+                activeProps={{ className: "active" }}
+              >
                 Pre-Trip
               </Link>
-              <Link to="/itinerary" className={navLinkClass} activeProps={{ className: "active" }}>
+              <Link
+                to="/itinerary"
+                className={navLinkClass}
+                activeProps={{ className: "active" }}
+              >
                 Itinerary
               </Link>
-              <Link to="/duringtrip" className={navLinkClass} activeProps={{ className: "active" }}>
+              <Link
+                to="/duringtrip"
+                className={navLinkClass}
+                activeProps={{ className: "active" }}
+              >
                 During Trip
               </Link>
             </div>
             {tripSummary && (
-              <div className="hidden md:flex items-center gap-2">
+              <div className="shell-desktop-only items-center gap-2">
                 <TripMemberAvatars tripId={tripSummary.id} />
                 <button
                   onClick={() =>
@@ -453,17 +491,17 @@ const RootLayout = () => {
               </div>
             )}
             {showDemoToggle && (
-              <div className="hidden md:flex items-center">
+              <div className="shell-desktop-only items-center">
                 <DemoToggle enabled={demoEnabled} onToggle={handleDemoToggle} />
               </div>
             )}
-            <div className="hidden md:flex items-center">
+            <div className="shell-desktop-only items-center">
               <AuthNav />
             </div>
 
             {/* Mobile: hamburger */}
             <button
-              className="md:hidden p-1.5 rounded-md hover:bg-gray-200 transition-colors"
+              className="shell-mobile-only p-1.5 rounded-md hover:bg-gray-200 transition-colors"
               onClick={() => setMobileMenuOpen((prev) => !prev)}
               aria-label="Toggle menu"
             >
@@ -480,21 +518,39 @@ const RootLayout = () => {
         {mobileMenuOpen && (
           <div
             ref={menuRef}
-            className="md:hidden absolute top-full left-0 right-0 bg-gray-50 border-b border-gray-200 shadow-lg"
+            className="shell-mobile-only absolute top-full left-0 right-0 bg-gray-50 border-b border-gray-200 shadow-lg"
           >
             <div className="px-4 py-3 space-y-1">
-              <Link to="/pretrip" className={mobileNavLinkClass} activeProps={{ className: "active" }}>
+              <Link
+                to="/pretrip"
+                className={mobileNavLinkClass}
+                activeProps={{ className: "active" }}
+              >
                 Pre-Trip
               </Link>
-              <Link to="/itinerary" className={mobileNavLinkClass} activeProps={{ className: "active" }}>
+              <Link
+                to="/itinerary"
+                className={mobileNavLinkClass}
+                activeProps={{ className: "active" }}
+              >
                 Itinerary
               </Link>
-              <Link to="/duringtrip" className={mobileNavLinkClass} activeProps={{ className: "active" }}>
+              <Link
+                to="/duringtrip"
+                className={mobileNavLinkClass}
+                activeProps={{ className: "active" }}
+              >
                 During Trip
               </Link>
               {showDemoToggle && (
                 <div className="pt-1">
-                  <DemoToggle enabled={demoEnabled} onToggle={() => { handleDemoToggle(); setMobileMenuOpen(false); }} />
+                  <DemoToggle
+                    enabled={demoEnabled}
+                    onToggle={() => {
+                      handleDemoToggle();
+                      setMobileMenuOpen(false);
+                    }}
+                  />
                 </div>
               )}
             </div>
@@ -502,10 +558,15 @@ const RootLayout = () => {
             {tripSummary && (
               <div className="px-4 py-3 border-t border-gray-200 space-y-2">
                 <div className="flex flex-wrap gap-2">
-                  <MetadataPill icon={Globe}>{tripSummary.destination}</MetadataPill>
+                  <MetadataPill icon={Globe}>
+                    {tripSummary.destination}
+                  </MetadataPill>
                   <MetadataPill icon={Calendar}>
                     {tripSummary.startDate && tripSummary.endDate
-                      ? formatDateRange(tripSummary.startDate, tripSummary.endDate) ?? "Add dates"
+                      ? (formatDateRange(
+                          tripSummary.startDate,
+                          tripSummary.endDate,
+                        ) ?? "Add dates")
                       : "Add dates"}
                   </MetadataPill>
                   <MetadataPill icon={Users}>
