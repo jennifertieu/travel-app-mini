@@ -245,8 +245,17 @@ export function ChatPanel({
           Itinerary Assistant
         </span>
         {status === "streaming" && (
-          <span className="ml-auto text-[10px] text-teal-500 animate-pulse">
-            thinking...
+          <span className="ml-auto flex items-center gap-1.5 text-[11px] font-medium text-teal-500">
+            thinking
+            <span className="inline-flex items-end gap-[3px]">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce"
+                  style={{ animationDelay: `${i * 150}ms`, animationDuration: "900ms" }}
+                />
+              ))}
+            </span>
           </span>
         )}
       </div>

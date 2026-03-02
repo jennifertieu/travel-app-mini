@@ -4,6 +4,22 @@ import { Bot, User, Wrench } from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { ChatMessage } from "../../types";
 
+function ThinkingDots({ className, dotSize = "sm" }: { className?: string; dotSize?: "sm" | "lg" }) {
+  const dot = dotSize === "lg" ? "w-2 h-2" : "w-1.5 h-1.5";
+  const gap = dotSize === "lg" ? "gap-1" : "gap-[3px]";
+  return (
+    <span className={cn("inline-flex items-end", gap, className)}>
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className={cn("rounded-full bg-teal-500 animate-bounce", dot)}
+          style={{ animationDelay: `${i * 150}ms`, animationDuration: "900ms" }}
+        />
+      ))}
+    </span>
+  );
+}
+
 interface UserProfile {
   display_name: string | null;
   avatar_url: string | null;
@@ -125,25 +141,32 @@ export function MessageBubble({ message, userProfile }: MessageBubbleProps) {
         {/* Message content */}
         {isAgent ? (
           <div className="text-sm leading-relaxed">
-            <ReactMarkdown
-              components={{
-                p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
-                ul: ({ children }) => <ul className="my-1 pl-4 space-y-0.5 list-disc">{children}</ul>,
-                li: ({ children }) => <li className="leading-snug">{children}</li>,
-                strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
-              }}
-            >
-              {message.content}
-            </ReactMarkdown>
-            {message.isStreaming && (
-              <span className="inline-block w-1.5 h-3.5 ml-0.5 -mb-0.5 rounded-sm bg-teal-500 animate-pulse" />
+            {/* Empty + streaming = waiting for first token — show prominent block dots */}
+            {message.isStreaming && !message.content ? (
+              <ThinkingDots className="py-1" dotSize="lg" />
+            ) : (
+              <>
+                <ReactMarkdown
+                  components={{
+                    p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+                    ul: ({ children }) => <ul className="my-1 pl-4 space-y-0.5 list-disc">{children}</ul>,
+                    li: ({ children }) => <li className="leading-snug">{children}</li>,
+                    strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+                  }}
+                >
+                  {message.content}
+                </ReactMarkdown>
+                {message.isStreaming && (
+                  <ThinkingDots className="ml-1 mb-0.5" />
+                )}
+              </>
             )}
           </div>
         ) : (
           <span>
             {message.content}
             {message.isStreaming && (
-              <span className="inline-block w-1.5 h-3.5 ml-0.5 -mb-0.5 rounded-sm bg-teal-500 animate-pulse" />
+              <ThinkingDots className="ml-1 mb-0.5" />
             )}
           </span>
         )}
