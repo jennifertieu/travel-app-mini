@@ -10,8 +10,10 @@ export interface IPhotoTip {
   image_url?: string;
   /** Multiple Google (Places) photos for this activity; first is used for selfie generation. */
   image_urls?: string[];
-  /** Cached AI-generated selfie image (base64), when available. */
+  /** Cached AI-generated selfie image (base64), when available. @deprecated Use generated_selfie_url instead. */
   generated_selfie_base64?: string;
+  /** Public URL of the AI-generated selfie image hosted on Supabase Storage. */
+  generated_selfie_url?: string;
   selfie_tip: string;
   pose_idea: string;
   best_time: string;
@@ -42,12 +44,12 @@ interface IActivityForPrompt {
 
 export const generatePhotoGuideWithAI = async (
   destination: string,
-  activities: IActivityForPrompt[]
+  activities: IActivityForPrompt[],
 ): Promise<IPhotoGuideData> => {
   const activityList = activities
     .map(
       (a) =>
-        `- ${a.name}${a.description ? `: ${a.description}` : ""}${a.time_of_day ? ` (${a.time_of_day})` : ""}`
+        `- ${a.name}${a.description ? `: ${a.description}` : ""}${a.time_of_day ? ` (${a.time_of_day})` : ""}`,
     )
     .join("\n");
 

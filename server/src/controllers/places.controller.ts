@@ -4,13 +4,20 @@ import {
   getPlaceDetails as getPlaceDetailsUtil,
 } from "../utils/placesSearch.js";
 
+// In-memory cache for activity details to avoid repeated Google Maps API calls.
+// Key: "name|lat|lng", Value: { photoUrl, description }
+const activityDetailsCache = new Map<
+  string,
+  { photoUrl: string | null; description: string | null }
+>();
+
 /**
  * Get enriched photo and editorial description for an activity by name + optional coords
  * GET /places/activity-details?name=...&lat=...&lng=...
  */
 export const getActivityDetails = async (
   request: Request,
-  response: Response
+  response: Response,
 ) => {
   const { name, lat, lng } = request.query as {
     name?: string;
@@ -20,6 +27,13 @@ export const getActivityDetails = async (
 
   if (!name) {
     return response.status(400).json({ error: "name is required" });
+  }
+
+  // Check in-memory cache first
+  const cacheKey = `${name}|${lat ?? ""}|${lng ?? ""}`;
+  const cached = activityDetailsCache.get(cacheKey);
+  if (cached) {
+    return response.json(cached);
   }
 
   const apiKey = process.env.GOOGLE_MAPS_PLATFORM_API_KEY;
@@ -42,10 +56,7 @@ export const getActivityDetails = async (
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
 
-    if (
-      searchData.status !== "OK" ||
-      !searchData.results?.length
-    ) {
+    if (searchData.status !== "OK" || !searchData.results?.length) {
       return response.json({ photoUrl: null, description: null });
     }
 
@@ -76,7 +87,9 @@ export const getActivityDetails = async (
     const description =
       (place.editorial_summary?.overview as string | undefined) ?? null;
 
-    return response.json({ photoUrl, description });
+    const result = { photoUrl, description };
+    activityDetailsCache.set(cacheKey, result);
+    return response.json(result);
   } catch {
     return response.json({ photoUrl: null, description: null });
   }
@@ -101,7 +114,7 @@ interface GetDetailsRequest {
  */
 export const searchNearbyPlaces = async (
   request: Request,
-  response: Response
+  response: Response,
 ) => {
   console.log("\n🔍 [Places Controller] ========== SEARCH REQUEST ==========");
 
@@ -248,7 +261,9 @@ export const getPlaceDetails = async (request: Request, response: Response) => {
       });
     }
 
-    console.log(`✅ [Places Controller] Returning details for "${details.name}"`);
+    console.log(
+      `✅ [Places Controller] Returning details for "${details.name}"`,
+    );
     return response.json(details);
   } catch (error) {
     console.error("❌ [Places Controller] Details error:", error);

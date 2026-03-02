@@ -22,7 +22,10 @@ export interface UsePhotoGuideResult {
   generateAll: () => Promise<void>;
   refetch: () => Promise<void>;
   /** Returns data URL of generated selfie image, or null on error. Pass regenerate: true to skip cache. */
-  generateSelfie: (activityName: string, options?: { regenerate?: boolean }) => Promise<string | null>;
+  generateSelfie: (
+    activityName: string,
+    options?: { regenerate?: boolean },
+  ) => Promise<string | null>;
   /** Regenerate AI example selfies for all tips on the current day at once; then refetches. */
   regenerateAllSelfies: () => Promise<void>;
 }
@@ -37,6 +40,9 @@ export const usePhotoGuide = (
   const [isLoading, setIsLoading] = useState(false);
   const [regenerateAllLoading, setRegenerateAllLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Client-side cache: avoid re-fetching days we already loaded
+  const [cache, setCache] = useState<Record<number, PhotoGuideData>>({});
 
   /** Fetch Google Places photos from trip_reel_ideas for this trip */
   const fetchSpotPhotos = useCallback(async () => {
@@ -61,36 +67,82 @@ export const usePhotoGuide = (
     }
   }, [tripId]);
 
-  const fetchFromSupabase = useCallback(async () => {
-    if (!tripId || dayNumber < 1) {
-      setData(null);
-      setIsFetching(false);
-      return;
-    }
-    setError(null);
-    setIsFetching(true);
-    try {
-      const { data: row, error: fetchError } = await supabase
-        .from("trip_photo_guides")
-        .select("guide_data")
-        .eq("trip_id", tripId)
-        .eq("day_number", dayNumber)
-        .maybeSingle();
-
-      if (fetchError) {
-        setError(fetchError.message);
+  const fetchFromSupabase = useCallback(
+    async (force = false) => {
+      if (!tripId || dayNumber < 1) {
         setData(null);
+        setIsFetching(false);
         return;
       }
-      if (row?.guide_data) {
-        setData(row.guide_data as unknown as PhotoGuideData);
-      } else {
-        setData(null);
+      // Serve from cache instantly if available
+      if (!force && cache[dayNumber]) {
+        setData(cache[dayNumber]);
+        setIsFetching(false);
+        return;
       }
-    } finally {
-      setIsFetching(false);
-    }
-  }, [tripId, dayNumber]);
+      setError(null);
+      setIsFetching(true);
+      try {
+        const { data: row, error: fetchError } = await supabase
+          .from("trip_photo_guides")
+          .select("guide_data")
+          .eq("trip_id", tripId)
+          .eq("day_number", dayNumber)
+          .maybeSingle();
+
+        if (fetchError) {
+          setError(fetchError.message);
+          setData(null);
+          return;
+        }
+        if (row?.guide_data) {
+          const guide = row.guide_data as unknown as PhotoGuideData;
+          setData(guide);
+          setCache((prev) => ({ ...prev, [dayNumber]: guide }));
+        } else {
+          setData(null);
+        }
+      } finally {
+        setIsFetching(false);
+      }
+    },
+    [tripId, dayNumber, cache],
+  );
+
+  // Preload ALL days for this trip in one query on mount.
+  // Now that selfie images are stored as URLs (not base64), the payload is small.
+  const [preloaded, setPreloaded] = useState(false);
+  useEffect(() => {
+    if (!tripId || preloaded) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: rows } = await supabase
+          .from("trip_photo_guides")
+          .select("day_number, guide_data")
+          .eq("trip_id", tripId);
+        if (cancelled || !rows?.length) return;
+        const bulk: Record<number, PhotoGuideData> = {};
+        for (const row of rows) {
+          if (row.guide_data) {
+            bulk[row.day_number] = row.guide_data as unknown as PhotoGuideData;
+          }
+        }
+        setCache((prev) => ({ ...prev, ...bulk }));
+        // Set current day's data immediately if available
+        if (bulk[dayNumber]) {
+          setData(bulk[dayNumber]);
+          setIsFetching(false);
+        }
+      } catch {
+        // non-critical — per-day fetch still works as fallback
+      }
+      if (!cancelled) setPreloaded(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tripId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchFromSupabase();
@@ -130,7 +182,9 @@ export const usePhotoGuide = (
 
       const json = await response.json();
       if (json.guide_data) {
-        setData(json.guide_data as PhotoGuideData);
+        const guide = json.guide_data as PhotoGuideData;
+        setData(guide);
+        setCache((prev) => ({ ...prev, [dayNumber]: guide }));
       }
     } catch (e: unknown) {
       setError(
@@ -156,13 +210,16 @@ export const usePhotoGuide = (
         return;
       }
 
-      const response = await fetch(getApiUrl(`/photo-guide/${tripId}/generate-all`), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        getApiUrl(`/photo-guide/${tripId}/generate-all`),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         const errBody = await response.json().catch(() => ({}));
@@ -173,9 +230,11 @@ export const usePhotoGuide = (
 
       const json = await response.json();
       if (json.guides && typeof json.guides[dayNumber] !== "undefined") {
-        setData(json.guides[dayNumber] as PhotoGuideData);
+        const guide = json.guides[dayNumber] as PhotoGuideData;
+        setData(guide);
+        setCache((prev) => ({ ...prev, [dayNumber]: guide }));
       } else {
-        await fetchFromSupabase();
+        await fetchFromSupabase(true);
       }
     } catch (e: unknown) {
       setError(
@@ -187,7 +246,10 @@ export const usePhotoGuide = (
   }, [tripId, dayNumber, fetchFromSupabase]);
 
   const generateSelfie = useCallback(
-    async (activityName: string, options?: { regenerate?: boolean }): Promise<string | null> => {
+    async (
+      activityName: string,
+      options?: { regenerate?: boolean },
+    ): Promise<string | null> => {
       if (!tripId || dayNumber < 1 || !activityName?.trim()) return null;
       try {
         const {
@@ -219,6 +281,8 @@ export const usePhotoGuide = (
         }
 
         const json = await response.json();
+        // Support new URL-based response, fall back to legacy base64
+        if (json?.image_url) return json.image_url;
         const b64 = json?.image_base64;
         if (typeof b64 !== "string") return null;
         return `data:image/png;base64,${b64}`;
@@ -263,7 +327,7 @@ export const usePhotoGuide = (
         });
       }
 
-      await fetchFromSupabase();
+      await fetchFromSupabase(true);
     } catch (e: unknown) {
       setError(
         e instanceof Error ? e.message : "Failed to regenerate examples",
@@ -282,7 +346,7 @@ export const usePhotoGuide = (
     error,
     generate,
     generateAll,
-    refetch: fetchFromSupabase,
+    refetch: () => fetchFromSupabase(true),
     generateSelfie,
     regenerateAllSelfies,
   };

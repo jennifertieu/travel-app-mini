@@ -7,6 +7,7 @@ import {
   IPhotoTip,
 } from "../utils/generatePhotoGuide.js";
 import { generateSelfieImage } from "../utils/generateSelfieImage.js";
+import { uploadSelfieToStorage } from "../utils/uploadSelfieToStorage.js";
 
 const LOG_PREFIX = "[photo-guide]";
 
@@ -42,13 +43,15 @@ function getActivityName(activity: any): string {
   return activity.title || activity.name || "Activity";
 }
 
-/** Builds guide data for one day (tips + images + pre-generated selfies). Does not read/write DB. */
+/** Builds guide data for one day (tips + images + pre-generated selfies uploaded to Storage). Does not read/write DB. */
 async function buildGuideForDay(
+  tripId: string,
   destination: string,
   day: { day_number?: number; day?: number; activities: any[] },
   nameToImage: Record<string, string>,
   nameToImageUrls: Record<string, string[]>,
 ): Promise<IPhotoGuideData> {
+  const dayNum = day.day_number ?? day.day ?? 1;
   const activitiesForPrompt = day.activities.map((a) => ({
     name: getActivityName(a),
     description: a.summary ?? a.description,
@@ -59,7 +62,7 @@ async function buildGuideForDay(
     destination,
     activitiesForPrompt,
   );
-  let tipsWithImages: IPhotoTip[] = guideData.tips.map((tip) => {
+  const tipsWithImages: IPhotoTip[] = guideData.tips.map((tip) => {
     const imageUrl = nameToImage[tip.activity_name];
     const imageUrls = nameToImageUrls[tip.activity_name];
     return {
@@ -68,31 +71,47 @@ async function buildGuideForDay(
       ...(imageUrls?.length ? { image_urls: imageUrls } : {}),
     };
   });
-  for (let i = 0; i < tipsWithImages.length; i++) {
-    const tip = tipsWithImages[i];
-    const urls = tip.image_urls?.length
-      ? tip.image_urls
-      : tip.image_url
-        ? [tip.image_url]
-        : [];
-    if (urls.length === 0) continue;
-    try {
+
+  // Generate all selfie images in parallel and upload to Supabase Storage
+  const selfieResults = await Promise.allSettled(
+    tipsWithImages.map(async (tip) => {
+      const urls = tip.image_urls?.length
+        ? tip.image_urls
+        : tip.image_url
+          ? [tip.image_url]
+          : [];
+      if (urls.length === 0) return null;
       const b64 = await generateSelfieImage(urls, {
         imagePrompt: tip.image_prompt,
         challengeDescription: tip.challenge?.description,
         poseIdea: tip.pose_idea,
       });
-      tipsWithImages = tipsWithImages.map((t, j) =>
-        j === i ? { ...t, generated_selfie_base64: b64 } : t,
+      // Upload to Supabase Storage and return the public URL
+      const publicUrl = await uploadSelfieToStorage(
+        b64,
+        tripId,
+        dayNum,
+        tip.activity_name,
       );
-    } catch (err: any) {
+      return publicUrl;
+    }),
+  );
+
+  const finalTips = tipsWithImages.map((tip, i) => {
+    const result = selfieResults[i];
+    if (result.status === "fulfilled" && result.value) {
+      return { ...tip, generated_selfie_url: result.value };
+    }
+    if (result.status === "rejected") {
       console.warn(
         `${LOG_PREFIX} Pre-generate failed for ${tip.activity_name}:`,
-        err?.message ?? err,
+        result.reason?.message ?? result.reason,
       );
     }
-  }
-  return { pose_of_the_day: guideData.pose_of_the_day, tips: tipsWithImages };
+    return tip;
+  });
+
+  return { pose_of_the_day: guideData.pose_of_the_day, tips: finalTips };
 }
 
 export const getOrCreatePhotoGuide = async (
@@ -185,6 +204,7 @@ export const getOrCreatePhotoGuide = async (
     }
 
     const guideDataToStore = await buildGuideForDay(
+      tripId,
       trip.destination,
       day,
       nameToImage,
@@ -281,27 +301,36 @@ export const generateSelfie = async (
       });
     }
 
-    let imageBase64: string;
-    const useCache = tip.generated_selfie_base64 && !regenerate;
+    let imageUrl: string;
+    const useCache = tip.generated_selfie_url && !regenerate;
     if (useCache) {
-      console.log(`${LOG_PREFIX} Using cached selfie for ${activityName}`);
-      imageBase64 = tip.generated_selfie_base64!;
+      console.log(`${LOG_PREFIX} Using cached selfie URL for ${activityName}`);
+      imageUrl = tip.generated_selfie_url!;
     } else {
       console.log(
         `${LOG_PREFIX} Generating selfie for ${activityName}, image_prompt:`,
         tip.image_prompt ?? "(fallback to challenge/pose)",
       );
-      imageBase64 = await generateSelfieImage(urls, {
+      const imageBase64 = await generateSelfieImage(urls, {
         imagePrompt: tip.image_prompt,
         challengeDescription: tip.challenge?.description,
         poseIdea: tip.pose_idea,
       });
+      // Upload to Supabase Storage
+      imageUrl = await uploadSelfieToStorage(
+        imageBase64,
+        tripId,
+        dayNumber,
+        activityName.trim(),
+      );
       const updatedTips = [...(guide.tips ?? [])];
       if (tipIndex !== undefined && tipIndex >= 0 && updatedTips[tipIndex]) {
         updatedTips[tipIndex] = {
           ...updatedTips[tipIndex],
-          generated_selfie_base64: imageBase64,
+          generated_selfie_url: imageUrl,
         };
+        // Remove old base64 if present to shrink the JSON
+        delete (updatedTips[tipIndex] as any).generated_selfie_base64;
       }
       const updatedGuide: IPhotoGuideData = {
         ...guide,
@@ -317,7 +346,7 @@ export const generateSelfie = async (
         { onConflict: "trip_id,day_number" },
       );
     }
-    return response.status(200).json({ image_base64: imageBase64 });
+    return response.status(200).json({ image_url: imageUrl });
   } catch (error: any) {
     console.error(`${LOG_PREFIX} generateSelfie error:`, error);
     return response.status(500).json({
@@ -408,6 +437,7 @@ export const generateAllPhotoGuides = async (
       }
 
       const guideData = await buildGuideForDay(
+        tripId,
         trip.destination,
         day,
         nameToImage,

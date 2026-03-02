@@ -14,7 +14,10 @@ import {
   Crosshair,
   RefreshCw,
 } from "lucide-react";
-import type { SpotPhotosMap, UsePhotoGuideResult } from "../hooks/usePhotoGuide";
+import type {
+  SpotPhotosMap,
+  UsePhotoGuideResult,
+} from "../hooks/usePhotoGuide";
 import { cn } from "../lib/utils";
 import type {
   PhotoGuideData,
@@ -221,18 +224,25 @@ function SpotInfo({
   onRefetch,
 }: {
   tip: PhotoTip;
-  onGenerateSelfie?: (activityName: string, options?: { regenerate?: boolean }) => Promise<string | null>;
+  onGenerateSelfie?: (
+    activityName: string,
+    options?: { regenerate?: boolean },
+  ) => Promise<string | null>;
   onRefetch?: () => Promise<void>;
 }) {
   const hasImage = Boolean(tip.image_url || tip.image_urls?.length);
   const [selfieLoading, setSelfieLoading] = useState(false);
-  const hasCached = Boolean(tip.generated_selfie_base64);
+  const hasCached = Boolean(
+    tip.generated_selfie_url || tip.generated_selfie_base64,
+  );
 
   const handleGenerateSelfie = async () => {
     if (!onGenerateSelfie) return;
     setSelfieLoading(true);
     try {
-      const url = await onGenerateSelfie(tip.activity_name, { regenerate: hasCached });
+      const url = await onGenerateSelfie(tip.activity_name, {
+        regenerate: hasCached,
+      });
       if (url) {
         await onRefetch?.();
       }
@@ -452,13 +462,17 @@ export function PhotoGuideModal({
   const activeTip = data?.tips?.[safeIndex];
   const placePhotos = activeTip ? getPhotosForTip(activeTip, spotPhotos) : [];
   /** Gallery shows AI example first (if present), then place photos — so 6 total when we have 5 + AI. */
-  const galleryPhotos =
-    activeTip?.generated_selfie_base64
-      ? [`data:image/png;base64,${activeTip.generated_selfie_base64}`, ...placePhotos]
-      : placePhotos;
-  const tipsWithImages = data?.tips?.filter(
-    (t) => t.image_url || (t.image_urls?.length ?? 0) > 0,
-  ) ?? [];
+  const selfieImageSrc =
+    activeTip?.generated_selfie_url ??
+    (activeTip?.generated_selfie_base64
+      ? `data:image/png;base64,${activeTip.generated_selfie_base64}`
+      : null);
+  const galleryPhotos = selfieImageSrc
+    ? [selfieImageSrc, ...placePhotos]
+    : placePhotos;
+  const tipsWithImages =
+    data?.tips?.filter((t) => t.image_url || (t.image_urls?.length ?? 0) > 0) ??
+    [];
   const canRegenerateAll = tipsWithImages.length > 0;
 
   const header = (
@@ -471,8 +485,10 @@ export function PhotoGuideModal({
           <h1 className="text-base font-semibold text-foreground tracking-tight">
             Day {dayNumber} Photo Guide
           </h1>
-          {(isFetching && !data) ? (
-            <p className="text-xs text-muted-foreground animate-pulse">Loading…</p>
+          {isFetching && !data ? (
+            <p className="text-xs text-muted-foreground animate-pulse">
+              Loading…
+            </p>
           ) : tipCount > 0 ? (
             <p className="text-xs text-muted-foreground">
               {tipCount} spot{tipCount !== 1 ? "s" : ""} to capture
@@ -512,75 +528,75 @@ export function PhotoGuideModal({
 
   const body = (
     <div className="flex-1 overflow-y-auto min-h-0">
-            {error && (
-              <div className="mx-6 mt-4 rounded-xl bg-red-500/10 text-red-700 dark:text-red-300 text-sm px-4 py-3">
-                {error}
-              </div>
-            )}
+      {error && (
+        <div className="mx-6 mt-4 rounded-xl bg-red-500/10 text-red-700 dark:text-red-300 text-sm px-4 py-3">
+          {error}
+        </div>
+      )}
 
-            {/* Show skeleton while loading existing guide (so we don't flash "Generate" when one already exists) */}
-            {(isFetching || (isLoading && !data)) && !data && <SkeletonLoader />}
+      {/* Show skeleton while loading existing guide (so we don't flash "Generate" when one already exists) */}
+      {(isFetching || (isLoading && !data)) && !data && <SkeletonLoader />}
 
-            {/* Empty state only after we know there's no guide yet */}
-            {!isFetching && !data && !error && (
-              <div className="py-20 text-center">
-                <div className="w-14 h-14 rounded-2xl bg-muted/80 flex items-center justify-center mx-auto mb-5">
-                  <Aperture className="w-7 h-7 text-muted-foreground/60" />
-                </div>
-                <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto leading-relaxed">
-                  Get selfie tips, pose ideas, and photo challenges for each
-                  spot on this day.
-                </p>
-                <button
-                  type="button"
-                  onClick={generate}
-                  disabled={isLoading}
-                  className="px-6 py-2.5 rounded-xl bg-teal-600 text-white font-medium text-sm shadow-sm hover:bg-teal-700 active:scale-[0.98] disabled:opacity-50 transition-all"
-                >
-                  {isLoading ? "Generating…" : "Generate Photo Guide"}
-                </button>
-              </div>
-            )}
+      {/* Empty state only after we know there's no guide yet */}
+      {!isFetching && !data && !error && (
+        <div className="py-20 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-muted/80 flex items-center justify-center mx-auto mb-5">
+            <Aperture className="w-7 h-7 text-muted-foreground/60" />
+          </div>
+          <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto leading-relaxed">
+            Get selfie tips, pose ideas, and photo challenges for each spot on
+            this day.
+          </p>
+          <button
+            type="button"
+            onClick={generate}
+            disabled={isLoading}
+            className="px-6 py-2.5 rounded-xl bg-teal-600 text-white font-medium text-sm shadow-sm hover:bg-teal-700 active:scale-[0.98] disabled:opacity-50 transition-all"
+          >
+            {isLoading ? "Generating…" : "Generate Photo Guide"}
+          </button>
+        </div>
+      )}
 
-            {data && (
-              <div className="flex flex-col">
-                {/* Pose of the Day banner */}
-                <div className="px-6 pt-4">
-                  <PoseOfTheDayBanner pose={data.pose_of_the_day} />
-                </div>
+      {data && (
+        <div className="flex flex-col">
+          {/* Pose of the Day banner */}
+          <div className="px-6 pt-4">
+            <PoseOfTheDayBanner pose={data.pose_of_the_day} />
+          </div>
 
-                {/* Two-panel content: gallery + info */}
-                {activeTip && (
-                  <div className="flex gap-6 px-6 pt-5 pb-4 min-h-[380px] items-stretch">
-                    <PhotoGallery
-                      photos={galleryPhotos}
-                      activityName={activeTip.activity_name}
-                      showAiExampleLabel={Boolean(activeTip?.generated_selfie_base64)}
-                    />
-                    <SpotInfo
-                      tip={activeTip}
-                      onGenerateSelfie={generateSelfie}
-                      onRefetch={refetch}
-                    />
-                  </div>
-                )}
+          {/* Two-panel content: gallery + info */}
+          {activeTip && (
+            <div className="flex gap-6 px-6 pt-5 pb-4 min-h-[380px] items-stretch">
+              <PhotoGallery
+                photos={galleryPhotos}
+                activityName={activeTip.activity_name}
+                showAiExampleLabel={Boolean(selfieImageSrc)}
+              />
+              <SpotInfo
+                tip={activeTip}
+                onGenerateSelfie={generateSelfie}
+                onRefetch={refetch}
+              />
+            </div>
+          )}
 
-                {/* Spot navigation */}
-                {tipCount > 1 && (
-                  <div className="px-6 pb-5 pt-4 border-t border-border/60">
-                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest mb-3">
-                      Photo Spots
-                    </p>
-                    <SpotNav
-                      tips={data.tips}
-                      activeIndex={safeIndex}
-                      onSelect={setActiveSpotIndex}
-                      spotPhotos={spotPhotos}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+          {/* Spot navigation */}
+          {tipCount > 1 && (
+            <div className="px-6 pb-5 pt-4 border-t border-border/60">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest mb-3">
+                Photo Spots
+              </p>
+              <SpotNav
+                tips={data.tips}
+                activeIndex={safeIndex}
+                onSelect={setActiveSpotIndex}
+                spotPhotos={spotPhotos}
+              />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 

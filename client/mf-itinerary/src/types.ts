@@ -157,8 +157,10 @@ export interface PhotoTip {
   image_url?: string;
   /** Multiple Google (Places) photos for this activity; first is used for selfie generation. */
   image_urls?: string[];
-  /** Cached AI-generated selfie image (base64), when available. */
+  /** Cached AI-generated selfie image (base64). @deprecated Use generated_selfie_url. */
   generated_selfie_base64?: string;
+  /** Public URL of the AI-generated selfie image hosted on Supabase Storage. */
+  generated_selfie_url?: string;
   selfie_tip: string;
   pose_idea: string;
   best_time: string;
