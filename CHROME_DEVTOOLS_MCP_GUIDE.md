@@ -74,21 +74,21 @@ Once set up, Claude can use DevTools tools automatically when debugging. You can
 - "Show me any console errors"
 - "What network requests failed?"
 
-##  Chrome DevTools MCP vs Playwright MCP 🤔❓
+## Chrome DevTools MCP vs playwright-cli
 
-This project ships two browser MCP servers. They serve different purposes:
+This project uses two browser automation tools with different purposes:
 
-| | Chrome DevTools MCP | Playwright MCP |
+| | Chrome DevTools MCP | playwright-cli |
 |---|---|---|
 | **Approach** | **Observes** your running browser | **Drives** its own browser |
-| **Setup** | Needs `pnpm dev:browser` (Chrome Beta on port 9222) | Just `pnpm dev` — Playwright launches a browser itself |
-| **Strengths** | Console logs, network inspection, performance tracing, device emulation | Clicking, form filling, navigating, end-to-end flow testing |
+| **Setup** | Needs `pnpm dev:browser` (Chrome Beta on port 9222) | Just `playwright-cli open --config=...` |
+| **Strengths** | Console logs, network inspection, performance tracing, device emulation | Clicking, form filling, navigating, video recording, end-to-end flow testing |
 | **Weaknesses** | Limited interaction (basic click/fill only) | No performance tracing or device emulation |
-| **Best for** | Debugging runtime issues (errors, failed requests, slow rendering) | Verifying UI changes, testing user flows, filling forms |
+| **Best for** | Debugging runtime issues (errors, failed requests, slow rendering) | Verifying UI changes, testing user flows, filling forms, recording sessions |
 
-**Rule of thumb:** Use **DevTools** when Claude needs to *inspect* the app. Use **Playwright** when Claude needs to *interact* with the app.
+**Rule of thumb:** Use **Chrome DevTools MCP** when Claude needs to *inspect* the app. Use **playwright-cli** when Claude needs to *interact* with the app.
 
-Both can run simultaneously — they use separate browser instances and don't conflict. See [PLAYWRIGHT_MCP_GUIDE.md](PLAYWRIGHT_MCP_GUIDE.md) for full Playwright setup details.
+Both can run simultaneously — they use separate browser instances and don't conflict. See [PLAYWRIGHT_CLI_GUIDE.md](PLAYWRIGHT_CLI_GUIDE.md) for full playwright-cli setup and command reference.
 
 ## Available Commands
 

@@ -40,6 +40,7 @@ pnpm-debug.log*
 # Playwright MCP/CLI artifacts
 .playwright-mcp/
 .playwright-cli/
+client/.playwright/auth.json
 
 # Misc
 *.zip
