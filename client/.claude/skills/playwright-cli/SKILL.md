@@ -8,7 +8,7 @@ allowed-tools: Bash(playwright-cli:*)
 
 ## TripWeave Browser Setup
 
-Always use Chrome Beta. Two modes matching the project's Playwright MCP and DevTools MCP pattern:
+Always use Chrome Beta. Two modes — persistent profile (default) and fresh profile:
 
 ```bash
 # Persistent profile (default) — retains auth/cookies across sessions

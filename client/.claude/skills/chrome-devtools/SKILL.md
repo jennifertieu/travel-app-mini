@@ -5,7 +5,7 @@ Use this skill for efficient debugging, troubleshooting, and browser automation 
 ## When to Use
 
 - Debugging web page rendering issues
-- Automating browser interactions (clicking, filling forms, navigating)
+- Observing page state (DOM structure, element positions, rendered output)
 - Analyzing performance and network requests
 - Inspecting console errors and warnings
 - Capturing screenshots or accessibility snapshots
