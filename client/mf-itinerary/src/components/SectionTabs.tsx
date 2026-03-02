@@ -6,6 +6,8 @@ import {
   BookOpen,
   Camera,
   Sparkles,
+  PanelRightOpen,
+  PanelRightClose,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { ActionsMenu } from "./ActionsMenu";
@@ -95,13 +97,17 @@ export function SectionTabs({
           className={cn(
             "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors flex-shrink-0",
             isChatOpen
-              ? "bg-teal-600 text-white hover:bg-teal-700"
-              : "text-muted-foreground hover:text-foreground border border-border hover:bg-muted"
+              ? "bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100 dark:bg-teal-950/30 dark:text-teal-400 dark:border-teal-800 dark:hover:bg-teal-950/50"
+              : "bg-teal-600 text-white hover:bg-teal-700"
           )}
           title={isChatOpen ? "Close AI Chat" : "Open AI Chat"}
         >
           <Sparkles className="w-4 h-4 flex-shrink-0" />
           AI Chat
+          {isChatOpen
+            ? <PanelRightOpen className="w-4 h-4 flex-shrink-0 opacity-70" />
+            : <PanelRightClose className="w-4 h-4 flex-shrink-0 opacity-70" />
+          }
         </button>
       )}
     </div>
