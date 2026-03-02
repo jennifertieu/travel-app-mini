@@ -43,52 +43,60 @@ export function AnnotationList({
 
   return (
     <div className="space-y-1 px-2">
-      {annotations.map((annotation) => (
-        <div
-          key={annotation.id}
-          onClick={() => onAnnotationClick(annotation)}
-          className="group flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-        >
-          {/* Color Icon */}
+      {[...annotations]
+        .sort((a, b) => {
+          const aHasText = !!((a as any).name || a.label);
+          const bHasText = !!((b as any).name || b.label);
+          if (aHasText && !bHasText) return -1;
+          if (!aHasText && bHasText) return 1;
+          return 0;
+        })
+        .map((annotation) => (
           <div
-            className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm"
-            style={{
-              backgroundColor: (annotation.color ?? NEUTRAL_COLOR) + "20",
-            }}
+            key={annotation.id}
+            onClick={() => onAnnotationClick(annotation)}
+            className="group flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
           >
-            <span>
-              {getAnnotationIcon(
-                annotation.intent || "annotation",
-                annotation.color ?? null,
-              )}
-            </span>
-          </div>
-
-          {/* Name or Label */}
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium truncate">
-              {(annotation as any).name || annotation.label}
+            {/* Color Icon */}
+            <div
+              className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm"
+              style={{
+                backgroundColor: (annotation.color ?? NEUTRAL_COLOR) + "20",
+              }}
+            >
+              <span>
+                {getAnnotationIcon(
+                  annotation.intent || "annotation",
+                  annotation.color ?? null,
+                )}
+              </span>
             </div>
-            {(annotation as any).name && annotation.label && (
-              <div className="text-xs text-muted-foreground truncate">
-                {annotation.label}
-              </div>
-            )}
-          </div>
 
-          {/* Delete Button (hidden until hover) */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAnnotationDelete(annotation.id);
-            }}
-            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
-            title="Delete annotation"
-          >
-            <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-          </button>
-        </div>
-      ))}
+            {/* Name or Label */}
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium truncate">
+                {(annotation as any).name || annotation.label}
+              </div>
+              {(annotation as any).name && annotation.label && (
+                <div className="text-xs text-muted-foreground truncate">
+                  {annotation.label}
+                </div>
+              )}
+            </div>
+
+            {/* Delete Button (hidden until hover) */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAnnotationDelete(annotation.id);
+              }}
+              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
+              title="Delete annotation"
+            >
+              <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+            </button>
+          </div>
+        ))}
     </div>
   );
 }
