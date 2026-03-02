@@ -51,17 +51,13 @@ export const aiItineraryBuilderAgent = async (
   };
 
   const initialPrompt = `
-    You are an expert travel itinerary planner. Create a detailed itinerary for this trip:
+    You are an expert travel itinerary planner. Your PRIMARY JOB is to assign activities to days using the assign_activity_to_day tool.
 
     Trip Details:
     - Destination: ${trip.destination}
     - Start Date: ${trip.start_date}
     - End Date: ${trip.end_date}
-    - Duration: ${Math.ceil(
-      (new Date(trip.end_date).getTime() -
-        new Date(trip.start_date).getTime()) /
-        (1000 * 60 * 60 * 24),
-    )} days
+    - Duration: ${tripDays} days
 
     Available Activities (${tripIdeas.length} activities):
     ${tripIdeas
@@ -74,54 +70,31 @@ export const aiItineraryBuilderAgent = async (
     - Duration: ${idea.duration_bucket || idea.duration_minutes || "Unknown"}
     - Preferred Time: ${idea.time_of_day || "Any"}
     - Description: ${idea.summary || idea.description}
-    - Tags: ${idea.tags ? idea.tags.join(", ") : "None"}
     `,
       )
       .join("\n")}
 
-    IMPORTANT INSTRUCTIONS FOR TRAVEL PLANNING:
+    ===== CRITICAL INSTRUCTIONS =====
 
-    1. **Group activities by location/region**: Activities in the same city should be scheduled together. NEVER bounce between cities in a single day (e.g., Paris morning → Lyon afternoon → Paris evening is BAD).
+    YOUR #1 PRIORITY: Call assign_activity_to_day for EVERY activity above. Do NOT spend time computing travel times between all pairs. That wastes your limited iterations.
 
-    2. **Optimize within-city sequencing**: For activities in the same city, check walking times between ALL pairs to find the optimal order. Just because two activities "fit" in consecutive slots doesn't mean it's the best order.
-       - Example: If A→B is 25min walk but A→C is 3min walk, do A→C first even if B was listed first
-       - Use get_all_travel_times to compare walking distances within a city cluster
+    WORKFLOW — follow this EXACT order:
+    1. Look at the activities and mentally group them by neighborhood/area based on their coordinates.
+    2. IMMEDIATELY start calling assign_activity_to_day for each activity. Spread them across ${tripDays} days, roughly ${Math.ceil(tripIdeas.length / tripDays)} activities per day.
+    3. Use time_of_day values: "morning", "afternoon", or "evening". Respect each activity's preferred time if listed.
+    4. You may check 2-3 travel times between clusters if the trip spans multiple cities, but do NOT check all pairs.
+    5. After assigning all activities, stop calling tools.
 
-    3. **Check travel times between activities**: Use get_all_travel_times to check travel between consecutive activities. This returns ALL travel modes (walking, transit, driving) so you can compare.
+    RULES:
+    - Call assign_activity_to_day as many times as possible per iteration (batch them).
+    - Do NOT return a text itinerary. You MUST use the assign_activity_to_day tool for each activity.
+    - Do NOT compute N² travel times. At most check a few key routes between distant areas.
+    - Activities in the same neighborhood can be assumed walkable — no travel time check needed.
+    - If an activity has no preferred time, assign it to any open slot.
+    - It's better to assign all activities imperfectly than to perfectly plan 0 activities.
 
-    4. **Prioritize walking**: If walking time is reasonable (under 30 minutes), no travel segment is needed - just schedule activities back-to-back.
-
-    5. **Add travel segments for distant locations**: When activities are in different cities or far apart:
-       - Use add_travel_segment to add a "Travel to [destination]" activity
-       - This shows users when they need to travel
-       - For long journeys (e.g., 4+ hours), use multiple time slots (e.g., ["morning", "afternoon"])
-       - The travel segment uses up those time slots, so schedule the destination activity in a later slot
-
-    6. **Time slot guidelines**:
-       - Each time slot is roughly 3 hours
-       - Morning: ~7am-12pm
-       - Afternoon: ~12pm-5pm
-       - Evening: ~5pm-10pm
-       - A 5-hour train ride would use morning+afternoon, leaving evening for an activity
-
-    7. **Example flow for multi-city trip**:
-       - Day 1: Paris activities (Trocadéro morning → Eiffel Tower morning, Champs-Élysées afternoon) - grouped by walking proximity
-       - Day 2: Paris (Louvre morning+afternoon), Travel to Lyon (evening)
-       - Day 3: Lyon activities all day
-       - Day 4: Travel to Marseille, Marseille activities
-
-    Please create an optimized itinerary by:
-    1. First, analyze all activities and group them by location/city
-    2. For each city cluster, check walking times between activities to find optimal sequence
-    3. Plan which days to spend in each location
-    4. Check travel times between cities using get_all_travel_times
-    5. Add travel segments when moving between cities
-    6. Assign activities to specific days and time slots in optimal walking order
-    7. Check for conflicts within each day
-
-    IMPORTANT: Try to assign ALL ${tripIdeas.length} activities to the itinerary. If some activities don't fit due to time constraints or travel logistics, that's okay - leave those activities unassigned. The system will track which activities couldn't be scheduled.
-
-    Use the available tools to build the itinerary step by step. When done, stop calling tools - the system will return the built itinerary automatically.
+    You have limited iterations. EVERY iteration should include assign_activity_to_day calls.
+    Start assigning NOW.
   `;
 
   const messages: ChatCompletionMessageParam[] = [
@@ -133,7 +106,7 @@ export const aiItineraryBuilderAgent = async (
     { role: "user", content: initialPrompt },
   ];
 
-  let maxIterations = 10;
+  let maxIterations = 15;
   let iterations = 0;
 
   while (iterations < maxIterations) {

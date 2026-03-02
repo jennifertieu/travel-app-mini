@@ -36,6 +36,8 @@ app.use("/places", placesRoutes);
 app.use("/demo", demoRoutes);
 app.use("/travel-guide", travelGuideRoutes);
 
-app.listen(PORT, () => {
-  console.log(`Server is running on Port: ${PORT}`);
-});
+app
+  .listen(PORT, () => {
+    console.log(`Server is running on Port: ${PORT}`);
+  })
+  .setTimeout(0); // Disable timeout for long-running requests (itinerary build can take 3-5 min)

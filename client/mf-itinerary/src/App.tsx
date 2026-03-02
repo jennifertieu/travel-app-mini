@@ -219,7 +219,11 @@ const App = () => {
   );
 
   const fetchItinerary = useCallback(async (id: string, silent = false) => {
-    if (DEBUG) console.log("[mf-itinerary] fetchItinerary start", { tripId: id, silent });
+    if (DEBUG)
+      console.log("[mf-itinerary] fetchItinerary start", {
+        tripId: id,
+        silent,
+      });
     if (!silent) setIsLoading(true);
     if (!silent) setError(null);
 
@@ -257,8 +261,8 @@ const App = () => {
         localStorage.removeItem("building-itinerary-started");
       }
       setItinerary(data as Itinerary);
-      localStorage.removeItem("building-itinerary");
-      setIsBuilding(false);
+      // Don't clear building state — user must refresh to see the result.
+      // This prevents showing a broken/empty itinerary while the AI is still working.
       // Stop the polling fallback now that we have data
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
@@ -324,8 +328,7 @@ const App = () => {
               localStorage.removeItem("building-itinerary-started");
             }
             setItinerary(payload.new as Itinerary);
-            setIsBuilding(false);
-            localStorage.removeItem("building-itinerary");
+            // Don't clear building state — user must refresh to see the result.
           }
         },
       )
@@ -339,7 +342,10 @@ const App = () => {
     // without waiting for the effect to tear down.
     if (buildingTripId === tripId) {
       pollIntervalRef.current = setInterval(() => {
-        if (DEBUG) console.log("[mf-itinerary] Polling fallback — checking for itinerary...");
+        if (DEBUG)
+          console.log(
+            "[mf-itinerary] Polling fallback — checking for itinerary...",
+          );
         fetchItinerary(tripId, true); // silent — no loading flash while polling
       }, 5000);
     }
@@ -408,7 +414,7 @@ const App = () => {
   return (
     <div className="flex flex-col h-full">
       <Toaster position="bottom-right" richColors closeButton />
-      {isBuilding && !itineraryData && (
+      {isBuilding && (
         <SkeletonLoader
           annotations={annotations}
           initialCenter={destinationCenter}
@@ -443,7 +449,7 @@ const App = () => {
           return <EmptyState />;
         })()}
 
-      {itineraryData && (
+      {itineraryData && !isBuilding && (
         <div ref={containerRef} className="flex flex-1 min-h-0">
           {/* Chat panel — slides in from the left when open */}
           <div
@@ -516,6 +522,14 @@ const App = () => {
               onOpenActivity={setSelectedActivity}
               isChatOpen={isChatOpen}
               onToggleChat={toggleChat}
+              onRebuildStarted={() => {
+                localStorage.setItem("building-itinerary", tripId!);
+                localStorage.setItem(
+                  "building-itinerary-started",
+                  Date.now().toString(),
+                );
+                setIsBuilding(true);
+              }}
             />
           </div>
 
@@ -551,6 +565,7 @@ const App = () => {
             <MapPanel
               activities={itineraryData.days.flatMap((d) => d.activities)}
               annotations={annotations}
+              initialCenter={destinationCenter}
             />
             {selectedActivity && (
               <ActivityDetailModal
@@ -564,7 +579,7 @@ const App = () => {
       )}
 
       {/* Fallback: show raw JSON if data doesn't match expected shape */}
-      {itinerary && !itineraryData && !isLoading && (
+      {itinerary && !itineraryData && !isLoading && !isBuilding && (
         <div className="p-4">
           <p className="text-xs text-muted-foreground mb-2">
             Raw itinerary data (unexpected format):

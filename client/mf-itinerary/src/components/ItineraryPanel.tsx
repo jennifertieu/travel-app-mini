@@ -37,6 +37,7 @@ interface ItineraryPanelProps {
   onOpenActivity: (activity: Activity) => void;
   isChatOpen?: boolean;
   onToggleChat?: () => void;
+  onRebuildStarted?: () => void;
 }
 
 export function ItineraryPanel({
@@ -46,6 +47,7 @@ export function ItineraryPanel({
   onOpenActivity,
   isChatOpen,
   onToggleChat,
+  onRebuildStarted,
 }: ItineraryPanelProps) {
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [activeSection, setActiveSection] = useState<Section>("itinerary");
@@ -217,6 +219,8 @@ export function ItineraryPanel({
     if (!tripId || isRebuilding) return;
     setIsRebuilding(true);
     setRebuildError(null);
+    // Show skeleton immediately — don't wait for the server response
+    onRebuildStarted?.();
     const toastId = toast.loading("Rebuilding itinerary…");
     try {
       const {
@@ -350,9 +354,14 @@ export function ItineraryPanel({
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
           {/* Flights section header: title + trip total + refresh */}
           {(() => {
-            const outbound = data.flights?.outbound?.[data.flights.selectedOutbound];
-            const returnFlight = data.flights?.return?.[data.flights.selectedReturn];
-            const tripTotal = outbound && returnFlight ? outbound.priceTotal + returnFlight.priceTotal : 0;
+            const outbound =
+              data.flights?.outbound?.[data.flights.selectedOutbound];
+            const returnFlight =
+              data.flights?.return?.[data.flights.selectedReturn];
+            const tripTotal =
+              outbound && returnFlight
+                ? outbound.priceTotal + returnFlight.priceTotal
+                : 0;
             return (
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-1">
                 <div className="space-y-0.5 min-w-0">
@@ -362,24 +371,45 @@ export function ItineraryPanel({
                   <p className="text-base font-bold text-gray-900 dark:text-white">
                     Flights & Logistics
                   </p>
-                  {(data.destination || (data.days?.length && data.days[0]?.date)) && (
+                  {(data.destination ||
+                    (data.days?.length && data.days[0]?.date)) && (
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {data.destination ? `Flights and hotel for ${data.destination}` : "Your trip"}
-                      {data.days?.length && data.days[0]?.date && data.days[data.days.length - 1]?.date && (
-                        <>
-                          {" · "}
-                          {new Date(data.days[0].date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                          {" – "}
-                          {new Date(data.days[data.days.length - 1].date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                        </>
-                      )}
+                      {data.destination
+                        ? `Flights and hotel for ${data.destination}`
+                        : "Your trip"}
+                      {data.days?.length &&
+                        data.days[0]?.date &&
+                        data.days[data.days.length - 1]?.date && (
+                          <>
+                            {" · "}
+                            {new Date(data.days[0].date).toLocaleDateString(
+                              "en-US",
+                              { month: "short", day: "numeric" },
+                            )}
+                            {" – "}
+                            {new Date(
+                              data.days[data.days.length - 1].date,
+                            ).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </>
+                        )}
                     </p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {tripTotal > 0 && (
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                      Total <span className="font-semibold text-foreground tabular-nums">${tripTotal.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                      Total{" "}
+                      <span className="font-semibold text-foreground tabular-nums">
+                        $
+                        {tripTotal.toLocaleString("en-US", {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 2,
+                        })}
+                      </span>
                     </span>
                   )}
                   {data.flights && (
@@ -401,7 +431,9 @@ export function ItineraryPanel({
             );
           })()}
           {regenError && (
-            <p className="text-xs text-red-500 text-center -mt-0.5">{regenError}</p>
+            <p className="text-xs text-red-500 text-center -mt-0.5">
+              {regenError}
+            </p>
           )}
 
           {data.flights ? (
@@ -453,10 +485,7 @@ export function ItineraryPanel({
       ) : activeSection === "guide" ? (
         /* Guide tab content */
         <div className="flex-1 overflow-y-auto">
-          <TravelGuidePanel
-            tripId={tripId}
-            destination={data.destination}
-          />
+          <TravelGuidePanel tripId={tripId} destination={data.destination} />
         </div>
       ) : activeSection === "photo" ? (
         /* Photo Guide tab content — uses prefetched data from parent hook */
