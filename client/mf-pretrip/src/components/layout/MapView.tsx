@@ -538,10 +538,13 @@ export const MapView = forwardRef<
     };
   }, [map, tripId]);
 
-  // Update Map Center
+  // Update Map Center when trip changes
+  // Reset the localStorage-restore flag when the trip (and thus center) changes
+  // so the map actually flies to the new trip's location.
   useEffect(() => {
-    if (map && !restoredFromStorageRef.current) {
-      map.setView(center, map.getZoom());
+    if (map) {
+      restoredFromStorageRef.current = false;
+      map.setView(center, DEFAULT_ZOOM);
     }
   }, [map, center]);
 
