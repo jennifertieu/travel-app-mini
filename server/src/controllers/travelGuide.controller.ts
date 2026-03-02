@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { IAuthenticatedRequest } from "../middleware/requireAuth.js";
+import { IAuthenticatedRequest } from "../types/interface.js";
 import { supabase } from "../config.js";
 import {
   generateDestinationGuide,
@@ -95,7 +95,7 @@ export const getOrCreateSpotlightsGuide = async (
         console.log(
           `${LOG} [spotlights] Cache HIT — returning ${existingSpotlights.spotlights.length} spotlights`,
         );
-        return res.status(200).json({ guide_data: existing.guide_data });
+        return res.status(200).json({ guide_data: existing!.guide_data });
       } else {
         console.warn(
           `${LOG} [spotlights] Cache HIT but empty spotlights array — regenerating`,

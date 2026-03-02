@@ -192,7 +192,14 @@ export interface IAcceptSuggestionRequest {
   suggestion: {
     id: string;
     title: string;
-    type: "scheduled" | "spontaneous" | "rest" | "restaurant" | "cafe" | "quick_bite" | "park_rest";
+    type:
+      | "scheduled"
+      | "spontaneous"
+      | "rest"
+      | "restaurant"
+      | "cafe"
+      | "quick_bite"
+      | "park_rest";
     coordinates: { lat: number; lng: number };
     // Optional fields that may be present
     distance_km?: number;
@@ -378,7 +385,7 @@ export interface EnrichmentResponse {
     placeQuery: string;
     category?: IdeaCategory;
     costGuess?: "$" | "$$" | "$$$";
-    durationGuess?: "30m" | "1-2h" | "half-day";
+    durationGuess?: "30m" | "1-2h" | "half-day" | "overnight";
     iconType?: string;
   };
   place?: {

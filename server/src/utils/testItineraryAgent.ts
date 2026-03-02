@@ -214,12 +214,12 @@ async function runTest() {
   console.log("📍 Trip Details:");
   console.log(`   Destination: ${mockTripData.trip.destination}`);
   console.log(
-    `   Dates: ${mockTripData.trip.start_date} to ${mockTripData.trip.end_date}`
+    `   Dates: ${mockTripData.trip.start_date} to ${mockTripData.trip.end_date}`,
   );
   const days = Math.ceil(
     (new Date(mockTripData.trip.end_date).getTime() -
       new Date(mockTripData.trip.start_date).getTime()) /
-      (1000 * 60 * 60 * 24)
+      (1000 * 60 * 60 * 24),
   );
   console.log(`   Duration: ${days} days`);
   console.log(`   Activities to schedule: ${mockTripData.tripIdeas.length}\n`);
@@ -238,20 +238,29 @@ async function runTest() {
 
   try {
     const startTime = Date.now();
-    const result = await aiItineraryBuilderAgent(mockTripData, { verbose: VERBOSE });
+    const result = await aiItineraryBuilderAgent(
+      mockTripData,
+      VERBOSE ? (...args: any[]) => console.log(...args) : undefined,
+    );
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
 
-    console.log("\n───────────────────────────────────────────────────────────");
+    console.log(
+      "\n───────────────────────────────────────────────────────────",
+    );
     console.log(`✅ Agent completed in ${duration}s\n`);
     console.log("═══════════════════════════════════════════════════════════");
     console.log("                    FINAL ITINERARY");
-    console.log("═══════════════════════════════════════════════════════════\n");
+    console.log(
+      "═══════════════════════════════════════════════════════════\n",
+    );
 
     // Try to parse and pretty-print if it's JSON
     if (typeof result === "string") {
       try {
         // Check if the result contains JSON
-        const jsonMatch = result.match(/```json\n?([\s\S]*?)\n?```/);
+        const jsonMatch = (result as string).match(
+          /```json\n?([\s\S]*?)\n?```/,
+        );
         if (jsonMatch) {
           console.log("📅 Structured Itinerary:\n");
           const parsed = JSON.parse(jsonMatch[1]);
@@ -266,9 +275,13 @@ async function runTest() {
       console.log(JSON.stringify(result, null, 2));
     }
 
-    console.log("\n═══════════════════════════════════════════════════════════");
+    console.log(
+      "\n═══════════════════════════════════════════════════════════",
+    );
     console.log("                    TEST COMPLETE");
-    console.log("═══════════════════════════════════════════════════════════\n");
+    console.log(
+      "═══════════════════════════════════════════════════════════\n",
+    );
   } catch (error: any) {
     console.error("\n❌ Agent failed:", error.message);
     if (VERBOSE) {

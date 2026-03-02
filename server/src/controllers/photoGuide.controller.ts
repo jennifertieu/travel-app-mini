@@ -1,7 +1,11 @@
 import { Response } from "express";
 import { IAuthenticatedRequest } from "../types/interface.js";
 import { supabase } from "../config.js";
-import { generatePhotoGuideWithAI, IPhotoGuideData, IPhotoTip } from "../utils/generatePhotoGuide.js";
+import {
+  generatePhotoGuideWithAI,
+  IPhotoGuideData,
+  IPhotoTip,
+} from "../utils/generatePhotoGuide.js";
 import { generateSelfieImage } from "../utils/generateSelfieImage.js";
 
 const LOG_PREFIX = "[photo-guide]";
@@ -43,7 +47,7 @@ async function buildGuideForDay(
   destination: string,
   day: { day_number?: number; day?: number; activities: any[] },
   nameToImage: Record<string, string>,
-  nameToImageUrls: Record<string, string[]>
+  nameToImageUrls: Record<string, string[]>,
 ): Promise<IPhotoGuideData> {
   const activitiesForPrompt = day.activities.map((a) => ({
     name: getActivityName(a),
@@ -51,7 +55,10 @@ async function buildGuideForDay(
     time_of_day: a.time_of_day,
     category: a.category,
   }));
-  const guideData = await generatePhotoGuideWithAI(destination, activitiesForPrompt);
+  const guideData = await generatePhotoGuideWithAI(
+    destination,
+    activitiesForPrompt,
+  );
   let tipsWithImages: IPhotoTip[] = guideData.tips.map((tip) => {
     const imageUrl = nameToImage[tip.activity_name];
     const imageUrls = nameToImageUrls[tip.activity_name];
@@ -63,7 +70,11 @@ async function buildGuideForDay(
   });
   for (let i = 0; i < tipsWithImages.length; i++) {
     const tip = tipsWithImages[i];
-    const urls = tip.image_urls?.length ? tip.image_urls : tip.image_url ? [tip.image_url] : [];
+    const urls = tip.image_urls?.length
+      ? tip.image_urls
+      : tip.image_url
+        ? [tip.image_url]
+        : [];
     if (urls.length === 0) continue;
     try {
       const b64 = await generateSelfieImage(urls, {
@@ -72,10 +83,13 @@ async function buildGuideForDay(
         poseIdea: tip.pose_idea,
       });
       tipsWithImages = tipsWithImages.map((t, j) =>
-        j === i ? { ...t, generated_selfie_base64: b64 } : t
+        j === i ? { ...t, generated_selfie_base64: b64 } : t,
       );
     } catch (err: any) {
-      console.warn(`${LOG_PREFIX} Pre-generate failed for ${tip.activity_name}:`, err?.message ?? err);
+      console.warn(
+        `${LOG_PREFIX} Pre-generate failed for ${tip.activity_name}:`,
+        err?.message ?? err,
+      );
     }
   }
   return { pose_of_the_day: guideData.pose_of_the_day, tips: tipsWithImages };
@@ -83,7 +97,7 @@ async function buildGuideForDay(
 
 export const getOrCreatePhotoGuide = async (
   request: IAuthenticatedRequest,
-  response: Response
+  response: Response,
 ) => {
   const { tripId } = request.params;
   const { day_number: dayNumber } = request.body as { day_number?: number };
@@ -110,7 +124,9 @@ export const getOrCreatePhotoGuide = async (
     }
 
     if (existing?.guide_data) {
-      console.log(`${LOG_PREFIX} Returning cached guide for trip ${tripId} day ${dayNumber}`);
+      console.log(
+        `${LOG_PREFIX} Returning cached guide for trip ${tripId} day ${dayNumber}`,
+      );
       return response.status(200).json({ guide_data: existing.guide_data });
     }
 
@@ -140,10 +156,14 @@ export const getOrCreatePhotoGuide = async (
 
     const raw = itineraryRow.itinerary as Record<string, unknown>;
     const inner = (raw.itinerary ?? raw) as Record<string, unknown>;
-    const days = inner.days as Array<{ day_number?: number; day?: number; activities: any[] }> | undefined;
+    const days = inner.days as
+      | Array<{ day_number?: number; day?: number; activities: any[] }>
+      | undefined;
 
     if (!Array.isArray(days)) {
-      return response.status(400).json({ error: "Invalid itinerary structure" });
+      return response
+        .status(400)
+        .json({ error: "Invalid itinerary structure" });
     }
 
     const day = days.find((d) => (d.day_number ?? d.day) === dayNumber);
@@ -168,7 +188,7 @@ export const getOrCreatePhotoGuide = async (
       trip.destination,
       day,
       nameToImage,
-      nameToImageUrls
+      nameToImageUrls,
     );
 
     const { error: upsertError } = await supabase
@@ -180,7 +200,7 @@ export const getOrCreatePhotoGuide = async (
           guide_data: guideDataToStore,
           updated_at: new Date().toISOString(),
         },
-        { onConflict: "trip_id,day_number" }
+        { onConflict: "trip_id,day_number" },
       );
 
     if (upsertError) {
@@ -188,7 +208,9 @@ export const getOrCreatePhotoGuide = async (
       return response.status(500).json({ error: "Failed to save photo guide" });
     }
 
-    console.log(`${LOG_PREFIX} Generated and saved guide for trip ${tripId} day ${dayNumber}`);
+    console.log(
+      `${LOG_PREFIX} Generated and saved guide for trip ${tripId} day ${dayNumber}`,
+    );
     return response.status(200).json({ guide_data: guideDataToStore });
   } catch (error: any) {
     console.error(`${LOG_PREFIX} Error:`, error);
@@ -201,10 +223,14 @@ export const getOrCreatePhotoGuide = async (
 
 export const generateSelfie = async (
   request: IAuthenticatedRequest,
-  response: Response
+  response: Response,
 ) => {
   const { tripId } = request.params;
-  const { day_number: dayNumber, activity_name: activityName, regenerate } = request.body as {
+  const {
+    day_number: dayNumber,
+    activity_name: activityName,
+    regenerate,
+  } = request.body as {
     day_number?: number;
     activity_name?: string;
     regenerate?: boolean;
@@ -216,7 +242,9 @@ export const generateSelfie = async (
     });
   }
 
-  console.log(`${LOG_PREFIX} POST generate-selfie trip=${tripId} day=${dayNumber} activity=${activityName}`);
+  console.log(
+    `${LOG_PREFIX} POST generate-selfie trip=${tripId} day=${dayNumber} activity=${activityName}`,
+  );
 
   try {
     const { data: row, error: fetchError } = await supabase
@@ -228,17 +256,25 @@ export const generateSelfie = async (
 
     if (fetchError || !row?.guide_data) {
       return response.status(404).json({
-        error: "Photo guide not found for this day. Generate the photo guide first.",
+        error:
+          "Photo guide not found for this day. Generate the photo guide first.",
       });
     }
 
     const guide = row.guide_data as IPhotoGuideData;
     const activityKey = activityName.trim().toLowerCase();
     const tipIndex = guide.tips?.findIndex(
-      (t) => t.activity_name?.toLowerCase() === activityKey
+      (t) => t.activity_name?.toLowerCase() === activityKey,
     );
-    const tip = tipIndex !== undefined && tipIndex >= 0 ? guide.tips?.[tipIndex] : undefined;
-    const urls = tip?.image_urls?.length ? tip.image_urls : tip?.image_url ? [tip.image_url] : [];
+    const tip =
+      tipIndex !== undefined && tipIndex >= 0
+        ? guide.tips?.[tipIndex]
+        : undefined;
+    const urls = tip?.image_urls?.length
+      ? tip.image_urls
+      : tip?.image_url
+        ? [tip.image_url]
+        : [];
     if (!tip || !urls.length) {
       return response.status(400).json({
         error: "No place image available for this activity. Try another spot.",
@@ -249,9 +285,12 @@ export const generateSelfie = async (
     const useCache = tip.generated_selfie_base64 && !regenerate;
     if (useCache) {
       console.log(`${LOG_PREFIX} Using cached selfie for ${activityName}`);
-      imageBase64 = tip.generated_selfie_base64;
+      imageBase64 = tip.generated_selfie_base64!;
     } else {
-      console.log(`${LOG_PREFIX} Generating selfie for ${activityName}, image_prompt:`, tip.image_prompt ?? "(fallback to challenge/pose)");
+      console.log(
+        `${LOG_PREFIX} Generating selfie for ${activityName}, image_prompt:`,
+        tip.image_prompt ?? "(fallback to challenge/pose)",
+      );
       imageBase64 = await generateSelfieImage(urls, {
         imagePrompt: tip.image_prompt,
         challengeDescription: tip.challenge?.description,
@@ -259,23 +298,24 @@ export const generateSelfie = async (
       });
       const updatedTips = [...(guide.tips ?? [])];
       if (tipIndex !== undefined && tipIndex >= 0 && updatedTips[tipIndex]) {
-        updatedTips[tipIndex] = { ...updatedTips[tipIndex], generated_selfie_base64: imageBase64 };
+        updatedTips[tipIndex] = {
+          ...updatedTips[tipIndex],
+          generated_selfie_base64: imageBase64,
+        };
       }
       const updatedGuide: IPhotoGuideData = {
         ...guide,
         tips: updatedTips,
       };
-      await supabase
-        .from("trip_photo_guides")
-        .upsert(
-          {
-            trip_id: tripId,
-            day_number: dayNumber,
-            guide_data: updatedGuide,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "trip_id,day_number" }
-        );
+      await supabase.from("trip_photo_guides").upsert(
+        {
+          trip_id: tripId,
+          day_number: dayNumber,
+          guide_data: updatedGuide,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "trip_id,day_number" },
+      );
     }
     return response.status(200).json({ image_base64: imageBase64 });
   } catch (error: any) {
@@ -289,7 +329,7 @@ export const generateSelfie = async (
 
 export const generateAllPhotoGuides = async (
   request: IAuthenticatedRequest,
-  response: Response
+  response: Response,
 ) => {
   const { tripId } = request.params;
 
@@ -322,7 +362,9 @@ export const generateAllPhotoGuides = async (
 
     const raw = itineraryRow.itinerary as Record<string, unknown>;
     const inner = (raw.itinerary ?? raw) as Record<string, unknown>;
-    const days = inner.days as Array<{ day_number?: number; day?: number; activities: any[] }> | undefined;
+    const days = inner.days as
+      | Array<{ day_number?: number; day?: number; activities: any[] }>
+      | undefined;
 
     if (!Array.isArray(days) || days.length === 0) {
       return response.status(400).json({ error: "Invalid or empty itinerary" });
@@ -344,7 +386,8 @@ export const generateAllPhotoGuides = async (
 
     for (const day of days) {
       const dayNum = day.day_number ?? day.day;
-      if (typeof dayNum !== "number" || dayNum < 1 || !day.activities?.length) continue;
+      if (typeof dayNum !== "number" || dayNum < 1 || !day.activities?.length)
+        continue;
 
       const cached = existingByDay.get(dayNum);
       if (cached) {
@@ -368,7 +411,7 @@ export const generateAllPhotoGuides = async (
         trip.destination,
         day,
         nameToImage,
-        nameToImageUrls
+        nameToImageUrls,
       );
       guides[dayNum] = guideData;
 
@@ -381,13 +424,18 @@ export const generateAllPhotoGuides = async (
             guide_data: guideData,
             updated_at: new Date().toISOString(),
           },
-          { onConflict: "trip_id,day_number" }
+          { onConflict: "trip_id,day_number" },
         );
 
       if (upsertError) {
-        console.error(`${LOG_PREFIX} Upsert error day ${dayNum}:`, upsertError.message);
+        console.error(
+          `${LOG_PREFIX} Upsert error day ${dayNum}:`,
+          upsertError.message,
+        );
       } else {
-        console.log(`${LOG_PREFIX} Generated and saved guide for day ${dayNum}`);
+        console.log(
+          `${LOG_PREFIX} Generated and saved guide for day ${dayNum}`,
+        );
       }
     }
 
