@@ -239,33 +239,9 @@ export const generateSuggestionsStream = async (
       }`,
     );
 
-    // Check if suggestions already exist for this trip
-    const { data: existingIdeas, error: checkError } = await supabase
-      .from("trip_reel_ideas")
-      .select("id")
-      .eq("trip_id", body.tripId)
-      .eq("source_platform", "ai_generated");
-
-    if (checkError) {
-      console.error(
-        "❌ [Suggestions API] Error checking existing ideas:",
-        checkError,
-      );
-    }
-
-    if (existingIdeas && existingIdeas.length > 0) {
-      sendSSEEvent(response, "complete", {
-        success: true,
-        suggestionIds: existingIdeas.map((idea) => idea.id),
-        message: "Suggestions already generated",
-      });
-      endSSE(response);
-      return;
-    }
-
-    console.log(
-      `⏱️ [TIMING] Existing ideas check: ${Date.now() - requestStartTime}ms`,
-    );
+    // NOTE: We no longer short-circuit when ideas already exist.
+    // The "More Ideas" button intentionally re-triggers generation
+    // to add fresh suggestions to the trip.
 
     sendSSEEvent(response, "progress", {
       step: "generating",
