@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from "react";
-import { Sparkles, Send, MessageSquare, AlertCircle, X } from "lucide-react";
+import { Sparkles, Send, MessageSquare, AlertCircle, X, Trash2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { MessageBubble } from "./MessageBubble";
 import { ChangesPreview } from "./ChangesPreview";
@@ -21,6 +21,7 @@ interface ChatPanelProps {
   onConfirm?: () => void;
   onReject?: () => void;
   onDismissError?: () => void;
+  onClearMessages?: () => void;
   userProfile?: UserProfile | null;
 }
 
@@ -42,6 +43,7 @@ export function ChatPanel({
   onConfirm,
   onReject,
   onDismissError,
+  onClearMessages,
   userProfile,
 }: ChatPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -52,6 +54,7 @@ export function ChatPanel({
   const dragStartHeight = useRef(0);
   // Start uninitialized — set to 2/3 of panel height on mount
   const [historyHeight, setHistoryHeight] = useState<number | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // Textarea resize gripper state
   const [textareaHeight, setTextareaHeight] = useState(DEFAULT_TEXTAREA_HEIGHT);
@@ -94,16 +97,18 @@ export function ChatPanel({
 
   // Auto-grow textarea to content height, unless user has manually dragged the gripper
   useEffect(() => {
-    if (hasManuallyResized) return;
     const el = textareaRef.current;
     if (!el) return;
-    // Reset to 'auto' first so scrollHeight reflects actual content, not the previous height
-    el.style.height = "auto";
-    const clamped = Math.min(MAX_TEXTAREA_HEIGHT, Math.max(MIN_TEXTAREA_HEIGHT, el.scrollHeight));
-    // Set the inline style directly — don't clear it, or the textarea collapses before
-    // React's async re-render can apply the updated textareaHeight state value
-    el.style.height = `${clamped}px`;
-    setTextareaHeight(clamped);
+    if (hasManuallyResized) {
+      // Manual mode: grow to content, bounded by min/max
+      el.style.height = "auto";
+      const clamped = Math.min(MAX_TEXTAREA_HEIGHT, Math.max(MIN_TEXTAREA_HEIGHT, el.scrollHeight));
+      el.style.height = `${clamped}px`;
+      setTextareaHeight(clamped);
+    } else {
+      // Auto mode: clear inline height so CSS height:100% takes over
+      el.style.height = "";
+    }
   }, [inputValue, hasManuallyResized]);
 
   // Auto-scroll to bottom whenever messages change
@@ -258,6 +263,32 @@ export function ChatPanel({
             </span>
           </span>
         )}
+        {onClearMessages && status !== "streaming" && !showClearConfirm && (
+          <button
+            onClick={() => setShowClearConfirm(true)}
+            title="Clear chat history"
+            className="ml-auto p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+        {showClearConfirm && (
+          <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+            Clear history?
+            <button
+              onClick={() => { onClearMessages?.(); setShowClearConfirm(false); }}
+              className="px-2 py-0.5 rounded bg-red-500 hover:bg-red-600 text-white text-xs font-medium transition-colors"
+            >
+              Clear
+            </button>
+            <button
+              onClick={() => setShowClearConfirm(false)}
+              className="px-2 py-0.5 rounded hover:bg-muted text-muted-foreground text-xs transition-colors"
+            >
+              Cancel
+            </button>
+          </span>
+        )}
       </div>
 
       {/* Message history — height controlled by drag; flex-1 until mounted */}
@@ -333,7 +364,7 @@ export function ChatPanel({
       {/* Input area — takes remaining space, textarea fills it */}
       <div className="flex-1 border-border p-3 flex flex-col min-h-0">
         <div className="flex items-stretch gap-2 flex-1 min-h-0">
-          <div className="relative flex-1" style={{ height: textareaHeight }}>
+          <div className="relative flex-1 flex flex-col">
             <textarea
               ref={textareaRef}
               value={inputValue}
@@ -343,14 +374,14 @@ export function ChatPanel({
               placeholder={
                 isInputDisabled
                   ? "Agent is thinking..."
-                  : "Ask to change your itinerary..."
+                  : "Ask to change your itinerary... (move, swap, remove, add)"
               }
-              style={{ height: textareaHeight }}
+              style={hasManuallyResized ? { height: textareaHeight } : { flex: 1, minHeight: MIN_TEXTAREA_HEIGHT, maxHeight: MAX_TEXTAREA_HEIGHT }}
               className={cn(
                 "w-full resize-none rounded-lg border border-border bg-muted",
                 "px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground",
                 "focus:outline-none focus:ring-1 focus:ring-teal-500 focus:border-teal-500",
-                "transition-colors overflow-y-auto",
+                "transition-colors overflow-y-hidden",
                 isInputDisabled && "opacity-50 cursor-not-allowed",
               )}
             />

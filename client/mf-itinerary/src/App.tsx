@@ -111,6 +111,7 @@ const App = () => {
     confirmChanges,
     rejectChanges,
     clearError: clearChatError,
+    clearMessages: clearChatMessages,
   } = useChatAgent({
     tripId,
     onItineraryUpdated: () => tripId && fetchItineraryRef.current?.(tripId),
@@ -475,6 +476,7 @@ const App = () => {
                 onConfirm={confirmChanges}
                 onReject={rejectChanges}
                 onDismissError={clearChatError}
+                onClearMessages={clearChatMessages}
                 userProfile={userProfile}
               />
             </div>
@@ -566,7 +568,7 @@ const App = () => {
 
           <div className="flex-1 relative">
             <MapPanel
-              activities={itineraryData.days.flatMap((d) => d.activities)}
+              activities={allActivities}
               annotations={annotations}
               initialCenter={destinationCenter}
             />

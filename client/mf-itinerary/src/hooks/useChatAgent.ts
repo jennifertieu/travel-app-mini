@@ -20,6 +20,7 @@ interface UseChatAgentReturn {
   confirmChanges: () => void;
   rejectChanges: () => void;
   clearError: () => void;
+  clearMessages: () => void;
 }
 
 const WELCOME_MESSAGE: ChatMessage = {
@@ -309,5 +310,6 @@ export function useChatAgent({
     confirmChanges,
     rejectChanges,
     clearError: () => setError(null),
+    clearMessages: () => setMessages([WELCOME_MESSAGE]),
   };
 }
