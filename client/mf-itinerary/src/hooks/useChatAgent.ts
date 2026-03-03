@@ -20,7 +20,7 @@ interface UseChatAgentReturn {
   confirmChanges: () => void;
   rejectChanges: () => void;
   clearError: () => void;
-  clearMessages: () => void;
+  clearMessages: () => Promise<void>;
 }
 
 const WELCOME_MESSAGE: ChatMessage = {
@@ -282,6 +282,18 @@ export function useChatAgent({
     }
   }, [tripId, pendingChanges.length, onItineraryUpdated]);
 
+  const clearMessages = useCallback(async () => {
+    if (!tripId) return;
+    const headers = await buildAuthHeaders();
+    await fetch(getApiUrl(`/itinerary/${tripId}/chat/session`), {
+      method: "DELETE",
+      headers,
+    });
+    setMessages([WELCOME_MESSAGE]);
+    setPendingChanges([]);
+    setStatus("idle");
+  }, [tripId]);
+
   const rejectChanges = useCallback(async () => {
     if (!tripId) return;
     setPendingChanges([]);
@@ -310,6 +322,6 @@ export function useChatAgent({
     confirmChanges,
     rejectChanges,
     clearError: () => setError(null),
-    clearMessages: () => setMessages([WELCOME_MESSAGE]),
+    clearMessages,
   };
 }

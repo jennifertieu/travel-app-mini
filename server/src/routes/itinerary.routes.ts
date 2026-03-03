@@ -11,6 +11,7 @@ import {
   confirmChanges,
   rejectChanges,
   getSessionStatus,
+  clearChatSession,
 } from "../controllers/itineraryChat.controller.js";
 
 const router = express.Router();
@@ -25,5 +26,6 @@ router.post("/:id/chat", requireAuth, chatWithAgent);
 router.post("/:id/chat/confirm", requireAuth, confirmChanges);
 router.post("/:id/chat/reject", requireAuth, rejectChanges);
 router.get("/:id/chat/session", requireAuth, getSessionStatus);
+router.delete("/:id/chat/session", requireAuth, clearChatSession);
 
 export default router;

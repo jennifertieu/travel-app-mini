@@ -5,6 +5,7 @@ import { IItinerary } from "../utils/assignActivityToDay.js";
 import {
   getOrCreateSession,
   getSession,
+  deleteSession,
   computeChanges,
   ISystemEvent,
   IDisplayMessage,
@@ -160,6 +161,15 @@ export const rejectChanges = async (
   session.systemEvents.push(event);
 
   return response.json({ success: true, message: "Changes reverted" });
+};
+
+export const clearChatSession = async (
+  request: IAuthenticatedRequest,
+  response: Response
+) => {
+  const { id: tripId } = request.params;
+  deleteSession(tripId, request.user!.id);
+  return response.json({ success: true });
 };
 
 export const getSessionStatus = async (

@@ -244,13 +244,17 @@ export function ChatPanel({
       className="flex flex-col h-full border-r border-border bg-background"
     >
       {/* Header */}
-      <div className="flex-shrink-0 flex items-center gap-2 px-4 py-3 border-b border-border">
-        <Sparkles className="w-4 h-4 text-teal-600" />
-        <span className="text-sm font-semibold text-foreground">
-          Itinerary Assistant
-        </span>
+      <div className="flex-shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-b border-border">
+        {/* Left: icon + title */}
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <Sparkles className="w-4 h-4 text-teal-600 flex-shrink-0" />
+          <span className="text-sm font-semibold text-foreground truncate">
+            Itinerary Assistant
+          </span>
+        </div>
+        {/* Right: streaming indicator OR trash OR confirm */}
         {status === "streaming" && (
-          <span className="ml-auto flex items-center gap-1.5 text-[11px] font-medium text-teal-500">
+          <span className="flex items-center gap-1.5 text-[11px] font-medium text-teal-500 flex-shrink-0">
             thinking
             <span className="inline-flex items-end gap-[3px]">
               {[0, 1, 2].map((i) => (
@@ -267,25 +271,25 @@ export function ChatPanel({
           <button
             onClick={() => setShowClearConfirm(true)}
             title="Clear chat history"
-            className="ml-auto p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         )}
         {showClearConfirm && (
-          <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-            Clear history?
+          <span className="flex items-center gap-2 flex-shrink-0">
             <button
               onClick={() => { onClearMessages?.(); setShowClearConfirm(false); }}
-              className="px-2 py-0.5 rounded bg-red-500 hover:bg-red-600 text-white text-xs font-medium transition-colors"
+              className="px-2 py-0.5 rounded bg-red-500 hover:bg-red-600 text-white text-[11px] font-medium transition-colors"
             >
-              Clear
+              Clear chat
             </button>
             <button
               onClick={() => setShowClearConfirm(false)}
-              className="px-2 py-0.5 rounded hover:bg-muted text-muted-foreground text-xs transition-colors"
+              className="p-1 rounded hover:bg-muted text-muted-foreground transition-colors"
+              title="Cancel"
             >
-              Cancel
+              <X className="w-3.5 h-3.5" />
             </button>
           </span>
         )}
