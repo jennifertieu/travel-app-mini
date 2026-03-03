@@ -120,31 +120,54 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     checkAccess();
   }, []);
 
+  const resetDemo = useCallback(() => {
+    const defaultTime = makeDefaultTime();
+    if (tripDays.length > 0) {
+      const [year, month, day] = tripDays[0].date.split('-').map(Number);
+      defaultTime.setFullYear(year, month - 1, day);
+    }
+    setDemoTime(defaultTime);
+    setDemoLocation(tripLocations.length > 0 ? tripLocations[0] : SEOUL_LOCATIONS[0]);
+  }, [tripLocations, tripDays]);
+
   // Listen for toggle events dispatched by the shell nav
   useEffect(() => {
     const handler = (e: Event) => {
       const { enabled } = (e as CustomEvent<{ enabled: boolean }>).detail;
       setIsDemo(enabled);
       if (!enabled) {
-        setDemoTime(makeDefaultTime());
-        setDemoLocation(SEOUL_LOCATIONS[0]);
+        resetDemo();
       }
     };
     window.addEventListener('demo-toggle', handler);
     return () => window.removeEventListener('demo-toggle', handler);
-  }, []);
-
-  const resetDemo = useCallback(() => {
-    setDemoTime(makeDefaultTime());
-    setDemoLocation(SEOUL_LOCATIONS[0]);
-  }, []);
+  }, [resetDemo]);
 
   const handleSetTripLocations = useCallback((locs: DemoLocation[]) => {
-    setTripLocations(locs);
+    setTripLocations((prevLocs) => {
+      // Only update demoLocation on initial population, not on refetch
+      const isInitialSet = prevLocs.length === 0 && locs.length > 0;
+      if (isInitialSet) {
+        setDemoLocation(locs[0]);
+      }
+      return locs;
+    });
   }, []);
 
   const handleSetTripDays = useCallback((days: DemoDay[]) => {
-    setTripDays(days);
+    setTripDays((prevDays) => {
+      // Only update demoTime on initial population, not on refetch
+      const isInitialSet = prevDays.length === 0 && days.length > 0;
+      if (isInitialSet) {
+        const [year, month, day] = days[0].date.split('-').map(Number);
+        setDemoTime((prev) => {
+          const updated = new Date(prev);
+          updated.setFullYear(year, month - 1, day);
+          return updated;
+        });
+      }
+      return days;
+    });
   }, []);
 
   return (

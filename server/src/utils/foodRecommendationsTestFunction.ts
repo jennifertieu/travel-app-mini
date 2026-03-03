@@ -51,6 +51,7 @@ const mockContext: ITripContext = {
   },
   schedule: {
     today_activities: [],
+    all_activities: [],
   },
 };
 

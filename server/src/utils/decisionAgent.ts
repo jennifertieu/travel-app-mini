@@ -16,6 +16,36 @@ interface IToolCallResult {
   error?: string;
 }
 
+const DUPLICATE_RADIUS_KM = 0.2; // 200 meters
+
+/**
+ * Check if a coordinate is within DUPLICATE_RADIUS_KM of any existing itinerary activity.
+ * Also checks for name similarity (case-insensitive substring match).
+ */
+const overlapsExistingActivity = (
+  name: string,
+  lat: number,
+  lng: number,
+  allActivities: { title: string; location?: { lat: number; lng: number } }[],
+): boolean => {
+  const normName = name.trim().toLowerCase();
+  for (const act of allActivities) {
+    // Name match — either is a substring of the other
+    const normAct = act.title.trim().toLowerCase();
+    if (normName.includes(normAct) || normAct.includes(normName)) {
+      return true;
+    }
+    // Proximity match
+    if (act.location) {
+      const dist = calculateDistanceKm(lat, lng, act.location.lat, act.location.lng);
+      if (dist <= DUPLICATE_RADIUS_KM) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
 /**
  * Fetch nearby places from Google Places API
  */
@@ -103,6 +133,11 @@ const buildContextSummary = (context: ITripContext): string => {
     summary += `It's ${environment.weather.temperature}°C (${environment.weather.temperature_f}°F) and ${environment.weather.condition}. `;
   }
 
+  // Current activity if in progress
+  if (schedule.current_activity) {
+    summary += `You're currently at ${schedule.current_activity.title}. `;
+  }
+
   // Next activity if scheduled
   if (schedule.next_activity && schedule.time_until_next) {
     const hoursUntil = Math.round(schedule.time_until_next / 60);
@@ -111,7 +146,7 @@ const buildContextSummary = (context: ITripContext): string => {
     } else {
       summary += `${schedule.next_activity.title} is coming up soon.`;
     }
-  } else if (schedule.today_activities.length === 0) {
+  } else if (!schedule.current_activity && schedule.today_activities.length === 0) {
     summary += "You have a free day ahead!";
   }
 
@@ -233,6 +268,7 @@ Current Context:
 Today's Scheduled Activities:
 ${context.schedule.today_activities.map((a) => `- ${a.title} (${a.time_of_day})`).join("\n") || "No activities scheduled"}
 
+${context.schedule.current_activity ? `CURRENTLY AT: ${context.schedule.current_activity.title}` : ""}
 ${context.schedule.next_activity ? `Next Scheduled: ${context.schedule.next_activity.title} in ~${Math.round((context.schedule.time_until_next || 0) / 60)} hours` : ""}
 
 Your job is to:
@@ -314,8 +350,18 @@ When you have gathered enough information, respond with a JSON object in this ex
               // Validate with zod schema
               const validated = decisionResponseSchema.parse(parsed);
 
+              const dedupedOptions = validated.options.filter(
+                (opt) =>
+                  !overlapsExistingActivity(
+                    opt.title,
+                    opt.coordinates.lat,
+                    opt.coordinates.lng,
+                    context.schedule.all_activities,
+                  ),
+              );
+
               return {
-                options: validated.options,
+                options: dedupedOptions,
                 context_summary: validated.context_summary,
                 fallback_used: false,
               };
@@ -358,9 +404,18 @@ When you have gathered enough information, respond with a JSON object in this ex
                 parsedArgs.place_type,
                 parsedArgs.radius_meters || 1500,
               );
+              const filtered = places.filter(
+                (p) =>
+                  !overlapsExistingActivity(
+                    p.name,
+                    p.geometry.location.lat,
+                    p.geometry.location.lng,
+                    context.schedule.all_activities,
+                  ),
+              );
               toolResult = {
                 success: true,
-                data: places.slice(0, 5).map((p) => ({
+                data: filtered.slice(0, 5).map((p) => ({
                   id: p.place_id,
                   name: p.name,
                   location: p.geometry.location,

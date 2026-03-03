@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { X, ChevronRight, ChevronDown, MessageCircle, Clock, Compass, Coffee, Loader2, RefreshCw } from 'lucide-react';
+import { X, ChevronRight, ChevronDown, MessageCircle, Clock, Compass, Coffee, Loader2, RefreshCw, Check } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getDecision, acceptSuggestion as acceptSuggestionApi, type SuggestionCardData } from '../../services/duringTripService';
 import { SuggestionCard } from '../chat/SuggestionCard';
@@ -31,9 +31,12 @@ interface AiTripAssistantProps {
   location: { lat: number; lng: number; accuracy_meters?: number } | null;
   className?: string;
   onAskPress?: (suggestions: SuggestionCardData[], contextSummary: string | null) => void;
+  demoTime?: Date | null;
+  currentDayNumber?: number;
+  onItineraryUpdated?: () => void;
 }
 
-export function AiTripAssistant({ tripId, location, className, onAskPress }: AiTripAssistantProps) {
+export function AiTripAssistant({ tripId, location, className, onAskPress, demoTime, currentDayNumber, onItineraryUpdated }: AiTripAssistantProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -42,12 +45,14 @@ export function AiTripAssistant({ tripId, location, className, onAskPress }: AiT
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fetchedAt, setFetchedAt] = useState<Date | null>(null);
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
+  const [acceptedIds, setAcceptedIds] = useState<Set<string>>(new Set());
 
   const fetchSuggestions = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await getDecision(tripId, location);
+      const data = await getDecision(tripId, location, demoTime);
       setSuggestions(data.options ?? []);
       setContextSummary(data.context_summary ?? null);
       setFetchedAt(new Date());
@@ -56,7 +61,7 @@ export function AiTripAssistant({ tripId, location, className, onAskPress }: AiT
     } finally {
       setIsLoading(false);
     }
-  }, [tripId, location]);
+  }, [tripId, location, demoTime]);
 
   const handleExpand = useCallback(() => {
     setIsExpanded(true);
@@ -66,12 +71,29 @@ export function AiTripAssistant({ tripId, location, className, onAskPress }: AiT
   }, [suggestions.length, isLoading, fetchSuggestions]);
 
   const handleAccept = useCallback(async (data: SuggestionCardData) => {
+    setAcceptingId(data.id);
     try {
-      await acceptSuggestionApi(tripId, data, getCurrentTimeOfDay(), data.time_required_minutes || 60);
+      const tod: 'morning' | 'afternoon' | 'evening' = demoTime
+        ? (demoTime.getHours() < 12 ? 'morning' : demoTime.getHours() < 17 ? 'afternoon' : 'evening')
+        : getCurrentTimeOfDay();
+      const result = await acceptSuggestionApi({
+        tripId,
+        suggestion: data,
+        timeOfDay: tod,
+        durationMinutes: data.time_required_minutes || 60,
+        dayNumber: currentDayNumber,
+        currentTime: demoTime,
+      });
+      if (result.success) {
+        setAcceptedIds(prev => new Set(prev).add(data.id));
+        onItineraryUpdated?.();
+      }
     } catch {
-      // silently fail — user can retry
+      // error visible via button reset
+    } finally {
+      setAcceptingId(null);
     }
-  }, [tripId]);
+  }, [tripId, demoTime, currentDayNumber, onItineraryUpdated]);
 
   const handleDirections = useCallback((data: SuggestionCardData) => {
     const url = `https://www.google.com/maps/dir/?api=1&destination=${data.coordinates.lat},${data.coordinates.lng}&destination_place_id=${encodeURIComponent(data.title)}`;
@@ -197,6 +219,9 @@ export function AiTripAssistant({ tripId, location, className, onAskPress }: AiT
                         data={s}
                         onAccept={handleAccept}
                         onDirections={handleDirections}
+                        isAccepting={acceptingId === s.id}
+                        isAccepted={acceptedIds.has(s.id)}
+                        timeOfDay={demoTime ? (demoTime.getHours() < 12 ? 'morning' : demoTime.getHours() < 17 ? 'afternoon' : 'evening') : getCurrentTimeOfDay()}
                       />
                     </div>
                   )}

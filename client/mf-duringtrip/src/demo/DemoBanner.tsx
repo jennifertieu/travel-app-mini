@@ -62,7 +62,8 @@ export function DemoBanner() {
 
   const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const name = e.target.value;
-    const loc = [...tripLocations, ...SEOUL_LOCATIONS].find((l) => l.name === name);
+    const searchPool = tripLocations.length > 0 ? tripLocations : SEOUL_LOCATIONS;
+    const loc = searchPool.find((l) => l.name === name);
     if (!loc) return;
     setDemoLocation(loc);
     // Sync date + time when selecting a scheduled trip activity
@@ -181,13 +182,15 @@ export function DemoBanner() {
                   </>
                 );
               })()}
-              <optgroup label="Seoul Presets">
-                {SEOUL_LOCATIONS.map((loc) => (
-                  <option key={`preset-${loc.name}`} value={loc.name}>
-                    {loc.name}
-                  </option>
-                ))}
-              </optgroup>
+              {tripLocations.length === 0 && (
+                <optgroup label="Seoul Presets">
+                  {SEOUL_LOCATIONS.map((loc) => (
+                    <option key={`preset-${loc.name}`} value={loc.name}>
+                      {loc.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </div>
 

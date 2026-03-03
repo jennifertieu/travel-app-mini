@@ -65,6 +65,23 @@ export function formatDayDate(dateStr: string): string {
   }
 }
 
+export function parseDurationBucket(bucket: string | undefined | null): number {
+  if (!bucket) return 60;
+  const rangeMatch = bucket.match(
+    /^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*h/i,
+  );
+  if (rangeMatch) {
+    const low = parseFloat(rangeMatch[1]);
+    const high = parseFloat(rangeMatch[2]);
+    return Math.round(((low + high) / 2) * 60);
+  }
+  const hourMatch = bucket.match(/^(\d+(?:\.\d+)?)\s*h/i);
+  if (hourMatch) return Math.round(parseFloat(hourMatch[1]) * 60);
+  const minMatch = bucket.match(/^(\d+)\s*min/i);
+  if (minMatch) return parseInt(minMatch[1], 10);
+  return 60;
+}
+
 export function formatDuration(minutes: number): string {
   if (minutes < 60) return `${minutes}min`;
   const h = Math.floor(minutes / 60);
@@ -108,7 +125,7 @@ export function parseTimeToMinutes(time: string): number {
 export function getCurrentDayNumber(days: ItineraryDay[], now?: Date): number | undefined {
   const todayStr = (now ?? new Date()).toISOString().split("T")[0];
   const match = days.find((d) => d.date === todayStr);
-  return match?.day;
+  return match?.day_number;
 }
 
 /**

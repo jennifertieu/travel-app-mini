@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { IItinerary } from "./assignActivityToDay.js";
 
@@ -65,6 +66,20 @@ export const getOrCreateSession = async (
   }
 
   const { id: itineraryRowId, itinerary: savedItinerary } = await fetchItinerary();
+
+  // Backfill missing activity IDs so tools and change-tracking work
+  for (const day of savedItinerary.days ?? []) {
+    for (const activity of day.activities ?? []) {
+      if (!activity.id) {
+        activity.id = randomUUID();
+      }
+    }
+  }
+  for (const activity of savedItinerary.activities_pool ?? []) {
+    if (!activity.id) {
+      activity.id = randomUUID();
+    }
+  }
 
   const session: IChatSession = {
     tripId,

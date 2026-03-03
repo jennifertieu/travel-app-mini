@@ -59,20 +59,18 @@ export const getTimeOfDay = (
 };
 
 /**
- * Calculate day number within trip
+ * Calculate day number within trip (UTC-based to avoid timezone drift)
  */
 export const calculateDayNumber = (
   tripStartDate: string,
   currentDate: Date
 ): number => {
   const startDate = new Date(tripStartDate);
-  // normalize times to midnight to properly calculate day differences
-  startDate.setHours(0, 0, 0, 0);
+  // Use UTC date components to avoid local timezone shifts
+  const startUTC = Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
+  const currentUTC = Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), currentDate.getUTCDate());
 
-  const current = new Date(currentDate);
-  current.setHours(0, 0, 0, 0);
-
-  const diffTime = current.getTime() - startDate.getTime();
+  const diffTime = currentUTC - startUTC;
   const diffDays = Math.floor(diffTime / MILLISECONDS_PER_DAY);
 
   return Math.max(1, diffDays + 1); // 1-indexed
@@ -92,9 +90,56 @@ export const calculateTotalDays = (
 };
 
 /**
+ * Generate a scheduled time based on time_of_day and position within that block
+ * Morning: 9:00 AM, Afternoon: 1:00 PM, Evening: 6:00 PM (as starting points)
+ */
+const TIME_OF_DAY_START_HOURS: Record<string, number> = {
+  morning: 9,
+  afternoon: 13,
+  evening: 18,
+};
+
+/**
  * Parse itinerary JSONB to get today's scheduled activities
  * Uses Partial<IItinerary> because database JSONB may have incomplete structure
  */
+const mapActivity = (
+  activity: any,
+  fallbackDate: string,
+  cumulativeMinutesInBlock: number = 0,
+): IScheduledActivity => {
+  const timeOfDay = activity.time_of_day || "morning";
+  const baseHour = TIME_OF_DAY_START_HOURS[timeOfDay] ?? 9;
+  
+  let scheduledTime = activity.scheduled_time;
+  if (!scheduledTime) {
+    // Build a synthetic scheduled_time from the date + time_of_day + cumulative offset
+    // Use UTC (Z suffix) to match how client sends current_time via toISOString()
+    const totalMinutes = baseHour * 60 + cumulativeMinutesInBlock;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    scheduledTime = `${fallbackDate}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00Z`;
+  }
+
+  return {
+    id: activity.id,
+    title: activity.name || activity.title,
+    scheduled_time: scheduledTime,
+    time_of_day: timeOfDay,
+    location: activity.location
+      ? {
+          lat: activity.location.lat || activity.location.latitude,
+          lng: activity.location.lng || activity.location.longitude,
+        }
+      : activity.latitude && activity.longitude
+        ? { lat: activity.latitude, lng: activity.longitude }
+        : undefined,
+    duration_minutes:
+      activity.duration_minutes ||
+      (typeof activity.duration === "number" ? activity.duration : 60),
+  };
+};
+
 export const getTodayActivities = (
   itinerary: Partial<IItinerary> | null | undefined,
   dayNumber: number
@@ -111,23 +156,68 @@ export const getTodayActivities = (
     return [];
   }
 
-  return today.activities
-    .filter((activity) => activity.name !== "Free Time")
-    .map((activity) => ({
-      id: activity.id,
-      title: activity.name || activity.title,
-      scheduled_time: activity.scheduled_time || today.date,
-      time_of_day: activity.time_of_day || "morning",
-      location: activity.location
-        ? {
-            lat: activity.location.lat || activity.location.latitude,
-            lng: activity.location.lng || activity.location.longitude,
-          }
-        : undefined,
-      duration_minutes:
-        activity.duration_minutes ||
-        (typeof activity.duration === "number" ? activity.duration : 60),
-    }));
+  const filtered = today.activities.filter((activity) => activity.name !== "Free Time");
+  
+  // Track cumulative minutes per time_of_day block to schedule activities sequentially
+  const cumulativeByBlock: Record<string, number> = { morning: 0, afternoon: 0, evening: 0 };
+  
+  return filtered.map((a) => {
+    const tod = a.time_of_day || "morning";
+    const cumulative = cumulativeByBlock[tod] || 0;
+    const mapped = mapActivity(a, today.date, cumulative);
+    // Add this activity's duration to the cumulative total for its block
+    cumulativeByBlock[tod] = cumulative + (mapped.duration_minutes || 60);
+    return mapped;
+  });
+};
+
+/**
+ * Extract all activities across every day of the itinerary.
+ * Used to prevent the decision agent from suggesting places already planned.
+ */
+export const getAllActivities = (
+  itinerary: Partial<IItinerary> | null | undefined,
+): IScheduledActivity[] => {
+  if (!itinerary?.days || !Array.isArray(itinerary.days)) {
+    return [];
+  }
+
+  const activities: IScheduledActivity[] = [];
+  for (const day of itinerary.days) {
+    if (!day.activities || !Array.isArray(day.activities)) continue;
+    for (const a of day.activities) {
+      if (a.name === "Free Time") continue;
+      activities.push(mapActivity(a, day.date));
+    }
+  }
+  return activities;
+};
+
+/**
+ * Find the activity currently in progress based on current time
+ * Returns the activity if the current time falls within its scheduled window
+ */
+export const findCurrentActivity = (
+  activities: IScheduledActivity[],
+  currentTime: Date
+): IScheduledActivity | null => {
+  if (activities.length === 0) {
+    return null;
+  }
+
+  const currentMs = currentTime.getTime();
+
+  for (const activity of activities) {
+    const startTime = new Date(activity.scheduled_time).getTime();
+    const durationMs = (activity.duration_minutes || 60) * MILLISECONDS_PER_MINUTE;
+    const endTime = startTime + durationMs;
+
+    if (currentMs >= startTime && currentMs < endTime) {
+      return activity;
+    }
+  }
+
+  return null;
 };
 
 /**
@@ -205,19 +295,17 @@ export const findNextActivity = (
 export const buildTripContext = async (
   params: IBuildContextParams
 ): Promise<IBuildContextResult> => {
-  const { tripId, userId, location, supabase } = params;
+  const { tripId, userId, location, supabase, currentTime } = params;
 
   // Check cache first
   const cacheKey = `${tripId}:${userId}`;
   const cached = contextCache.get(cacheKey);
   const cacheTTL = DURING_TRIP_CACHE_TTL * 1000; // Convert to milliseconds
 
-  // Check if cached context is still valid
-  if (cached && Date.now() - cached.timestamp < cacheTTL) {
-    // Return deep copy to avoid mutating cached data
+  // Bypass cache when a custom currentTime is supplied (demo mode)
+  if (!currentTime && cached && Date.now() - cached.timestamp < cacheTTL) {
     const contextCopy: ITripContext = JSON.parse(JSON.stringify(cached.data));
     
-    // Update location if provided (location changes frequently)
     if (location) {
       contextCopy.user.location = buildUserLocation(location, {
         lat: contextCopy.trip.destination_lat,
@@ -255,9 +343,8 @@ export const buildTripContext = async (
       .eq("trip_id", tripId)
       .single();
 
-    // Build current time context
-    const now = new Date();
-    // TODO: Add timezone column to trips table. Hardcoded to UTC for now.
+    // Build current time context (use client-supplied time for demo mode)
+    const now = currentTime ?? new Date();
     const timezone = "UTC";
     
     // Get current hour in trip timezone
@@ -288,6 +375,8 @@ export const buildTripContext = async (
       itineraryData?.itinerary,
       currentDayNumber
     );
+    const allActivities = getAllActivities(itineraryData?.itinerary);
+    const currentActivity = findCurrentActivity(todayActivities, now);
     const nextActivityResult = findNextActivity(todayActivities, now);
 
     // Build user location with fallback
@@ -330,14 +419,18 @@ export const buildTripContext = async (
         weather: weather,
       },
       schedule: {
+        current_activity: currentActivity ?? undefined,
         next_activity: nextActivityResult?.next,
         time_until_next: nextActivityResult?.timeUntilNext,
         today_activities: todayActivities,
+        all_activities: allActivities,
       },
     };
 
-    // Cache the result
-    contextCache.set(cacheKey, { data: context, timestamp: Date.now() });
+    // Only cache when using real time (don't pollute cache with demo-time data)
+    if (!currentTime) {
+      contextCache.set(cacheKey, { data: context, timestamp: Date.now() });
+    }
 
     return { context };
   } catch (error: unknown) {

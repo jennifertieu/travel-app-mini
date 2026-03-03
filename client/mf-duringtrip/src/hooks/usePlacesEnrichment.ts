@@ -11,12 +11,12 @@ export function usePlacesEnrichment(activities: Activity[]): Map<string, Enrichm
     if (!activities.length) return;
     Promise.allSettled(
       activities.map(async (a) => {
-        const params = new URLSearchParams({ name: a.name });
+        const params = new URLSearchParams({ name: a.title });
         if (a.latitude != null) params.set("lat", String(a.latitude));
         if (a.longitude != null) params.set("lng", String(a.longitude));
         const res = await fetch(`${BACKEND_URL}/places/activity-details?${params}`);
         const data: Enrichment = await res.json();
-        return { name: a.name, data };
+        return { name: a.title, data };
       })
     ).then((results) => {
       const map = new Map<string, Enrichment>();

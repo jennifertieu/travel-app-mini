@@ -245,37 +245,6 @@ const TripMetadata = ({ summary }: { summary: TripSummary }) => {
   );
 };
 
-const DemoToggle = ({
-  enabled,
-  onToggle,
-}: {
-  enabled: boolean;
-  onToggle: () => void;
-}) => (
-  <button
-    type="button"
-    onClick={onToggle}
-    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-      enabled
-        ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
-        : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
-    }`}
-    aria-label={enabled ? "Disable demo mode" : "Enable demo mode"}
-  >
-    <span
-      className={`relative inline-flex w-6 h-3.5 rounded-full transition-colors ${
-        enabled ? "bg-amber-500" : "bg-gray-300"
-      }`}
-    >
-      <span
-        className={`absolute top-0.5 left-0.5 w-2.5 h-2.5 bg-white rounded-full shadow transition-transform ${
-          enabled ? "translate-x-2.5" : "translate-x-0"
-        }`}
-      />
-    </span>
-    Demo
-  </button>
-);
 const PENDING_OPEN_MODAL_KEY = "pending-open-modal";
 const PENDING_OPEN_MODAL_TRIP_ID_KEY = "pending-open-modal-tripId";
 
@@ -286,23 +255,12 @@ const RootLayout = () => {
   const tripSummary = useTripSummary();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [demoAccess, setDemoAccess] = useState(
-    () => localStorage.getItem("demo-access") === "true",
-  );
-  const [demoEnabled, setDemoEnabled] = useState(
-    () => localStorage.getItem("demo-enabled") === "true",
-  );
-
   const isDuringTrip = routerState.location.pathname === "/duringtrip";
-  const showDemoToggle = isDuringTrip && demoAccess;
 
-  // Check demo access via API when on /duringtrip (falls back to localStorage cache)
+  // Check demo access via API when on /duringtrip (caches result in localStorage for ProfileMenu)
   useEffect(() => {
     if (!isDuringTrip) return;
-    if (localStorage.getItem("demo-access") === "true") {
-      setDemoAccess(true);
-      return;
-    }
+    if (localStorage.getItem("demo-access") === "true") return;
     const checkAccess = async () => {
       const {
         data: { session: s },
@@ -320,7 +278,7 @@ const RootLayout = () => {
         const { allowed } = await res.json();
         if (allowed) {
           localStorage.setItem("demo-access", "true");
-          setDemoAccess(true);
+          window.dispatchEvent(new CustomEvent("demo-access-granted"));
         }
       } catch {
         // fail silently
@@ -346,35 +304,6 @@ const RootLayout = () => {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [mobileMenuOpen]);
 
-  // Sync demo state with mf-duringtrip via custom events
-  useEffect(() => {
-    const onAccessGranted = () => {
-      setDemoAccess(true);
-      setDemoEnabled(localStorage.getItem("demo-enabled") === "true");
-    };
-    const onToggle = (e: Event) => {
-      setDemoEnabled((e as CustomEvent<{ enabled: boolean }>).detail.enabled);
-    };
-    window.addEventListener("demo-access-granted", onAccessGranted);
-    window.addEventListener("demo-toggle", onToggle);
-    return () => {
-      window.removeEventListener("demo-access-granted", onAccessGranted);
-      window.removeEventListener("demo-toggle", onToggle);
-    };
-  }, []);
-
-  const handleDemoToggle = () => {
-    const next = !demoEnabled;
-    setDemoEnabled(next);
-    if (next) {
-      localStorage.setItem("demo-enabled", "true");
-    } else {
-      localStorage.removeItem("demo-enabled");
-    }
-    window.dispatchEvent(
-      new CustomEvent("demo-toggle", { detail: { enabled: next } }),
-    );
-  };
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteModalTripId, setInviteModalTripId] = useState<string | null>(
     null,
@@ -490,11 +419,6 @@ const RootLayout = () => {
                 </button>
               </div>
             )}
-            {showDemoToggle && (
-              <div className="shell-desktop-only items-center">
-                <DemoToggle enabled={demoEnabled} onToggle={handleDemoToggle} />
-              </div>
-            )}
             <div className="shell-desktop-only items-center">
               <AuthNav />
             </div>
@@ -542,17 +466,6 @@ const RootLayout = () => {
               >
                 During Trip
               </Link>
-              {showDemoToggle && (
-                <div className="pt-1">
-                  <DemoToggle
-                    enabled={demoEnabled}
-                    onToggle={() => {
-                      handleDemoToggle();
-                      setMobileMenuOpen(false);
-                    }}
-                  />
-                </div>
-              )}
             </div>
 
             {tripSummary && (

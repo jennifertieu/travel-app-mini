@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { User, LogOut, Settings, ChevronDown, Trash2 } from "lucide-react";
+import { User, LogOut, Settings, ChevronDown, Trash2, FlaskConical } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { ProfileUpdateModal } from "./ProfileUpdateModal";
 import { supabase } from "../lib/supabase";
@@ -10,6 +10,39 @@ export const ProfileMenu = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const [demoAccess, setDemoAccess] = useState(
+    () => localStorage.getItem("demo-access") === "true",
+  );
+  const [demoEnabled, setDemoEnabled] = useState(
+    () => localStorage.getItem("demo-enabled") === "true",
+  );
+
+  useEffect(() => {
+    const onAccessGranted = () => setDemoAccess(true);
+    const onToggle = (e: Event) => {
+      setDemoEnabled((e as CustomEvent<{ enabled: boolean }>).detail.enabled);
+    };
+    window.addEventListener("demo-access-granted", onAccessGranted);
+    window.addEventListener("demo-toggle", onToggle);
+    return () => {
+      window.removeEventListener("demo-access-granted", onAccessGranted);
+      window.removeEventListener("demo-toggle", onToggle);
+    };
+  }, []);
+
+  const handleDemoToggle = () => {
+    const next = !demoEnabled;
+    setDemoEnabled(next);
+    if (next) {
+      localStorage.setItem("demo-enabled", "true");
+    } else {
+      localStorage.removeItem("demo-enabled");
+    }
+    window.dispatchEvent(
+      new CustomEvent("demo-toggle", { detail: { enabled: next } }),
+    );
+  };
 
   // Reset avatar error when profile/avatar_url changes
   useEffect(() => {
@@ -279,6 +312,63 @@ export const ProfileMenu = () => {
                 <Settings size={16} />
                 Update Travel Profile
               </button>
+
+              {demoAccess && (
+                <button
+                  onClick={handleDemoToggle}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.75rem",
+                    padding: "0.75rem",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    borderRadius: "0.375rem",
+                    cursor: "pointer",
+                    fontSize: "0.875rem",
+                    color: demoEnabled ? "#b45309" : "#374151",
+                    textAlign: "left",
+                    transition: "background-color 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = demoEnabled ? "#fffbeb" : "#f9fafb";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                  }}
+                >
+                  <FlaskConical size={16} />
+                  <span style={{ flex: 1 }}>Demo Mode</span>
+                  <span
+                    style={{
+                      position: "relative",
+                      display: "inline-flex",
+                      width: "28px",
+                      height: "16px",
+                      borderRadius: "9999px",
+                      backgroundColor: demoEnabled ? "#f59e0b" : "#d1d5db",
+                      transition: "background-color 0.15s ease",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: "2px",
+                        left: "2px",
+                        width: "12px",
+                        height: "12px",
+                        borderRadius: "50%",
+                        backgroundColor: "white",
+                        boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
+                        transition: "transform 0.15s ease",
+                        transform: demoEnabled ? "translateX(12px)" : "translateX(0)",
+                      }}
+                    />
+                  </span>
+                </button>
+              )}
 
               <button
                 onClick={handleNukeTrips}
