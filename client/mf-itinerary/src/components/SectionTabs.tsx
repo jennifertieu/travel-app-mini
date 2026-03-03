@@ -5,6 +5,7 @@ import {
   Wallet,
   BookOpen,
   Camera,
+  CheckSquare,
   Sparkles,
   PanelRightOpen,
   PanelRightClose,
@@ -26,7 +27,7 @@ interface SectionTabsProps {
   activeSection: Section;
   onSectionChange: (section: Section) => void;
   onToggleSelectionMode?: () => void;
-  onOpenPhotoGuide?: () => void;
+  isSelectionMode?: boolean;
   onRebuildItinerary?: () => void;
   isRebuilding?: boolean;
   isChatOpen?: boolean;
@@ -37,7 +38,7 @@ export function SectionTabs({
   activeSection,
   onSectionChange,
   onToggleSelectionMode,
-  onOpenPhotoGuide,
+  isSelectionMode,
   onRebuildItinerary,
   isRebuilding,
   isChatOpen,
@@ -81,11 +82,25 @@ export function SectionTabs({
         })}
       </nav>
 
+      {onToggleSelectionMode && (
+        <button
+          type="button"
+          onClick={onToggleSelectionMode}
+          className={cn(
+            "p-2 rounded-md transition-colors",
+            isSelectionMode
+              ? "text-teal-600 dark:text-teal-400 bg-teal-500/10 dark:bg-teal-500/20"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          )}
+          title="Select items"
+        >
+          <CheckSquare className="w-4 h-4" />
+        </button>
+      )}
+
       <ActionsMenu
         open={actionsMenuOpen}
         onOpenChange={setActionsMenuOpen}
-        onSelectItems={onToggleSelectionMode ?? (() => {})}
-        onPhotoGuide={onOpenPhotoGuide}
         onRebuild={onRebuildItinerary}
         isRebuilding={isRebuilding}
       />

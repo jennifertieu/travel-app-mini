@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { RefreshCw, CheckSquare, Trash2, Hotel, Plane } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "../lib/utils";
 import { getApiUrl } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { DayTabs } from "./DayTabs";
@@ -118,6 +119,9 @@ export function ItineraryPanel({
     }
     return ids;
   }, [grouped]);
+
+  const isAllSelected =
+    allActivityIds.length > 0 && selectedIds.size === allActivityIds.length;
 
   // --- Compute FreeTimeSlots by comparing original vs local activities ---
   const freeTimeSlotsBySection = useMemo(() => {
@@ -315,7 +319,7 @@ export function ItineraryPanel({
             if (section !== "itinerary") setIsSelectionMode(false);
           }}
           onToggleSelectionMode={handleToggleSelectionMode}
-          onOpenPhotoGuide={() => setActiveSection("photo")}
+          isSelectionMode={isSelectionMode}
           onRebuildItinerary={handleRebuildItinerary}
           isRebuilding={isRebuilding}
           isChatOpen={isChatOpen}
@@ -506,7 +510,12 @@ export function ItineraryPanel({
               <button
                 type="button"
                 onClick={handleSelectAll}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                className={cn(
+                  "flex items-center gap-1.5 text-xs transition-colors",
+                  isAllSelected
+                    ? "text-teal-600 dark:text-teal-400 font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
               >
                 <CheckSquare className="w-3.5 h-3.5" />
                 Select all
