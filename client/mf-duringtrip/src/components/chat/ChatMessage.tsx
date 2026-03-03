@@ -13,6 +13,9 @@ interface ChatMessageProps {
   onAcceptSuggestion?: (data: SuggestionCardData) => void;
   onAcceptFood?: (data: FoodCardData) => void;
   onDirections?: (coords: { lat: number; lng: number }, name: string) => void;
+  acceptingId?: string | null;
+  acceptedIds?: Set<string>;
+  timeOfDay?: string;
 }
 
 export function ChatMessage({
@@ -23,6 +26,9 @@ export function ChatMessage({
   onAcceptSuggestion,
   onAcceptFood,
   onDirections,
+  acceptingId,
+  acceptedIds,
+  timeOfDay,
 }: ChatMessageProps) {
   if (role === 'assistant') {
     return (
@@ -42,15 +48,19 @@ export function ChatMessage({
             <div className="space-y-2">
               {cards.map((card, i) => {
                 if (card.type === 'suggestion') {
+                  const sd = card.data as SuggestionCardData;
                   return (
                     <SuggestionCard
                       key={i}
-                      data={card.data as SuggestionCardData}
+                      data={sd}
                       onAccept={onAcceptSuggestion}
                       onDirections={onDirections
                         ? (d) => onDirections(d.coordinates, d.title)
                         : undefined
                       }
+                      isAccepting={acceptingId === sd.id}
+                      isAccepted={acceptedIds?.has(sd.id)}
+                      timeOfDay={timeOfDay}
                     />
                   );
                 }

@@ -21,7 +21,7 @@ function buildMapsUrl(activity: Activity): string {
   if (coords) {
     return `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`;
   }
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.name)}`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.title)}`;
 }
 
 interface ActivityDetailModalProps {
@@ -45,7 +45,7 @@ export function ActivityDetailModal({ activity, enrichment, onClose }: ActivityD
           {(activity.place?.photoUrl ?? activity.image_url) ? (
           <img
             src={(activity.place?.photoUrl ?? activity.image_url)!}
-            alt={activity.name}
+            alt={activity.title}
             className="w-full h-full object-cover"
           />
         ) : (
@@ -64,7 +64,7 @@ export function ActivityDetailModal({ activity, enrichment, onClose }: ActivityD
         {/* Body */}
         <div className="p-5">
           <h2 className="text-base font-bold text-gray-900 mb-2">
-            {activity.name}
+            {activity.title}
           </h2>
 
           {(enrichment?.description ?? activity.summary ?? activity.description) && (

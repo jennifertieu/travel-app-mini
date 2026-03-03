@@ -122,7 +122,7 @@ export function MapPanel({ activities, annotations, userLocation, focusedActivit
         zIndexOffset: status === "current" ? 500 : 0,
       });
 
-      marker.bindPopup(createPopupContent(activity.name, activity.description));
+      marker.bindPopup(createPopupContent(activity.title, activity.description));
 
       markerGroup.addLayer(marker);
     }

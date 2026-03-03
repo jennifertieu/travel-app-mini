@@ -3,9 +3,10 @@ import { SupabaseClient } from "@supabase/supabase-js";
 /**
  * Verify that a user has access to a specific trip
  * 
- * Checks two conditions:
+ * Checks three conditions (short-circuits on first match):
  * 1. User is the trip creator (trips.created_by)
  * 2. User is a trip member (trip_members.member_id)
+ * 3. User is a trip collaborator (trip_collaborators.user_id)
  * 
  * This function is used for authorization before allowing access to trip data.
  * Returns false on any error (trip not found, database error, etc.) for security.
@@ -15,7 +16,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
  * @param supabase - Supabase client instance
  * 
  * @returns Promise resolving to boolean
- * @returns true - User has access (creator or member)
+ * @returns true - User has access (creator, member, or collaborator)
  * @returns false - User does not have access, trip not found, or error occurred
  * 
  * @example
@@ -43,7 +44,6 @@ export const verifyTripAccess = async (
       return false;
     }
 
-    // User is creator
     if (trip.created_by === userId) {
       return true;
     }
@@ -57,6 +57,18 @@ export const verifyTripAccess = async (
       .single();
 
     if (membership) {
+      return true;
+    }
+
+    // Check if user is a trip collaborator (shared via invite link)
+    const { data: collaborator } = await supabase
+      .from("trip_collaborators")
+      .select("id")
+      .eq("trip_id", tripId)
+      .eq("user_id", userId)
+      .single();
+
+    if (collaborator) {
       return true;
     }
 

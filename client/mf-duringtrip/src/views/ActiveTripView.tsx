@@ -16,7 +16,7 @@ import { AiTripAssistant } from '../components/map/AiTripAssistant';
 import { MobileTabBar, type MobileTab } from '../components/MobileTabBar';
 import { DemoProvider, useDemoContext, type DemoLocation } from '../demo/DemoContext';
 import { DemoBanner } from '../demo/DemoBanner';
-import { getAllActivitiesWithStatus, groupActivitiesByTimeOfDay } from '../lib/utils';
+import { getAllActivitiesWithStatus, groupActivitiesByTimeOfDay, parseDurationBucket } from '../lib/utils';
 import type { Activity, ItineraryData } from '../types/itinerary';
 import type { SuggestionCardData } from '../services/duringTripService';
 
@@ -34,15 +34,29 @@ const getStoredTripId = (): string | null => {
 };
 
 export function ActiveTripView() {
+  const tripRouteMatch = useMatch({ from: '/trip/$tripId', shouldThrow: false });
+  const [storedTripId, setStoredTripId] = useState<string | null>(getStoredTripId);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { tripId: newId } = (e as CustomEvent<{ tripId: string }>).detail;
+      if (newId) setStoredTripId(newId);
+    };
+    window.addEventListener('currentTripChanged', handler);
+    return () => window.removeEventListener('currentTripChanged', handler);
+  }, []);
+
+  const tripId = (tripRouteMatch as any)?.params?.tripId || storedTripId;
+
   return (
     <DemoProvider>
-      <ActiveTripViewInner />
+      <ActiveTripViewInner key={tripId ?? 'no-trip'} />
     </DemoProvider>
   );
 }
 
 function ActiveTripViewInner() {
-  const { isDemo, demoTime, setTripLocations, setTripDays } = useDemoContext();
+  const { isDemo, demoTime, demoLocation, setTripLocations, setTripDays } = useDemoContext();
   // Try route param first, fall back to query param / localStorage (same as mf-itinerary)
   const tripRouteMatch = useMatch({ from: '/trip/$tripId', shouldThrow: false });
   const [storedTripId] = useState<string | null>(getStoredTripId);
@@ -57,6 +71,7 @@ function ActiveTripViewInner() {
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [focusedActivity, setFocusedActivity] = useState<Activity | null>(null);
   const [activeTab, setActiveTab] = useState<MobileTab>('map');
+  const [isChatOpen, setIsChatOpen] = useState(true);
   const [initialSuggestions, setInitialSuggestions] = useState<InitialSuggestions | null>(null);
   const [locateTrigger, setLocateTrigger] = useState(0);
   const prevIsDemoRef = useRef(isDemo);
@@ -71,18 +86,24 @@ function ActiveTripViewInner() {
   }, [isDemo]);
 
   const handleAskWithSuggestions = useCallback((suggestions: SuggestionCardData[], contextSummary: string | null) => {
-    setInitialSuggestions({ suggestions, contextSummary });
+    setInitialSuggestions({ suggestions, contextSummary, _ts: Date.now() });
+    setIsChatOpen(true);
   }, []);
 
   const handleMobileAskWithSuggestions = useCallback((suggestions: SuggestionCardData[], contextSummary: string | null) => {
-    setInitialSuggestions({ suggestions, contextSummary });
+    setInitialSuggestions({ suggestions, contextSummary, _ts: Date.now() });
     setActiveTab('ask-ai');
   }, []);
 
-  // Location payload for chat
-  const chatLocation = position
-    ? { lat: position.latitude, lng: position.longitude, accuracy_meters: position.accuracy }
-    : null;
+  // Location payload for chat & AI assistant — use demo location when active
+  const chatLocation = useMemo(() => {
+    if (isDemo) {
+      return { lat: demoLocation.lat, lng: demoLocation.lng, accuracy_meters: 10 };
+    }
+    return position
+      ? { lat: position.latitude, lng: position.longitude, accuracy_meters: position.accuracy }
+      : null;
+  }, [isDemo, demoLocation, position]);
 
   const fetchItinerary = useCallback(async (id: string) => {
     setIsLoading(true);
@@ -106,6 +127,20 @@ function ActiveTripViewInner() {
 
     setIsLoading(false);
   }, []);
+
+  const refetchItinerary = useCallback(() => {
+    if (!tripId) return;
+    supabase
+      .from("trip_itineraries")
+      .select("*")
+      .eq("trip_id", tripId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setItinerary(data as Itinerary);
+      });
+  }, [tripId]);
 
   useEffect(() => {
     if (!tripId) return;
@@ -145,15 +180,33 @@ function ActiveTripViewInner() {
     };
   }, [tripId, fetchItinerary]);
 
-  // Parse the itinerary JSON into typed data
+  // Parse the itinerary JSON into typed data, normalizing server field names
   const itineraryData: ItineraryData | null = useMemo(() => {
     if (!itinerary?.itinerary) return null;
     try {
       const raw = itinerary.itinerary as Record<string, unknown>;
-      // Support both { days: [...] } and { itinerary: { days: [...] } } shapes
       const inner = (raw.itinerary ?? raw) as Record<string, unknown>;
       if (inner.days && Array.isArray(inner.days)) {
-        return inner as unknown as ItineraryData;
+        const parsed = inner as unknown as ItineraryData;
+        for (const day of parsed.days) {
+          if (!day.day_number && (day as any).day) {
+            day.day_number = (day as any).day;
+          }
+          for (const act of day.activities) {
+            if (!act.title && (act as any).name) {
+              act.title = (act as any).name;
+            }
+            if (!act.duration_minutes || isNaN(act.duration_minutes)) {
+              act.duration_minutes = parseDurationBucket(
+                (act as any).duration_bucket,
+              );
+            }
+          }
+        }
+        if (inner.budget) parsed.budget = inner.budget as any;
+        if (inner.flights) parsed.flights = inner.flights as any;
+        if (inner.hotel !== undefined) parsed.hotel = inner.hotel as any;
+        return parsed;
       }
       return null;
     } catch {
@@ -172,6 +225,22 @@ function ActiveTripViewInner() {
   );
   const enrichmentMap = usePlacesEnrichment(allActivities);
 
+  // Compute current day number from trip dates (demo-aware)
+  const currentDayNumber = useMemo(() => {
+    if (!itineraryData?.days?.length) return undefined;
+    const now = isDemo && demoTime ? demoTime : new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    const match = itineraryData.days.find((d) => d.date === todayStr);
+    if (match) return match.day_number;
+    // Fallback: find the closest day by date diff
+    const sorted = [...itineraryData.days].sort(
+      (a, b) => Math.abs(new Date(a.date).getTime() - now.getTime()) - Math.abs(new Date(b.date).getTime() - now.getTime()),
+    );
+    return sorted[0]?.day_number;
+  }, [itineraryData, isDemo, demoTime]);
+
+  const effectiveDemoTime = isDemo ? demoTime : null;
+
   // Populate demo location options from trip activities whenever itinerary loads
   useEffect(() => {
     if (!isDemo || !itineraryData) return;
@@ -183,7 +252,7 @@ function ActiveTripViewInner() {
       for (const tod of ['morning', 'afternoon', 'evening'] as const) {
         let precedingMinutes = 0;
         for (const activity of grouped[tod]) {
-          if (!seen.has(activity.name)) {
+          if (!seen.has(activity.title)) {
             let lat: number | null = null;
             let lng: number | null = null;
             if (typeof activity.latitude === 'number' && typeof activity.longitude === 'number') {
@@ -198,8 +267,8 @@ function ActiveTripViewInner() {
             }
             if (lat !== null && lng !== null) {
               const startMinutes = SECTION_START_HOURS[tod] * 60 + precedingMinutes;
-              locations.push({ name: activity.name, lat, lng, day: day.day, date: day.date, startMinutes });
-              seen.add(activity.name);
+              locations.push({ name: activity.title, lat, lng, day: day.day_number, date: day.date, startMinutes });
+              seen.add(activity.title);
             }
           }
           precedingMinutes += activity.duration_minutes;
@@ -212,7 +281,7 @@ function ActiveTripViewInner() {
   // Populate demo day options from trip itinerary
   useEffect(() => {
     if (!isDemo || !itineraryData) return;
-    setTripDays(itineraryData.days.map((d) => ({ day: d.day, date: d.date })));
+    setTripDays(itineraryData.days.map((d) => ({ day: d.day_number, date: d.date })));
   }, [isDemo, itineraryData, setTripDays]);
 
   return (
@@ -236,16 +305,22 @@ function ActiveTripViewInner() {
 
       {itineraryData && (
         <>
-          {/* Desktop: 3-column layout — chat | itinerary | map */}
-          <div className="hidden md:flex flex-1 min-h-0">
-            <div className="w-[380px] border-r flex flex-col shrink-0">
-              <ChatPanel tripId={tripId} location={chatLocation} initialSuggestions={initialSuggestions} />
-            </div>
+          {/* Desktop layout — conditionally chat | itinerary | map */}
+          <div className="hidden md:flex flex-1 min-h-0" style={{ display: 'var(--dt-desktop-display, none)' }}>
+            {isChatOpen && (
+              <div className="w-[380px] border-r flex flex-col shrink-0">
+                <ChatPanel tripId={tripId} itineraryRowId={itinerary?.id} location={chatLocation} initialSuggestions={initialSuggestions} demoTime={effectiveDemoTime} currentDayNumber={currentDayNumber} onItineraryUpdated={refetchItinerary} />
+              </div>
+            )}
             <div className="flex-1 overflow-y-auto">
               <ItineraryPanel
                 data={itineraryData}
+                tripId={tripId}
+                itineraryRowId={itinerary?.id}
                 onOpenActivity={setSelectedActivity}
                 onLocateActivity={setFocusedActivity}
+                isChatOpen={isChatOpen}
+                onToggleChat={() => setIsChatOpen((p) => !p)}
               />
             </div>
             <div className="flex-1 relative">
@@ -256,7 +331,7 @@ function ActiveTripViewInner() {
                 focusedActivity={focusedActivity}
                 locateTrigger={locateTrigger}
               />
-              <AiTripAssistant tripId={tripId} location={chatLocation} onAskPress={handleAskWithSuggestions} />
+              <AiTripAssistant tripId={tripId} location={chatLocation} onAskPress={handleAskWithSuggestions} demoTime={effectiveDemoTime} currentDayNumber={currentDayNumber} onItineraryUpdated={refetchItinerary} />
               {position && (
                 <button
                   type="button"
@@ -270,15 +345,15 @@ function ActiveTripViewInner() {
               {selectedActivity && (
                 <ActivityDetailModal
                   activity={selectedActivity}
-                  enrichment={enrichmentMap.get(selectedActivity.name) ?? null}
+                  enrichment={enrichmentMap.get(selectedActivity.title) ?? null}
                   onClose={() => setSelectedActivity(null)}
                 />
               )}
             </div>
           </div>
 
-          {/* Mobile: tab-based layout — reserve space at bottom for tab bar (60px + pb-safe) */}
-          <div className="flex flex-col flex-1 min-h-0 md:hidden relative" style={{ paddingBottom: 'calc(60px)' }}>
+          {/* Mobile: tab-based layout — reserve space at bottom for tab bar */}
+          <div className="flex flex-col flex-1 min-h-0 md:hidden relative" style={{ paddingBottom: 'calc(60px)', display: 'var(--dt-mobile-display, flex)' }}>
             {/* Map tab */}
             {activeTab === 'map' && (
               <div className="flex-1 min-h-0 relative">
@@ -291,7 +366,7 @@ function ActiveTripViewInner() {
                     locateTrigger={locateTrigger}
                   />
                 </div>
-                <AiTripAssistant tripId={tripId} location={chatLocation} onAskPress={handleMobileAskWithSuggestions} />
+                <AiTripAssistant tripId={tripId} location={chatLocation} onAskPress={handleMobileAskWithSuggestions} demoTime={effectiveDemoTime} currentDayNumber={currentDayNumber} onItineraryUpdated={refetchItinerary} />
                 {position && (
                   <button
                     type="button"
@@ -315,16 +390,19 @@ function ActiveTripViewInner() {
               <div className="flex-1 min-h-0 flex flex-col">
                 <ItineraryPanel
                   data={itineraryData}
+                  tripId={tripId}
+                  itineraryRowId={itinerary?.id}
                   onOpenActivity={setSelectedActivity}
                   onLocateActivity={setFocusedActivity}
                 />
               </div>
             )}
 
+
             {/* Ask AI tab */}
             {activeTab === 'ask-ai' && (
               <div className="flex-1 min-h-0">
-                <ChatPanel tripId={tripId} location={chatLocation} onClose={() => setActiveTab('map')} initialSuggestions={initialSuggestions} />
+                <ChatPanel tripId={tripId} itineraryRowId={itinerary?.id} location={chatLocation} onClose={() => setActiveTab('map')} initialSuggestions={initialSuggestions} demoTime={effectiveDemoTime} currentDayNumber={currentDayNumber} onItineraryUpdated={refetchItinerary} />
               </div>
             )}
 
@@ -332,7 +410,7 @@ function ActiveTripViewInner() {
             {selectedActivity && activeTab !== 'ask-ai' && (
               <ActivityDetailModal
                 activity={selectedActivity}
-                enrichment={enrichmentMap.get(selectedActivity.name) ?? null}
+                enrichment={enrichmentMap.get(selectedActivity.title) ?? null}
                 onClose={() => setSelectedActivity(null)}
               />
             )}

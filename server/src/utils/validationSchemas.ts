@@ -60,6 +60,7 @@ const locationRequestSchema = z.object({
 const baseDuringTripRequestSchema = z.object({
   trip_id: z.string().uuid("trip_id must be a valid UUID"),
   location: locationRequestSchema.optional(),
+  current_time: z.string().datetime().optional(),
 });
 
 /**
@@ -149,7 +150,9 @@ export const acceptSuggestionRequestSchema = z.object({
     dietary_match: z.boolean().optional(),
   }),
   time_of_day: z.enum(["morning", "afternoon", "evening"]),
+  day_number: z.number().int().min(1).optional(),
   duration_minutes: z.number().min(1).max(1440), // Max 24 hours
   override_conflicts: z.boolean().optional(),
   remove_conflicting_activity_ids: z.array(z.string().uuid()).optional(),
+  current_time: z.string().datetime().optional(),
 });

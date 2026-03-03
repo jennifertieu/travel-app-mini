@@ -19,16 +19,27 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface PendingConflict {
+  suggestion: SuggestionCardData | FoodCardData;
+  timeOfDay: 'morning' | 'afternoon' | 'evening';
+  dayNumber?: number;
+  durationMinutes: number;
+  response: AcceptSuggestionResponse;
+}
+
 interface UseDuringTripChatOptions {
   tripId: string;
   location?: { lat: number; lng: number; accuracy_meters?: number } | null;
+  demoTime?: Date | null;
 }
 
-export function useDuringTripChat({ tripId, location }: UseDuringTripChatOptions) {
+export function useDuringTripChat({ tripId, location, demoTime }: UseDuringTripChatOptions) {
   const [state, setState] = useState<ChatState>('idle');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [contextSummary, setContextSummary] = useState<string | null>(null);
+  const [pendingConflict, setPendingConflict] = useState<PendingConflict | null>(null);
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const idCounter = useRef(0);
 
   const nextId = () => {
@@ -55,7 +66,7 @@ export function useDuringTripChat({ tripId, location }: UseDuringTripChatOptions
     setError(null);
 
     try {
-      const response = await sendChatMessage(tripId, text.trim(), locationPayload);
+      const response = await sendChatMessage(tripId, text.trim(), locationPayload, demoTime);
 
       const assistantMsg: ChatMessage = {
         id: nextId(),
@@ -84,28 +95,93 @@ export function useDuringTripChat({ tripId, location }: UseDuringTripChatOptions
     } finally {
       setState('idle');
     }
-  }, [state, tripId, locationPayload]);
+  }, [state, tripId, locationPayload, demoTime]);
 
   const handleAcceptSuggestion = useCallback(async (
     card: SuggestionCardData | FoodCardData,
     timeOfDay: 'morning' | 'afternoon' | 'evening',
-    durationMinutes: number
+    durationMinutes: number,
+    dayNumber?: number,
   ): Promise<AcceptSuggestionResponse> => {
-    const result = await acceptSuggestionApi(tripId, card, timeOfDay, durationMinutes);
+    const cardId = card.id;
+    setAcceptingId(cardId);
+    try {
+      const result = await acceptSuggestionApi({
+        tripId,
+        suggestion: card,
+        timeOfDay,
+        durationMinutes,
+        dayNumber,
+        currentTime: demoTime,
+      });
 
-    if (result.success) {
-      const name = 'title' in card ? card.title : (card as FoodCardData).name;
-      const confirmMsg: ChatMessage = {
-        id: nextId(),
-        role: 'assistant',
-        text: `Added "${name}" to your itinerary!`,
-        timestamp: Date.now(),
-      };
-      setMessages(prev => [...prev, confirmMsg]);
+      if (result.success) {
+        const name = 'title' in card ? card.title : (card as FoodCardData).name;
+        const confirmMsg: ChatMessage = {
+          id: nextId(),
+          role: 'assistant',
+          text: `Added "${name}" to your ${timeOfDay} itinerary!`,
+          timestamp: Date.now(),
+        };
+        setMessages(prev => [...prev, confirmMsg]);
+      } else if (result.conflicts_detected) {
+        setPendingConflict({ suggestion: card, timeOfDay, dayNumber, durationMinutes, response: result });
+        const desc = result.conflicts?.map(c => c.description).join('; ') ?? 'Schedule conflict detected';
+        const conflictMsg: ChatMessage = {
+          id: nextId(),
+          role: 'assistant',
+          text: `⚠️ ${desc}. You can force-add it or cancel.`,
+          timestamp: Date.now(),
+        };
+        setMessages(prev => [...prev, conflictMsg]);
+      }
+
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to add activity';
+      setError(message);
+      throw err;
+    } finally {
+      setAcceptingId(null);
     }
+  }, [tripId, demoTime]);
 
-    return result;
-  }, [tripId]);
+  const overrideConflict = useCallback(async () => {
+    if (!pendingConflict) return;
+    const { suggestion, timeOfDay, dayNumber, durationMinutes } = pendingConflict;
+    setPendingConflict(null);
+    setAcceptingId(suggestion.id);
+    try {
+      const result = await acceptSuggestionApi({
+        tripId,
+        suggestion,
+        timeOfDay,
+        durationMinutes,
+        dayNumber,
+        overrideConflicts: true,
+        currentTime: demoTime,
+      });
+      if (result.success) {
+        const name = 'title' in suggestion ? suggestion.title : (suggestion as FoodCardData).name;
+        const msg: ChatMessage = {
+          id: nextId(),
+          role: 'assistant',
+          text: `Added "${name}" to your ${timeOfDay} itinerary (conflicts overridden).`,
+          timestamp: Date.now(),
+        };
+        setMessages(prev => [...prev, msg]);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to add activity';
+      setError(message);
+    } finally {
+      setAcceptingId(null);
+    }
+  }, [pendingConflict, tripId, demoTime]);
+
+  const dismissConflict = useCallback(() => {
+    setPendingConflict(null);
+  }, []);
 
   const handleUpdateActivity = useCallback(async (
     activityId: string,
@@ -152,8 +228,12 @@ export function useDuringTripChat({ tripId, location }: UseDuringTripChatOptions
     messages,
     error,
     contextSummary,
+    pendingConflict,
+    acceptingId,
     sendMessage,
     acceptSuggestion: handleAcceptSuggestion,
+    overrideConflict,
+    dismissConflict,
     updateActivity: handleUpdateActivity,
     clearError,
     clearMessages,
