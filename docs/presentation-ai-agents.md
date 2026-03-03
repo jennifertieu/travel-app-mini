@@ -5,10 +5,12 @@
 
 ## Opening (15 seconds)
 
-> "TripWeave doesn't just use AI — it orchestrates 13 AI-powered services 
-> across 3 models, 2 agentic loops, a real-time voice interface, and a 
-> streaming architecture that keeps the UI alive while AI thinks. Every 
-> phase of trip planning — from pasting a TikTok link to getting live 
+> "TripWeave doesn't just use AI — it orchestrates 14 AI-powered services
+> across 3 models, 3 agentic loops, a real-time voice interface, and a
+> streaming architecture that keeps the UI alive while AI thinks. Two of
+> those agents work on the itinerary alone — one builds it from scratch,
+> another lets you modify it through natural language conversation. Every
+> phase of trip planning — from pasting a TikTok link to getting live
 > food recommendations on the ground — has an AI layer underneath it."
 
 ---
@@ -37,7 +39,7 @@ TYPICAL "AI-POWERED" TRAVEL APP
 
 ---
 
-## Our Architecture — 13 AI Services, 3 Models (20 seconds)
+## Our Architecture — 14 AI Services, 3 Models (20 seconds)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -46,13 +48,14 @@ TYPICAL "AI-POWERED" TRAVEL APP
 │  ┌─────────────────────────────────────────────────────────────┐    │
 │  │                    AGENTIC (Tool-Calling)                    │    │
 │  │                                                             │    │
-│  │  ┌─────────────────────┐    ┌─────────────────────────┐    │    │
-│  │  │ ITINERARY BUILDER   │    │ DECISION AGENT          │    │    │
-│  │  │ GPT-4o-mini         │    │ "What Now?"             │    │    │
-│  │  │ 5 tools, 10 iters   │    │ GPT-4o-mini             │    │    │
-│  │  │ Builds day-by-day   │    │ 5 tools, 10 iters       │    │    │
-│  │  │ schedule from ideas │    │ Live context-aware recs  │    │    │
-│  │  └─────────────────────┘    └─────────────────────────┘    │    │
+│  │  ┌──────────────────┐ ┌──────────────────────┐ ┌─────────────────────────┐ │
+│  │  │ ITINERARY BUILDER│ │ ITINERARY CHAT AGENT │ │ DECISION AGENT          │ │
+│  │  │ GPT-4o-mini      │ │ GPT-4o-mini          │ │ "What Now?"             │ │
+│  │  │ 5 tools          │ │ 8 tools              │ │ GPT-4o-mini             │ │
+│  │  │ One-shot         │ │ Multi-turn, SSE      │ │ 5 tools, 10 iters       │ │
+│  │  │ Builds schedule  │ │ Edits via chat       │ │ Live context-aware recs │ │
+│  │  │ from ideas       │ │ Preview → confirm    │ │                         │ │
+│  │  └──────────────────┘ └──────────────────────┘ └─────────────────────────┘ │
 │  └─────────────────────────────────────────────────────────────┘    │
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐    │
@@ -189,7 +192,105 @@ ITINERARY BUILDER AGENT
 
 ---
 
-## Agent 2: Decision Agent — "What Now?" (25 seconds)
+## Agent 2: Itinerary Chat Agent — Natural Language Editing (25 seconds)
+
+Once an itinerary is built, users can modify it through conversation. The chat agent is
+the most sophisticated agent in the system — it maintains session state, streams responses,
+and requires user confirmation before touching the database.
+
+```
+ITINERARY CHAT AGENT
+═════════════════════
+
+  Input: Existing itinerary + user's natural language request
+  Output: Modified itinerary draft — streamed back as it's computed
+
+  Model: GPT-4o-mini (temperature: 0.3 — low variance for consistent edits)
+  Max iterations: 10 tool-calling rounds per message
+  Streaming: SSE (text chunks stream live as the agent thinks)
+  Session TTL: 30 minutes (in-memory, keyed by tripId:userId)
+
+  ┌──────────────────────────────────────────────────────────────┐
+  │                                                              │
+  │  KEY DIFFERENTIATORS FROM THE BUILDER AGENT:                 │
+  │                                                              │
+  │  • Multi-turn conversation — remembers prior messages        │
+  │  • Works on an EXISTING itinerary, not a blank slate         │
+  │  • Preview-then-confirm: database NEVER updated until        │
+  │    user explicitly approves the proposed changes             │
+  │  • Streams text chunks live via SSE as agent reasons         │
+  │  • Detects conflicts and asks clarifying questions before     │
+  │    calling any tools                                         │
+  │  • Integrity validation after every mutation (reverts bad    │
+  │    states automatically)                                     │
+  │                                                              │
+  │  8 TOOLS (5 shared with builder + 3 new edit-specific):      │
+  │                                                              │
+  │  ┌─────────────────────────────────────────────────────┐     │
+  │  │ SHARED WITH BUILDER:                                │     │
+  │  │  assign_activity_to_day  Place activity in a slot   │     │
+  │  │  get_all_travel_times    Walking/transit/driving    │     │
+  │  │  add_travel_segment      Inter-city transit block   │     │
+  │  │  check_day_conflicts     Validate no overlaps       │     │
+  │  │  get_activity_details    Fetch activity metadata    │     │
+  │  │                                                     │     │
+  │  │ NEW IN CHAT AGENT:                                  │     │
+  │  │  move_activity           Move between days/slots    │     │
+  │  │  remove_activity_from_day Delete (return to pool)  │     │
+  │  │  swap_activities         Exchange two activities    │     │
+  │  └─────────────────────────────────────────────────────┘     │
+  │                                                              │
+  └──────────────────────────────────────────────────────────────┘
+```
+
+### The Preview-Then-Confirm Flow
+
+```
+  User types: "Move the Eiffel Tower to day 2"
+       │
+       ▼
+  ┌──────────────────────────────────────────────────────────┐
+  │  SESSION LOADS                                           │
+  │  originalItinerary ← current DB state (frozen baseline) │
+  │  draftItinerary    ← mutable copy (tools edit this)     │
+  └────┬─────────────────────────────────────────────────────┘
+       │
+       ▼
+  ┌──────────────────────┐
+  │  GPT-4o-mini thinks  │◄────────────────────────┐
+  │  "Day 2 afternoon    │                         │
+  │  has Notre-Dame —    │                         │
+  │  conflict detected"  │                         │
+  └────┬─────────────────┘                         │
+       │                                           │
+       ▼  (no tool call yet — asks first)           │
+  [SSE: text] "Moving Eiffel Tower to day 2        │
+  afternoon would conflict with Notre-Dame.        │
+  Would you like to swap them?"                    │
+       │                                           │
+       ▼                                           │
+  User: "Swap them"                                │
+       │                                           │
+       ▼                                           │
+  [SSE: tool_call] swap_activities(eiffel, notredame)
+       │                                           │
+       ▼                                           │
+  Tool mutates draftItinerary → validates integrity│
+       │                                           │
+       ▼                                           │
+  computeChanges() diffs original vs draft ────────┘
+       │
+       ▼
+  [SSE: changes] [{ type: "moved", "Eiffel Tower: Day 1 → Day 2" }]
+  [SSE: done]
+       │
+       ├── User clicks CONFIRM ──▶ draft saved to DB. original = draft.
+       └── User clicks REJECT  ──▶ draft = original. No DB write.
+```
+
+---
+
+## Agent 3: Decision Agent — "What Now?" (25 seconds)
 
 When you're on the ground during your trip, this agent answers: "What should I do right now?"
 
@@ -445,22 +546,22 @@ USER JOURNEY THROUGH TRIPWEAVE
        │              │               │               │
        ▼              ▼               ▼               ▼
   ┌─────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
-  │AI Suggest│   │Itinerary │   │Travel    │   │Decision  │
-  │Area Srch │   │Builder   │   │Guide     │   │Agent     │
-  │Enrichment│   │Agent     │   │Photo     │   │Voice     │
+  │AI Suggest│   │Itinerary │   │Chat Agent│   │Decision  │
+  │Area Srch │   │Builder   │   │(agentic) │   │Agent     │
+  │Enrichment│   │Agent     │   │Travel    │   │Voice     │
   │Pipeline  │   │(agentic) │   │Guide     │   │Assistant │
-  │          │   │Cost      │   │Selfie Gen│   │Food Recs │
-  │          │   │Enrichment│   │(Gemini)  │   │          │
-  │          │   │Flights   │   │          │   │          │
-  │          │   │Hotels    │   │          │   │          │
+  │          │   │Cost      │   │Photo     │   │Food Recs │
+  │          │   │Enrichment│   │Guide     │   │          │
+  │          │   │Flights   │   │Selfie Gen│   │          │
+  │          │   │Hotels    │   │(Gemini)  │   │          │
   └─────────┘   └──────────┘   └──────────┘   └──────────┘
        │              │               │               │
        ▼              ▼               ▼               ▼
-    3 services     5 services      3 services      3 services
+    3 services     5 services      4 services      3 services
     GPT-4o-mini    GPT-4o-mini     GPT + Gemini    GPT + Realtime
                    + Amadeus API                   + Google Places
 
-  Total: 13 AI-powered services across the entire trip lifecycle.
+  Total: 14 AI-powered services across the entire trip lifecycle.
   Not one chatbot. An AI layer woven into every interaction.
 ```
 
@@ -601,6 +702,8 @@ When showing AI features, call out these moments:
 
 6. "The selfie generation uses Gemini 2.0 Flash — it takes your profile photo and the destination, and generates a photorealistic travel selfie. AI image generation, not stock photos."
 
+7. "Now that the itinerary is built, watch what happens when I type 'Move the Eiffel Tower to day 2'. The chat agent detects a conflict with Notre-Dame and asks if I want to swap them — no tool call yet, just clarifying. I say 'swap them' and now it calls swap_activities. Notice the changes panel shows exactly what moved — Eiffel Tower from Day 1 morning to Day 2 afternoon, Notre-Dame in the opposite direction. I can confirm to save or reject to revert. The database isn't touched until I confirm."
+
 ---
 
 ## The Numbers
@@ -608,11 +711,12 @@ When showing AI features, call out these moments:
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                                                              │
-│  13 AI-powered services                                      │
+│  14 AI-powered services                                      │
 │  3 AI models (GPT-4o-mini, gpt-4o-realtime, Gemini 2.0)     │
-│  2 true agentic loops (tool-calling, multi-iteration)        │
+│  3 true agentic loops (builder, chat editor, decision)       │
+│  1 conversational editor (multi-turn, SSE, preview-confirm)  │
 │  1 real-time voice interface (WebSocket, push-to-talk)       │
-│  10 tools across 2 agents                                    │
+│  18 tools across 3 agents (5 builder + 8 chat + 5 decision)  │
 │  3 external APIs orchestrated (OpenAI, Google, Amadeus)      │
 │  2 streaming channels (SSE + Supabase Realtime)              │
 │  3-stage enrichment pipeline (unfurl → AI → Places)          │
@@ -628,9 +732,10 @@ When showing AI features, call out these moments:
 
 ## Closing (10 seconds)
 
-> "Most apps add a chatbot and call it AI. We built 13 AI services across 
-> 3 models — two agentic loops that call tools, a real-time voice assistant, 
-> a streaming architecture that never freezes, and a selfie generator 
-> powered by Gemini. And we built it all in hackathon time because AI 
-> coding agents wrote the implementation while humans wrote the specs. 
-> 10 people. 22 specs. 13 AI services. That's the multiplier."
+> "Most apps add a chatbot and call it AI. We built 14 AI services across
+> 3 models — three agentic loops that call tools, a conversational editing
+> agent that lets you reshape your itinerary in plain English, a real-time
+> voice assistant, a streaming architecture that never freezes, and a selfie
+> generator powered by Gemini. And we built it all in hackathon time because
+> AI coding agents wrote the implementation while humans wrote the specs.
+> 10 people. 22 specs. 14 AI services. That's the multiplier."
