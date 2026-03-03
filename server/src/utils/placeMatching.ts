@@ -211,7 +211,7 @@ async function searchGooglePlaces(
   console.log(`   API Key configured: ${!!apiKey}`);
 
   if (!apiKey) {
-    console.warn("⚠️ [Google Places] GOOGLE_PLACES_API_KEY not configured");
+    console.warn("⚠️ [Google Places] GOOGLE_MAPS_PLATFORM_API_KEY not configured");
     return null;
   }
 

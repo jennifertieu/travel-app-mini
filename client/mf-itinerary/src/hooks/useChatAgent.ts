@@ -264,6 +264,7 @@ export function useChatAgent({
 
   const confirmChanges = useCallback(async () => {
     if (!tripId) return;
+    const count = pendingChanges.length;
     setStatus("idle");
     setPendingChanges([]);
     try {
@@ -276,6 +277,17 @@ export function useChatAgent({
         const body = await response.json().catch(() => ({}));
         throw new Error(body.error ?? "Failed to confirm changes");
       }
+      const body = await response.json().catch(() => ({}));
+      const applied = body.changesApplied ?? count;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "system" as ChatRole,
+          content: `✓ ${applied} change${applied !== 1 ? "s" : ""} applied`,
+          timestamp: new Date(),
+        },
+      ]);
       onItineraryUpdated();
     } catch (err: any) {
       setError(err.message ?? "Failed to confirm changes");
@@ -296,6 +308,7 @@ export function useChatAgent({
 
   const rejectChanges = useCallback(async () => {
     if (!tripId) return;
+    const count = pendingChanges.length;
     setPendingChanges([]);
     setStatus("idle");
     try {
@@ -304,6 +317,16 @@ export function useChatAgent({
         method: "POST",
         headers,
       });
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "system" as ChatRole,
+          content: `✕ ${count} change${count !== 1 ? "s" : ""} rejected`,
+          variant: "danger" as const,
+          timestamp: new Date(),
+        },
+      ]);
     } catch {
       // Silently ignore — UI is already reset
     }

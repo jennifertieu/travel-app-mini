@@ -312,43 +312,49 @@ export function BudgetSummary({
                   </div>
                 </button>
 
-                {isExpanded && (activitiesWithCost.length > 0 || transTotal > 0) && (
-                  <div className="px-3 pb-3 space-y-1">
-                    {activitiesWithCost.map((a, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-white dark:bg-zinc-900/50"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          {a.cost_type === "food" ? (
-                            <UtensilsCrossed className="w-3 h-3 text-amber-500 flex-shrink-0" />
-                          ) : (
-                            <Ticket className="w-3 h-3 text-emerald-500 flex-shrink-0" />
-                          )}
-                          <span className="text-xs text-gray-700 dark:text-gray-200 truncate">
-                            {a.name}
-                          </span>
-                        </div>
-                        <span className="text-xs font-medium text-gray-600 dark:text-gray-300 flex-shrink-0 ml-2">
-                          ${a.cost_estimate}
-                        </span>
-                      </div>
-                    ))}
-                    {transTotal > 0 && (
-                      <div className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-white dark:bg-zinc-900/50">
-                        <div className="flex items-center gap-2">
-                          <Car className="w-3 h-3 text-pink-500 flex-shrink-0" />
-                          <span className="text-xs text-gray-700 dark:text-gray-200">
-                            Transport
-                          </span>
-                        </div>
-                        <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                          ${transTotal}
-                        </span>
+                <div
+                  className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+                >
+                  <div className="overflow-hidden">
+                    {(activitiesWithCost.length > 0 || transTotal > 0) && (
+                      <div className="px-3 pb-3 space-y-1">
+                        {activitiesWithCost.map((a, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-white dark:bg-zinc-900/50"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              {a.cost_type === "food" ? (
+                                <UtensilsCrossed className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                              ) : (
+                                <Ticket className="w-3 h-3 text-emerald-500 flex-shrink-0" />
+                              )}
+                              <span className="text-xs text-gray-700 dark:text-gray-200 truncate">
+                                {a.name}
+                              </span>
+                            </div>
+                            <span className="text-xs font-medium text-gray-600 dark:text-gray-300 flex-shrink-0 ml-2">
+                              ${a.cost_estimate}
+                            </span>
+                          </div>
+                        ))}
+                        {transTotal > 0 && (
+                          <div className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-white dark:bg-zinc-900/50">
+                            <div className="flex items-center gap-2">
+                              <Car className="w-3 h-3 text-pink-500 flex-shrink-0" />
+                              <span className="text-xs text-gray-700 dark:text-gray-200">
+                                Transport
+                              </span>
+                            </div>
+                            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                              ${transTotal}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
+                </div>
               </div>
             );
           })}

@@ -136,7 +136,7 @@ export function ChangesPreview({
           className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors border-r border-teal-600/20"
         >
           <X className="w-3.5 h-3.5" />
-          Discard
+          Reject
         </button>
         <button
           type="button"

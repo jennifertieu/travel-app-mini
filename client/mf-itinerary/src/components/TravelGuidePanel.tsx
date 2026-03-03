@@ -171,8 +171,8 @@ function QuickRefView({ guide }: QuickRefViewProps) {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-border bg-gray-50 dark:bg-zinc-800/50 px-4 py-3">
-        <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+      <div className="rounded-lg border border-teal-200 dark:border-teal-900/50 bg-teal-50 dark:bg-teal-900/20 px-4 py-3">
+        <p className="text-[10px] font-medium text-teal-600 dark:text-teal-400 uppercase tracking-wide mb-1">
           Emergency
         </p>
         <p className="text-sm text-gray-700 dark:text-gray-300 leading-snug">
@@ -202,7 +202,7 @@ function QuickRefView({ guide }: QuickRefViewProps) {
                 onClick={() => setOpenId(isOpen ? null : section.id)}
                 className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors"
               >
-                <span className="flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400">
+                <span className="flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center bg-teal-100 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400">
                   <Icon className="w-4 h-4" />
                 </span>
                 <div className="flex-1 min-w-0 text-left">
@@ -219,16 +219,18 @@ function QuickRefView({ guide }: QuickRefViewProps) {
                   {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </span>
               </button>
-              {isOpen && (
-                <ul className="border-t border-border px-4 py-3 space-y-2 bg-gray-50/30 dark:bg-zinc-800/20">
-                  {section.tips?.map((tip, i) => (
-                    <li key={i} className="flex gap-2 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                      <span className="text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0">•</span>
-                      {tip}
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <div className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+                <div className="overflow-hidden">
+                  <ul className="border-t border-border px-4 py-3 space-y-2 bg-gray-50/30 dark:bg-zinc-800/20">
+                    {section.tips?.map((tip, i) => (
+                      <li key={i} className="flex gap-2 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                        <span className="text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0">•</span>
+                        {tip}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             </div>
           );
         })}
@@ -366,16 +368,18 @@ function SpotlightCard({
                 {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </span>
             </button>
-            {expanded && (
-              <ul className="mt-2 space-y-1.5">
-                {spotlight.insider_tips.map((tip, i) => (
-                  <li className="flex gap-2 text-sm text-gray-600 dark:text-gray-400 pl-5">
-                    <span className="text-gray-400 dark:text-gray-500 flex-shrink-0">→</span>
-                    {tip}
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+              <div className="overflow-hidden">
+                <ul className="mt-2 space-y-1.5">
+                  {spotlight.insider_tips.map((tip, i) => (
+                    <li key={i} className="flex gap-2 text-sm text-gray-600 dark:text-gray-400 pl-5">
+                      <span className="text-gray-400 dark:text-gray-500 flex-shrink-0">→</span>
+                      {tip}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </div>
         )}
       </div>

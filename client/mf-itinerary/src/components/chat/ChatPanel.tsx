@@ -27,7 +27,9 @@ interface ChatPanelProps {
 
 const MIN_HISTORY_HEIGHT = 80;
 // Minimum px to reserve for the input area (drag handle + padding + textarea + hint)
-const MIN_INPUT_AREA_HEIGHT = 110;
+const MIN_INPUT_AREA_HEIGHT_BASE = 110;
+// Extra space needed when the ChangesPreview box is visible
+const CHANGES_PREVIEW_HEIGHT = 130;
 const DEFAULT_TEXTAREA_HEIGHT = 90;
 const MIN_TEXTAREA_HEIGHT = 48;
 const MAX_TEXTAREA_HEIGHT = 240;
@@ -64,11 +66,20 @@ export function ChatPanel({
   const textareaDragStartY = useRef(0);
   const textareaDragStartHeight = useRef(0);
 
-  // Clamp so the input area always has at least MIN_INPUT_AREA_HEIGHT px.
-  const clampedHistoryHeight = useCallback((raw: number): number => {
-    const panelH = panelRef.current?.offsetHeight ?? window.innerHeight;
-    return Math.min(raw, panelH - MIN_INPUT_AREA_HEIGHT);
-  }, []);
+  // Minimum input-area height grows when ChangesPreview is visible
+  const minInputAreaHeight =
+    pendingChanges.length > 0
+      ? MIN_INPUT_AREA_HEIGHT_BASE + CHANGES_PREVIEW_HEIGHT
+      : MIN_INPUT_AREA_HEIGHT_BASE;
+
+  // Clamp so the input area always has enough room for the visible controls.
+  const clampedHistoryHeight = useCallback(
+    (raw: number): number => {
+      const panelH = panelRef.current?.offsetHeight ?? window.innerHeight;
+      return Math.min(raw, panelH - minInputAreaHeight);
+    },
+    [minInputAreaHeight],
+  );
 
   // Set initial history height to 2/3 of panel (leaving 1/3 for the textarea)
   useEffect(() => {
@@ -94,6 +105,14 @@ export function ChatPanel({
     observer.observe(panel);
     return () => observer.disconnect();
   }, [clampedHistoryHeight]);
+
+  // Re-clamp when ChangesPreview appears or disappears so the box is always visible
+  useEffect(() => {
+    setHistoryHeight((prev) => {
+      if (prev === null) return prev;
+      return clampedHistoryHeight(prev);
+    });
+  }, [pendingChanges.length, clampedHistoryHeight]);
 
   // Auto-grow textarea to content height, unless user has manually dragged the gripper
   useEffect(() => {

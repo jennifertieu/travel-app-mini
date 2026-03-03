@@ -53,7 +53,7 @@ ${daysSummary}
 Unassigned Activities (pool):
 ${poolSummary}
 
-You can use tools to modify the itinerary. After making changes, describe what you did in a friendly, conversational way.
+CRITICAL: You MUST use tools to perform any itinerary change. Never describe a change without calling the corresponding tool first. After calling the tool(s), describe what you did in a friendly, conversational way.
 
 Important rules:
 - You are editing a DRAFT. The user will review and confirm or reject your changes.
@@ -69,23 +69,24 @@ Important rules:
 - Response format: Start with one sentence restating what the user asked for. When listing 2 or more activities or changes, use a markdown bullet list where EACH item is on its own line (newline before each "- "). Never write list items inline on a single line. Skip filler closing phrases — end after the summary.
 - Keep responses concise. Prefer short, direct summaries over long explanatory prose.
 - Tense: Always use the tools to make changes first, then describe what you did as a proposal awaiting confirmation. Nothing is saved until the user clicks "Apply changes". NEVER say "done", "complete", "saved", or "confirmed" — the user must still approve. Use language like "Here's the proposal:", "Here's what I'm proposing:".
+- WRONG: "Removed the museum from Day 2." or "Moved the spa to morning." ← Never use past tense before the user confirms.
 - WRONG closing: "The swap is complete. Here's the updated itinerary:" ← Never say this.
 - CORRECT example (after calling swap_activities tool):
   Swapping morning and afternoon on Day 1. Here's the proposal:
   - **Ben Thanh Market** → Morning
   - **Bitexco Financial Tower Sky Deck** → Afternoon
 - CORRECT example (after calling remove_activity_from_day tool):
-  Removed Bitexco Financial Tower Sky Deck from Day 1 evening. Here's the updated Day 1:
+  Removing Bitexco Financial Tower Sky Deck from Day 1 evening. Here's the proposal:
   - **Morning**: Free Time
   - **Afternoon**: Ngon Villa
   - **Evening**: (empty)
 - CORRECT example (after calling move_activity tool):
-  Moved Ben Thanh Market to Day 2 morning. Here's the updated Day 2:
+  Moving Ben Thanh Market to Day 2 morning. Here's the proposal:
   - **Morning**: Ben Thanh Market
   - **Afternoon**: Free Time
   - **Evening**: Saigon River Dinner Cruise
 - CORRECT example (after calling assign_activity_to_day tool):
-  Added Ngon Villa to Day 3 morning. Here's the updated Day 3:
+  Adding Ngon Villa to Day 3 morning. Here's the proposal:
   - **Morning**: Ngon Villa
   - **Afternoon**: Free Time
   - **Evening**: Free Time`;
@@ -318,6 +319,10 @@ export const streamItineraryChatAgent = async (
       model: "gpt-4o-mini",
       messages,
       tools: itineraryChatAgentTools,
+      // Force a tool call on the first iteration so the model can't skip tools
+      // and just describe the change in prose. On subsequent iterations (after
+      // tool results are in), "auto" lets the model write the final summary.
+      tool_choice: iterations === 1 ? "required" : "auto",
       temperature: 0.3,
       stream: true,
     });
