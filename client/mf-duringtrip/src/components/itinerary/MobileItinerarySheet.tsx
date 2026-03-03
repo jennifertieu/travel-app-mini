@@ -98,7 +98,7 @@ function getCurrentAndNextActivity(
   return {
     current: foundCurrent,
     next: foundNext,
-    currentDayNumber: dayData.day,
+    currentDayNumber: dayData.day_number,
   };
 }
 
@@ -143,7 +143,7 @@ export function MobileItinerarySheet({
     setActiveDay(currentDayNumber);
   }, [currentDayNumber]);
 
-  const dayData = itineraryData.days.find((d) => d.day === activeDay) ??
+  const dayData = itineraryData.days.find((d) => d.day_number === activeDay) ??
     itineraryData.days[0];
 
   const grouped = useMemo(
@@ -159,7 +159,7 @@ export function MobileItinerarySheet({
     }
     // Default: open Google Maps directions
     const loc = current.location;
-    let query = current.name;
+    let query = current.title;
     if (loc) {
       if (typeof loc === "string") query = loc;
       else if (loc.lat && loc.lng) query = `${loc.lat},${loc.lng}`;
@@ -192,7 +192,7 @@ export function MobileItinerarySheet({
       {current && (
         <div className="mb-2">
           <p className="text-sm font-semibold text-foreground truncate">
-            {current.name}
+            {current.title}
           </p>
           <p className="text-xs text-muted-foreground truncate">
             {formatLocation(current.location)}
@@ -209,7 +209,7 @@ export function MobileItinerarySheet({
               Next Stop
             </span>
             <p className="text-sm text-foreground truncate mt-0.5">
-              {next.name}
+              {next.title}
             </p>
           </div>
         </>

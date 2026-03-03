@@ -23,6 +23,9 @@ import {
 } from "../utils/validationSchemas.js";
 import { runChatAgent } from "../utils/chatAgent.js";
 
+const parseCurrentTime = (isoString?: string): Date | undefined =>
+  isoString ? new Date(isoString) : undefined;
+
 /**
  * POST /during-trip/context
  * Get current trip context for during-trip features
@@ -40,7 +43,7 @@ export const getContext = async (
       return response.status(400).json({ error: validation.error });
     }
     
-    const { trip_id, location } = validation.data;
+    const { trip_id, location, current_time } = validation.data;
 
     // Trip access verified by requireTripAccess middleware
 
@@ -50,6 +53,7 @@ export const getContext = async (
       userId,
       location,
       supabase,
+      currentTime: parseCurrentTime(current_time),
     });
 
     if (error || !context) {
@@ -84,7 +88,7 @@ export const getDecision = async (
       return response.status(400).json({ error: validation.error });
     }
     
-    const { trip_id, location } = validation.data;
+    const { trip_id, location, current_time } = validation.data;
 
     // Trip access verified by requireTripAccess middleware
 
@@ -94,6 +98,7 @@ export const getDecision = async (
       userId,
       location,
       supabase,
+      currentTime: parseCurrentTime(current_time),
     });
 
     if (contextError || !context) {
@@ -136,7 +141,7 @@ export const getFood = async (
       return response.status(400).json({ error: validation.error });
     }
     
-    const { trip_id, location } = validation.data;
+    const { trip_id, location, current_time } = validation.data;
 
     // Trip access verified by requireTripAccess middleware
 
@@ -146,6 +151,7 @@ export const getFood = async (
       userId,
       location,
       supabase,
+      currentTime: parseCurrentTime(current_time),
     });
 
     if (contextError || !context) {
@@ -185,7 +191,7 @@ export const getMapAnnotations = async (
       return response.status(400).json({ error: validation.error });
     }
     
-    const { trip_id, location, viewport } = validation.data;
+    const { trip_id, location, viewport, current_time } = validation.data;
 
     // Trip access verified by requireTripAccess middleware
 
@@ -195,6 +201,7 @@ export const getMapAnnotations = async (
       userId,
       location,
       supabase,
+      currentTime: parseCurrentTime(current_time),
     });
 
     if (contextError || !context) {
@@ -357,49 +364,55 @@ export const acceptSuggestion = async (
       trip_id,
       suggestion,
       time_of_day,
+      day_number: clientDayNumber,
       duration_minutes,
       override_conflicts,
       remove_conflicting_activity_ids,
+      current_time,
     } = validation.data;
 
     // Trip access verified by requireTripAccess middleware
 
-    // Build context to get current day number
-    const { context, error: contextError } = await buildTripContext({
-      tripId: trip_id,
-      userId,
-      supabase,
-    });
-
-    if (contextError || !context) {
-      return response
-        .status(404)
-        .json({ error: contextError || "Trip not found" });
-    }
-
-    const currentDayNumber = context.trip.day_number;
-
-    // Fetch current itinerary
-    const { data: itineraryData, error: fetchError } = await supabase
+    // Fetch current itinerary (handle duplicate rows by taking the latest)
+    const { data: itineraryRow, error: fetchError } = await supabase
       .from("trip_itineraries")
-      .select("itinerary")
+      .select("id, itinerary")
       .eq("trip_id", trip_id)
-      .single();
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (fetchError || !itineraryData) {
+    if (fetchError || !itineraryRow) {
       return response.status(404).json({ error: "Itinerary not found" });
     }
 
-    const itinerary = itineraryData.itinerary;
+    const itinerary = itineraryRow.itinerary;
 
-    // Find today's day
-    const today = itinerary.days?.find(
-      (d: { day_number: number }) => d.day_number === currentDayNumber
+    // Use client-supplied day_number when available; fall back to server context
+    let targetDayNumber = clientDayNumber;
+    if (!targetDayNumber) {
+      const { context, error: contextError } = await buildTripContext({
+        tripId: trip_id,
+        userId,
+        supabase,
+        currentTime: parseCurrentTime(current_time),
+      });
+      if (contextError || !context) {
+        return response
+          .status(404)
+          .json({ error: contextError || "Trip not found" });
+      }
+      targetDayNumber = context.trip.day_number;
+    }
+
+    const targetDay = itinerary.days?.find(
+      (d: { day_number: number; day?: number }) =>
+        (d.day_number ?? d.day) === targetDayNumber
     );
 
-    if (!today) {
+    if (!targetDay) {
       return response.status(404).json({
-        error: `Day ${currentDayNumber} not found in itinerary`,
+        error: `Day ${targetDayNumber} not found in itinerary`,
       });
     }
 
@@ -412,7 +425,7 @@ export const acceptSuggestion = async (
     } as IAcceptSuggestionRequest);
 
     // Check for conflicts
-    const conflictCheck = await checkActivityConflicts(today, newActivity);
+    const conflictCheck = await checkActivityConflicts(targetDay, newActivity);
 
     // If conflicts exist and not overridden, return conflict details
     if (conflictCheck.hasConflicts && !override_conflicts) {
@@ -440,11 +453,11 @@ export const acceptSuggestion = async (
     const removedActivities: Array<{ id: string; name: string }> = [];
     if (remove_conflicting_activity_ids && remove_conflicting_activity_ids.length > 0) {
       for (const activityId of remove_conflicting_activity_ids) {
-        const activityIndex = today.activities.findIndex(
+        const activityIndex = targetDay.activities.findIndex(
           (a: { id: string }) => a.id === activityId
         );
         if (activityIndex !== -1) {
-          const removed = today.activities.splice(activityIndex, 1)[0];
+          const removed = targetDay.activities.splice(activityIndex, 1)[0];
           removedActivities.push({
             id: removed.id,
             name: removed.name || removed.title || "Unknown Activity",
@@ -453,19 +466,14 @@ export const acceptSuggestion = async (
       }
     }
 
-    // Add the new activity to today's activities
-    today.activities.push(newActivity);
+    // Add the new activity to the target day
+    targetDay.activities.push(newActivity);
 
-    // Save updated itinerary
-    // NOTE: This update pattern has a race condition risk if multiple requests
-    // update the same itinerary simultaneously. For production, consider:
-    // 1. Using PostgreSQL RPC function with jsonb_set for atomic updates
-    // 2. Adding optimistic locking with updated_at timestamp check
-    // 3. Using PostgreSQL transactions via RPC
+    // Save updated itinerary (target specific row to avoid multi-row issues)
     const { error: updateError } = await supabase
       .from("trip_itineraries")
-      .update({ itinerary })
-      .eq("trip_id", trip_id);
+      .update({ itinerary, updated_at: new Date().toISOString() })
+      .eq("id", itineraryRow.id);
 
     if (updateError) {
       return response.status(500).json({
@@ -527,13 +535,14 @@ export const chat = async (
       return response.status(400).json({ error: validation.error });
     }
 
-    const { trip_id, location, message } = validation.data;
+    const { trip_id, location, message, current_time } = validation.data;
 
     const { context, error: contextError } = await buildTripContext({
       tripId: trip_id,
       userId,
       location,
       supabase,
+      currentTime: parseCurrentTime(current_time),
     });
 
     if (contextError || !context) {

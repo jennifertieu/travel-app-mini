@@ -72,6 +72,7 @@ const mockContext: ITripContext = {
     next_activity: mockScheduledActivities[0],
     time_until_next: 210, // 3.5 hours
     today_activities: mockScheduledActivities,
+    all_activities: mockScheduledActivities,
   },
 };
 

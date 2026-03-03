@@ -1,5 +1,5 @@
-import React from 'react';
-import { MapPin, Clock, Zap, Plus, Navigation } from 'lucide-react';
+import React, { useState } from 'react';
+import { MapPin, Clock, Zap, Plus, Navigation, Loader2, Check, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import type { SuggestionCardData } from '../../services/duringTripService';
 
@@ -7,6 +7,9 @@ interface SuggestionCardProps {
   data: SuggestionCardData;
   onAccept?: (data: SuggestionCardData) => void;
   onDirections?: (data: SuggestionCardData) => void;
+  isAccepting?: boolean;
+  isAccepted?: boolean;
+  timeOfDay?: string;
 }
 
 const TYPE_STYLES: Record<string, { label: string; className: string }> = {
@@ -21,8 +24,9 @@ const ENERGY_ICONS: Record<string, string> = {
   high: '🔴',
 };
 
-export function SuggestionCard({ data, onAccept, onDirections }: SuggestionCardProps) {
+export function SuggestionCard({ data, onAccept, onDirections, isAccepting, isAccepted, timeOfDay }: SuggestionCardProps) {
   const typeStyle = TYPE_STYLES[data.type] || TYPE_STYLES.spontaneous;
+  const [confirming, setConfirming] = useState(false);
 
   return (
     <div className="bg-white border border-border rounded-xl overflow-hidden shadow-sm">
@@ -55,14 +59,49 @@ export function SuggestionCard({ data, onAccept, onDirections }: SuggestionCardP
         </div>
 
         <div className="flex gap-2">
-          {onAccept && (
+          {onAccept && !confirming && !isAccepted && !isAccepting && (
             <button
               type="button"
-              onClick={() => onAccept(data)}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors"
+              onClick={() => setConfirming(true)}
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90"
             >
-              <Plus className="w-3.5 h-3.5" />
-              Add to itinerary
+              <Plus className="w-3.5 h-3.5" /> Add to itinerary
+            </button>
+          )}
+          {onAccept && confirming && !isAccepted && !isAccepting && (
+            <>
+              <button
+                type="button"
+                onClick={() => { setConfirming(false); onAccept(data); }}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors bg-emerald-600 text-white hover:bg-emerald-500"
+              >
+                <Check className="w-3.5 h-3.5" /> Add to {timeOfDay ?? 'itinerary'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirming(false)}
+                className="flex items-center justify-center px-3 py-2 rounded-lg text-xs font-medium transition-colors bg-muted text-muted-foreground hover:bg-muted/80"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
+          {onAccept && isAccepting && (
+            <button
+              type="button"
+              disabled
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-primary text-primary-foreground opacity-60 cursor-wait"
+            >
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Adding...
+            </button>
+          )}
+          {onAccept && isAccepted && (
+            <button
+              type="button"
+              disabled
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-emerald-600 text-white cursor-default"
+            >
+              <Check className="w-3.5 h-3.5" /> Added
             </button>
           )}
           {onDirections && (

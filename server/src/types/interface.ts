@@ -74,6 +74,7 @@ export interface ITripContext {
     time_until_next?: number; // minutes
     current_activity?: IScheduledActivity;
     today_activities: IScheduledActivity[];
+    all_activities: IScheduledActivity[];
   };
 }
 
@@ -267,6 +268,7 @@ export interface IBuildContextParams {
   userId: string;
   location?: ILocationRequest;
   supabase: SupabaseClient;
+  currentTime?: Date;
 }
 
 export interface IBuildContextResult {

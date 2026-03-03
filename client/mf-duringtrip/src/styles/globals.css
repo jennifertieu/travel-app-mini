@@ -58,6 +58,22 @@
   }
 }
 
+/*
+ * Responsive layout custom properties for desktop/mobile split.
+ * These inline-style fallbacks ensure correct layout even if Tailwind
+ * utility classes haven't been applied yet (Module Federation CSS timing).
+ */
+:root {
+  --dt-desktop-display: none;
+  --dt-mobile-display: flex;
+}
+@media (min-width: 768px) {
+  :root {
+    --dt-desktop-display: flex;
+    --dt-mobile-display: none;
+  }
+}
+
 /* PWA-specific safe area handling */
 .pb-safe {
   padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));

@@ -25,7 +25,7 @@ function formatTime(date: Date): string {
 }
 
 export function DemoControlPanel() {
-  const { isDemo, demoTime, demoLocation, tripLocations, setDemoTime, setDemoLocation, resetDemo } =
+  const { isDemo, demoTime, demoLocation, tripLocations, tripDays, setDemoTime, setDemoLocation, resetDemo } =
     useDemoContext();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -35,8 +35,19 @@ export function DemoControlPanel() {
 
   const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const name = e.target.value;
-    const loc = [...tripLocations, ...SEOUL_LOCATIONS].find((l) => l.name === name);
-    if (loc) setDemoLocation(loc);
+    const searchPool = tripLocations.length > 0 ? tripLocations : SEOUL_LOCATIONS;
+    const loc = searchPool.find((l) => l.name === name);
+    if (loc) {
+      setDemoLocation(loc);
+      // Auto-sync time to this activity's scheduled start
+      if (loc.date && loc.startMinutes !== undefined) {
+        const [year, month, day] = loc.date.split('-').map(Number);
+        const hours = Math.floor(loc.startMinutes / 60);
+        const minutes = loc.startMinutes % 60;
+        const newTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+        setDemoTime(newTime);
+      }
+    }
   };
 
   return (
@@ -58,6 +69,29 @@ export function DemoControlPanel() {
 
       {!collapsed && (
         <div className="px-3 py-3 space-y-4">
+          {/* Day selector */}
+          {tripDays.length > 0 && (
+            <div>
+              <div className="mb-1.5 text-neutral-400">Day</div>
+              <select
+                value={demoTime.toISOString().slice(0, 10)}
+                onChange={(e) => {
+                  const [year, month, day] = e.target.value.split('-').map(Number);
+                  const updated = new Date(demoTime);
+                  updated.setFullYear(year, month - 1, day);
+                  setDemoTime(updated);
+                }}
+                className="w-full bg-neutral-800 border border-neutral-600 rounded px-2 py-1 text-xs text-white cursor-pointer"
+              >
+                {tripDays.map((d) => (
+                  <option key={d.date} value={d.date}>
+                    Day {d.day} — {d.date}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Time slider */}
           <div>
             <div className="flex justify-between mb-1.5">
@@ -70,7 +104,11 @@ export function DemoControlPanel() {
               max={MAX_MINUTES}
               step={STEP_MINUTES}
               value={sliderValue}
-              onChange={(e) => setDemoTime(minutesSince6amToDate(Number(e.target.value)))}
+              onChange={(e) => {
+                const newTime = minutesSince6amToDate(Number(e.target.value));
+                newTime.setFullYear(demoTime.getFullYear(), demoTime.getMonth(), demoTime.getDate());
+                setDemoTime(newTime);
+              }}
               className="w-full accent-amber-400 cursor-pointer"
             />
             <div className="flex justify-between text-[9px] text-neutral-500 mt-0.5">
@@ -81,7 +119,7 @@ export function DemoControlPanel() {
 
           {/* Location dropdown */}
           <div>
-            <div className="mb-1.5 text-neutral-400">Location</div>
+            <div className="mb-1.5 text-neutral-400">Current Activity</div>
             <select
               value={demoLocation.name}
               onChange={handleLocationChange}
@@ -90,19 +128,21 @@ export function DemoControlPanel() {
               {tripLocations.length > 0 && (
                 <optgroup label="Trip Activities">
                   {tripLocations.map((loc) => (
-                    <option key={`trip-${loc.name}`} value={loc.name}>
+                    <option key={`trip-${loc.name}-${loc.day}`} value={loc.name}>
+                      {loc.day ? `Day ${loc.day}: ` : ''}{loc.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {tripLocations.length === 0 && (
+                <optgroup label="Seoul Presets">
+                  {SEOUL_LOCATIONS.map((loc) => (
+                    <option key={`preset-${loc.name}`} value={loc.name}>
                       {loc.name}
                     </option>
                   ))}
                 </optgroup>
               )}
-              <optgroup label="Seoul Presets">
-                {SEOUL_LOCATIONS.map((loc) => (
-                  <option key={`preset-${loc.name}`} value={loc.name}>
-                    {loc.name}
-                  </option>
-                ))}
-              </optgroup>
             </select>
           </div>
 

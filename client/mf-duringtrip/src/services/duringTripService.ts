@@ -71,10 +71,21 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   };
 }
 
+function formatTimeAsUTC(date: Date | null | undefined): string | undefined {
+  if (!date) return undefined;
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const h = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${y}-${m}-${d}T${h}:${min}:00Z`;
+}
+
 export async function sendChatMessage(
   tripId: string,
   message: string,
-  location?: { lat: number; lng: number; accuracy_meters?: number }
+  location?: { lat: number; lng: number; accuracy_meters?: number },
+  currentTime?: Date | null,
 ): Promise<ChatResponse> {
   const headers = await getAuthHeaders();
 
@@ -85,6 +96,7 @@ export async function sendChatMessage(
       trip_id: tripId,
       message,
       location,
+      current_time: formatTimeAsUTC(currentTime),
     }),
   });
 
@@ -96,13 +108,21 @@ export async function sendChatMessage(
   return response.json();
 }
 
+export interface AcceptSuggestionOptions {
+  tripId: string;
+  suggestion: SuggestionCardData | FoodCardData;
+  timeOfDay: 'morning' | 'afternoon' | 'evening';
+  durationMinutes: number;
+  dayNumber?: number;
+  overrideConflicts?: boolean;
+  removeConflictingActivityIds?: string[];
+  currentTime?: Date | null;
+}
+
 export async function acceptSuggestion(
-  tripId: string,
-  suggestion: SuggestionCardData | FoodCardData,
-  timeOfDay: 'morning' | 'afternoon' | 'evening',
-  durationMinutes: number,
-  overrideConflicts?: boolean
+  opts: AcceptSuggestionOptions
 ): Promise<AcceptSuggestionResponse> {
+  const { tripId, suggestion, timeOfDay, durationMinutes, dayNumber, overrideConflicts, removeConflictingActivityIds, currentTime } = opts;
   const headers = await getAuthHeaders();
 
   const suggestionPayload = {
@@ -131,8 +151,11 @@ export async function acceptSuggestion(
       trip_id: tripId,
       suggestion: suggestionPayload,
       time_of_day: timeOfDay,
+      day_number: dayNumber,
       duration_minutes: durationMinutes,
       override_conflicts: overrideConflicts,
+      remove_conflicting_activity_ids: removeConflictingActivityIds,
+      current_time: formatTimeAsUTC(currentTime),
     }),
   });
 
@@ -182,7 +205,8 @@ export interface DecisionResponse {
 
 export async function getDecision(
   tripId: string,
-  location?: { lat: number; lng: number; accuracy_meters?: number } | null
+  location?: { lat: number; lng: number; accuracy_meters?: number } | null,
+  currentTime?: Date | null,
 ): Promise<DecisionResponse> {
   const headers = await getAuthHeaders();
 
@@ -192,6 +216,7 @@ export async function getDecision(
     body: JSON.stringify({
       trip_id: tripId,
       location: location ?? undefined,
+      current_time: formatTimeAsUTC(currentTime),
     }),
   });
 
@@ -205,7 +230,8 @@ export async function getDecision(
 
 export async function getTripContext(
   tripId: string,
-  location?: { lat: number; lng: number; accuracy_meters?: number }
+  location?: { lat: number; lng: number; accuracy_meters?: number },
+  currentTime?: Date | null,
 ): Promise<{ context_summary: string } & Record<string, unknown>> {
   const headers = await getAuthHeaders();
 
@@ -215,6 +241,7 @@ export async function getTripContext(
     body: JSON.stringify({
       trip_id: tripId,
       location,
+      current_time: formatTimeAsUTC(currentTime),
     }),
   });
 
