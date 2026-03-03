@@ -94,9 +94,9 @@ export function BudgetSummary({
       key: "flights" as const,
       label: "Flights",
       Icon: Plane,
-      bar: "bg-teal-500",
+      bar: "bg-sky-500",
     },
-    { key: "hotel" as const, label: "Hotel", Icon: Hotel, bar: "bg-teal-400" },
+    { key: "hotel" as const, label: "Hotel", Icon: Hotel, bar: "bg-violet-500" },
     {
       key: "activities" as const,
       label: "Activities",
@@ -113,7 +113,7 @@ export function BudgetSummary({
       key: "transport" as const,
       label: "Transport",
       Icon: Car,
-      bar: "bg-cyan-500",
+      bar: "bg-pink-500",
     },
   ];
 
@@ -299,7 +299,7 @@ export function BudgetSummary({
                       )}
                       {transTotal > 0 && (
                         <div
-                          className="bg-cyan-500 min-w-[2px]"
+                          className="bg-pink-500 min-w-[2px]"
                           style={{
                             width: `${(transTotal / dayTotal) * 100}%`,
                           }}
@@ -337,7 +337,7 @@ export function BudgetSummary({
                     {transTotal > 0 && (
                       <div className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-white dark:bg-zinc-900/50">
                         <div className="flex items-center gap-2">
-                          <Car className="w-3 h-3 text-cyan-500 flex-shrink-0" />
+                          <Car className="w-3 h-3 text-pink-500 flex-shrink-0" />
                           <span className="text-xs text-gray-700 dark:text-gray-200">
                             Transport
                           </span>
