@@ -36,8 +36,31 @@ app.use("/places", placesRoutes);
 app.use("/demo", demoRoutes);
 app.use("/travel-guide", travelGuideRoutes);
 
+// Health check endpoint (used by keep-alive ping)
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", uptime: process.uptime() });
+});
+
 app
   .listen(PORT, () => {
     console.log(`Server is running on Port: ${PORT}`);
+
+    // Keep-alive self-ping: prevents Render free tier from sleeping
+    // Pings own health endpoint every 5 minutes
+    if (process.env.NODE_ENV === "production") {
+      const RENDER_URL =
+        process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+      setInterval(
+        async () => {
+          try {
+            await fetch(`${RENDER_URL}/health`);
+            console.log("🏓 Keep-alive ping sent");
+          } catch {
+            // fail silently — next ping will retry
+          }
+        },
+        5 * 60 * 1000,
+      ); // every 5 minutes
+    }
   })
   .setTimeout(0); // Disable timeout for long-running requests (itinerary build can take 3-5 min)
