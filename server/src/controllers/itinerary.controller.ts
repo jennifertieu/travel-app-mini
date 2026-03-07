@@ -123,23 +123,22 @@ export const createItinerary = async (
       return hasPositiveSupport && isMorePositiveThanNegative;
     });
 
-    // Check if we have any ideas left after filtering
+    // HACKATHON MODE: If no ideas pass the filter, use all ideas anyway
+    // This ensures the demo works even without votes
+    let ideasToUse = filteredIdeas;
     if (filteredIdeas.length === 0) {
       console.log(
-        `${LOG_PREFIX} Rejected: no ideas passed vote filter (had ${tripIdeas.length} total)`,
+        `${LOG_PREFIX} HACKATHON MODE: No ideas passed vote filter, using all ${tripIdeas.length} ideas anyway`,
       );
-      return response.status(400).json({
-        error: "No suitable ideas found for itinerary generation",
-        details:
-          "All ideas were filtered out due to negative voting or lack of positive votes",
-      });
+      ideasToUse = tripIdeas;
+    } else {
+      console.log(
+        `${LOG_PREFIX} After filter: ${filteredIdeas.length} ideas (from ${tripIdeas.length})`,
+      );
     }
-    console.log(
-      `${LOG_PREFIX} After filter: ${filteredIdeas.length} ideas (from ${tripIdeas.length})`,
-    );
 
     // Sort by fire votes, then down votes
-    filteredIdeas.sort((ideaA, ideaB) => {
+    ideasToUse.sort((ideaA, ideaB) => {
       const countsA = reactionCounts[ideaA.id];
       const countsB = reactionCounts[ideaB.id];
       if (countsB.fire !== countsA.fire) return countsB.fire - countsA.fire;
@@ -150,7 +149,7 @@ export const createItinerary = async (
     console.log(`${LOG_PREFIX} Calling AI itinerary builder...`);
     const aiStart = Date.now();
     const itinerary = await aiItineraryBuilderAgent(
-      { trip, tripIdeas: filteredIdeas },
+      { trip, tripIdeas: ideasToUse },
       (...args) => console.log(...args),
     );
     console.log(
@@ -337,7 +336,7 @@ export const createItinerary = async (
     return response.json({
       success: true,
       tripId: trip.id,
-      activitiesCount: filteredIdeas.length,
+      activitiesCount: ideasToUse.length,
       elapsedSeconds: parseFloat(totalElapsed),
     });
   } catch (error: any) {
