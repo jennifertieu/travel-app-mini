@@ -1,10 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
-
-const API_BASE_URL =
-  (import.meta.env.PUBLIC_API_URL as string | undefined) ??
-  (import.meta.env.PUBLIC_BACKEND_URL as string | undefined) ??
-  'http://localhost:5001';
 
 export interface DemoLocation {
   name: string;
@@ -27,10 +21,6 @@ function makeDefaultTime(): Date {
   const d = new Date();
   d.setHours(10, 30, 0, 0);
   return d;
-}
-
-function hasDemoAccess(): boolean {
-  return localStorage.getItem('demo-access') === 'true';
 }
 
 function isDemoEnabled(): boolean {
@@ -73,7 +63,7 @@ export function useDemoContext(): DemoContextValue {
 }
 
 export function DemoProvider({ children }: { children: React.ReactNode }) {
-  const [isDemo, setIsDemo] = useState(() => hasDemoAccess() && isDemoEnabled());
+  const [isDemo, setIsDemo] = useState(() => isDemoEnabled());
   const [demoTime, setDemoTime] = useState<Date>(makeDefaultTime);
   const [demoLocation, setDemoLocation] = useState<DemoLocation>(SEOUL_LOCATIONS[0]);
   const [tripLocations, setTripLocations] = useState<DemoLocation[]>([]);
@@ -84,40 +74,10 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     const params = new URLSearchParams(window.location.search);
     if (!params.has('demo')) return;
 
-    // Already verified — just enable
-    if (hasDemoAccess()) {
-      localStorage.setItem('demo-enabled', 'true');
-      setIsDemo(true);
-      window.dispatchEvent(new CustomEvent('demo-access-granted'));
-      window.dispatchEvent(new CustomEvent('demo-toggle', { detail: { enabled: true } }));
-      return;
-    }
-
-    const checkAccess = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
-
-      try {
-        const res = await fetch(`${API_BASE_URL}/demo/access`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        if (!res.ok) return;
-        const { allowed } = await res.json();
-        if (allowed) {
-          localStorage.setItem('demo-access', 'true');
-          localStorage.setItem('demo-enabled', 'true');
-          setIsDemo(true);
-          window.dispatchEvent(new CustomEvent('demo-access-granted'));
-          window.dispatchEvent(new CustomEvent('demo-toggle', { detail: { enabled: true } }));
-        }
-      } catch {
-        // Not whitelisted or network error — fail silently
-      }
-    };
-
-    checkAccess();
+    localStorage.setItem('demo-enabled', 'true');
+    setIsDemo(true);
+    window.dispatchEvent(new CustomEvent('demo-access-granted'));
+    window.dispatchEvent(new CustomEvent('demo-toggle', { detail: { enabled: true } }));
   }, []);
 
   const resetDemo = useCallback(() => {

@@ -21,7 +21,6 @@ import {
 import { Globe, Calendar, Users, Settings, Menu, X } from "lucide-react";
 import { AuthProvider } from "./contexts/AuthContext";
 import { AuthNav } from "./components/AuthNav";
-import { supabase } from "./lib/supabase";
 import { AuthGuard } from "./components/AuthGuard";
 import { LandingPage } from "./components/LandingPage";
 import { TripMemberAvatars } from "./components/TripMemberAvatars";
@@ -257,34 +256,12 @@ const RootLayout = () => {
   const menuRef = useRef<HTMLDivElement>(null);
   const isDuringTrip = routerState.location.pathname === "/duringtrip";
 
-  // Check demo access via API when on /duringtrip (caches result in localStorage for ProfileMenu)
+  // Grant demo access to all users on /duringtrip
   useEffect(() => {
     if (!isDuringTrip) return;
     if (localStorage.getItem("demo-access") === "true") return;
-    const checkAccess = async () => {
-      const {
-        data: { session: s },
-      } = await supabase.auth.getSession();
-      if (!s?.access_token) return;
-      const apiBase =
-        (import.meta.env.PUBLIC_API_URL as string | undefined) ??
-        (import.meta.env.PUBLIC_BACKEND_URL as string | undefined) ??
-        "http://localhost:5001";
-      try {
-        const res = await fetch(`${apiBase}/demo/access`, {
-          headers: { Authorization: `Bearer ${s.access_token}` },
-        });
-        if (!res.ok) return;
-        const { allowed } = await res.json();
-        if (allowed) {
-          localStorage.setItem("demo-access", "true");
-          window.dispatchEvent(new CustomEvent("demo-access-granted"));
-        }
-      } catch {
-        // fail silently
-      }
-    };
-    checkAccess();
+    localStorage.setItem("demo-access", "true");
+    window.dispatchEvent(new CustomEvent("demo-access-granted"));
   }, [isDuringTrip]);
 
   // Close mobile menu on route change
