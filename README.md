@@ -1,4 +1,6 @@
-# Travel App
+# Travel App Mini
+
+Converting our group hackathon project to my own personal travel app
 
 A modern travel planning application built with **Module Federation** micro frontends and a Node.js/Express backend.
 
