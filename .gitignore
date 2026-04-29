@@ -46,6 +46,9 @@ client/.playwright/auth.json
 *.zip
 .cache/
 
+# Git worktrees
+.worktrees/
+
 
 
 
