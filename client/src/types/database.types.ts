@@ -1,0 +1,632 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1";
+  };
+  public: {
+    Tables: {
+      member_profiles: {
+        Row: {
+          avatar_url: string | null;
+          created_at: string;
+          dietary: string[] | null;
+          display_name: string | null;
+          id: string;
+          interests: string[] | null;
+          travel_style: string | null;
+          updated_at: string;
+          user_id: string | null;
+          walking_tolerance: string | null;
+        };
+        Insert: {
+          avatar_url?: string | null;
+          created_at?: string;
+          dietary?: string[] | null;
+          display_name?: string | null;
+          id: string;
+          interests?: string[] | null;
+          travel_style?: string | null;
+          updated_at?: string;
+          user_id?: string | null;
+          walking_tolerance?: string | null;
+        };
+        Update: {
+          avatar_url?: string | null;
+          created_at?: string;
+          dietary?: string[] | null;
+          display_name?: string | null;
+          id?: string;
+          interests?: string[] | null;
+          travel_style?: string | null;
+          updated_at?: string;
+          user_id?: string | null;
+          walking_tolerance?: string | null;
+        };
+        Relationships: [];
+      };
+      trip_collaborators: {
+        Row: {
+          created_at: string | null;
+          id: string;
+          invite_token: string | null;
+          joined_at: string | null;
+          trip_id: string;
+          user_id: string | null;
+        };
+        Insert: {
+          created_at?: string | null;
+          id?: string;
+          invite_token?: string | null;
+          joined_at?: string | null;
+          trip_id: string;
+          user_id?: string | null;
+        };
+        Update: {
+          created_at?: string | null;
+          id?: string;
+          invite_token?: string | null;
+          joined_at?: string | null;
+          trip_id?: string;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fk_trip_collaborators_trip_id";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "fk_trip_collaborators_user_id";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "member_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      trip_itineraries: {
+        Row: {
+          created_at: string;
+          id: string;
+          itinerary: Json | null;
+          trip_id: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          itinerary?: Json | null;
+          trip_id?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          itinerary?: Json | null;
+          trip_id?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "trip_itineraries_trip_id_fkey";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      trip_photo_guides: {
+        Row: {
+          id: string;
+          trip_id: string;
+          day_number: number;
+          guide_data: Json;
+          created_at: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          trip_id: string;
+          day_number: number;
+          guide_data: Json;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          trip_id?: string;
+          day_number?: number;
+          guide_data?: Json;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "trip_photo_guides_trip_id_fkey";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      trip_members: {
+        Row: {
+          id: string;
+          joined_at: string;
+          member_id: string;
+          role: string | null;
+          trip_id: string;
+        };
+        Insert: {
+          id?: string;
+          joined_at?: string;
+          member_id: string;
+          role?: string | null;
+          trip_id: string;
+        };
+        Update: {
+          id?: string;
+          joined_at?: string;
+          member_id?: string;
+          role?: string | null;
+          trip_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "trip_members_member_id_fkey";
+            columns: ["member_id"];
+            isOneToOne: false;
+            referencedRelation: "member_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "trip_members_trip_id_fkey";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      trip_reel_idea_comments: {
+        Row: {
+          author_id: string;
+          author_name: string | null;
+          created_at: string;
+          id: string;
+          idea_id: string;
+          text: string;
+          updated_at: string;
+        };
+        Insert: {
+          author_id: string;
+          author_name?: string | null;
+          created_at?: string;
+          id?: string;
+          idea_id: string;
+          text: string;
+          updated_at?: string;
+        };
+        Update: {
+          author_id?: string;
+          author_name?: string | null;
+          created_at?: string;
+          id?: string;
+          idea_id?: string;
+          text?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "trip_reel_idea_comments_author_id_fkey";
+            columns: ["author_id"];
+            isOneToOne: false;
+            referencedRelation: "member_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "trip_reel_idea_comments_idea_id_fkey";
+            columns: ["idea_id"];
+            isOneToOne: false;
+            referencedRelation: "trip_reel_ideas";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      trip_reel_idea_reactions: {
+        Row: {
+          comment: string | null;
+          created_at: string;
+          id: string;
+          idea_id: string;
+          member_id: string;
+          member_name: string | null;
+          signal: string;
+        };
+        Insert: {
+          comment?: string | null;
+          created_at?: string;
+          id?: string;
+          idea_id: string;
+          member_id: string;
+          member_name?: string | null;
+          signal: string;
+        };
+        Update: {
+          comment?: string | null;
+          created_at?: string;
+          id?: string;
+          idea_id?: string;
+          member_id?: string;
+          member_name?: string | null;
+          signal?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "trip_reel_idea_reactions_idea_id_fkey";
+            columns: ["idea_id"];
+            isOneToOne: false;
+            referencedRelation: "trip_reel_ideas";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "trip_reel_idea_reactions_member_id_fkey";
+            columns: ["member_id"];
+            isOneToOne: false;
+            referencedRelation: "member_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      trip_reel_ideas: {
+        Row: {
+          category: string | null;
+          comment: string | null;
+          cost_bucket: string | null;
+          created_at: string;
+          created_by: string;
+          duration_bucket: string | null;
+          enrichment_status: string;
+          icon_type: string | null;
+          id: string;
+          latitude: number | null;
+          location: Json | null;
+          longitude: number | null;
+          place: Json | null;
+          source_canonical_url: string | null;
+          source_platform: string;
+          source_url: string | null;
+          source_video_id: string | null;
+          summary: string | null;
+          tags: string[] | null;
+          time_of_day: string | null;
+          title: string | null;
+          trip_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          category?: string | null;
+          comment?: string | null;
+          cost_bucket?: string | null;
+          created_at?: string;
+          created_by: string;
+          duration_bucket?: string | null;
+          enrichment_status?: string;
+          icon_type?: string | null;
+          id?: string;
+          latitude?: number | null;
+          location?: Json | null;
+          longitude?: number | null;
+          place?: Json | null;
+          source_canonical_url?: string | null;
+          source_platform: string;
+          source_url?: string | null;
+          source_video_id?: string | null;
+          summary?: string | null;
+          tags?: string[] | null;
+          time_of_day?: string | null;
+          title?: string | null;
+          trip_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          category?: string | null;
+          comment?: string | null;
+          cost_bucket?: string | null;
+          created_at?: string;
+          created_by?: string;
+          duration_bucket?: string | null;
+          enrichment_status?: string;
+          icon_type?: string | null;
+          id?: string;
+          latitude?: number | null;
+          location?: Json | null;
+          longitude?: number | null;
+          place?: Json | null;
+          source_canonical_url?: string | null;
+          source_platform?: string;
+          source_url?: string | null;
+          source_video_id?: string | null;
+          summary?: string | null;
+          tags?: string[] | null;
+          time_of_day?: string | null;
+          title?: string | null;
+          trip_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "trip_reel_ideas_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "member_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "trip_reel_ideas_trip_id_fkey";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      trip_reel_shortlist_items: {
+        Row: {
+          created_at: string;
+          id: string;
+          idea_id: string;
+          member_id: string;
+          sort_order: number;
+          trip_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          idea_id: string;
+          member_id: string;
+          sort_order?: number;
+          trip_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          idea_id?: string;
+          member_id?: string;
+          sort_order?: number;
+          trip_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "trip_reel_shortlist_items_idea_id_fkey";
+            columns: ["idea_id"];
+            isOneToOne: false;
+            referencedRelation: "trip_reel_ideas";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "trip_reel_shortlist_items_member_id_fkey";
+            columns: ["member_id"];
+            isOneToOne: false;
+            referencedRelation: "member_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "trip_reel_shortlist_items_trip_id_fkey";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      trips: {
+        Row: {
+          budget_level: string | null;
+          created_at: string;
+          created_by: string | null;
+          destination: string;
+          destination_lat: number | null;
+          destination_lng: number | null;
+          duration_days: number | null;
+          end_date: string | null;
+          id: string;
+          interests: string[] | null;
+          start_date: string | null;
+          title: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          budget_level?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          destination: string;
+          destination_lat?: number | null;
+          destination_lng?: number | null;
+          duration_days?: number | null;
+          end_date?: string | null;
+          id?: string;
+          interests?: string[] | null;
+          start_date?: string | null;
+          title?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          budget_level?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          destination?: string;
+          destination_lat?: number | null;
+          destination_lng?: number | null;
+          duration_days?: number | null;
+          end_date?: string | null;
+          id?: string;
+          interests?: string[] | null;
+          start_date?: string | null;
+          title?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "trips_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "member_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
+  };
+};
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<
+  keyof Database,
+  "public"
+>];
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R;
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R;
+      }
+      ? R
+      : never
+    : never;
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I;
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I;
+      }
+      ? I
+      : never
+    : never;
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U;
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U;
+      }
+      ? U
+      : never
+    : never;
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never;
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never;
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const;
