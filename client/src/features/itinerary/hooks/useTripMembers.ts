@@ -18,12 +18,12 @@ export function useTripMembers(tripId: string | null): {
       .from("trip_members")
       .select("id", { count: "exact", head: true })
       .eq("trip_id", tripId)
-      .then(({ count: memberCount }) => {
-        setCount(memberCount && memberCount > 0 ? memberCount : 1);
-        setIsLoading(false);
-      })
-      .catch(() => {
-        setCount(1);
+      .then(({ count: memberCount, error }) => {
+        if (error) {
+          setCount(1);
+        } else {
+          setCount(memberCount && memberCount > 0 ? memberCount : 1);
+        }
         setIsLoading(false);
       });
   }, [tripId]);

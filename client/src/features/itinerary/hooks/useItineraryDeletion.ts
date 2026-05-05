@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import type { Json } from "@travel-app/shared-types";
+import type { Json } from "@/types";
 import type {
   Activity,
   ItineraryData,

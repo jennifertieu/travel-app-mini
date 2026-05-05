@@ -21,11 +21,11 @@ import { InviteLinkModal } from "./components/InviteLinkModal";
 import { useTripSummary, type TripSummary } from "./hooks/useTripSummary";
 import PretripApp from "./features/pretrip/App";
 import { JoinTripPage } from "./features/pretrip/views/JoinTripPage";
+import ItineraryApp from "./features/itinerary/App";
 
 const queryClient = new QueryClient();
 
 // Phase 1 placeholders — replaced in Phases 2-4
-const ItineraryApp = () => <div className="p-8 text-gray-500">Itinerary (Phase 3)</div>;
 const DuringtripApp = () => <div className="p-8 text-gray-500">During trip (Phase 4)</div>;
 
 const TripWeaveLogo = () => (

@@ -1,4 +1,3 @@
-import "./globals.css";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { Toaster } from "sonner";
 import { supabase, isUsingFallbackSupabase } from "./lib/supabase";
