@@ -30,7 +30,7 @@ interface ModalContextValue {
   // Rich multi-modal API (used by pretrip components)
   isOpen: (modalType: ModalName) => boolean;
   openModal: (modalType: ModalName, options?: ModalOptions) => void;
-  closeModal: (modalType?: ModalName) => void;
+  closeModal: (modalType?: ModalName | unknown) => void;
   getModalData: (modalType: ModalName) => ModalOptions | undefined;
   modalData: ModalDataMap;
   // Single-modal convenience (used by shell)
@@ -59,16 +59,18 @@ export function ModalProvider({ children }: { children: ReactNode }) {
     setModalDataMap((prev) => ({ ...prev, [modalType]: options }));
   };
 
-  const closeModal = (modalType?: ModalName) => {
-    if (modalType) {
-      setModalState((prev) => ({ ...prev, [modalType]: false }));
+  const closeModal = (modalType?: ModalName | unknown) => {
+    // Guard: only treat arg as ModalName if it's a non-empty string
+    const name = typeof modalType === "string" ? (modalType as ModalName) : undefined;
+    if (name) {
+      setModalState((prev) => ({ ...prev, [name]: false }));
       setModalDataMap((prev) => {
         const next = { ...prev };
-        delete next[modalType];
+        delete next[name];
         return next;
       });
     } else {
-      // Close all modals (shell convenience usage)
+      // Close all modals (shell convenience usage or called with no arg / event object)
       setModalState({});
       setModalDataMap({});
     }

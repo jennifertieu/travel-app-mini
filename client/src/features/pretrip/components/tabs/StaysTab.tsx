@@ -10,7 +10,7 @@ import { Search, Sparkles, Vote } from "lucide-react";
 import { useModal } from "@/contexts/ModalContext";
 import { AnnotationList } from "../layout/AnnotationList";
 import { useAllTripReactions } from "../../hooks/useAllTripReactions";
-import { useTripMembers } from "../../hooks/useTripMembers";
+import { useTripMembers } from "@/hooks/useTripMembers";
 import { useSaveIdea } from "../../hooks/useSaveIdea";
 import { useStartItineraryBuild } from "../../hooks/useStartItineraryBuild";
 import { CategoryFilterBar } from "../filters/CategoryFilterBar";

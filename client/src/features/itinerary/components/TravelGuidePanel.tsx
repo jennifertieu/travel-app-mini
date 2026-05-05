@@ -15,7 +15,7 @@ import {
   CalendarDays,
   type LucideIcon,
 } from "lucide-react";
-import { useTravelGuide } from "../hooks/useTravelGuide";
+import { useTravelGuide } from "@/hooks/useTravelGuide";
 import type { DestinationGuide, ActivitySpotlightsGuide } from "../types";
 
 interface TravelGuidePanelProps {

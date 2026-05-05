@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { AvatarStack } from "../ui/AvatarStack";
 import type { Database } from "@/types";
-import type { TripMember } from "../../hooks/useTripMembers";
+import type { TripMember } from "@/hooks/useTripMembers";
 
 type Idea = Database["public"]["Tables"]["trip_reel_ideas"]["Row"];
 type Reaction = Database["public"]["Tables"]["trip_reel_idea_reactions"]["Row"];

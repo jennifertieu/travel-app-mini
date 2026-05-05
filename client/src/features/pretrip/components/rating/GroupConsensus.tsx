@@ -1,5 +1,5 @@
 import type { AllReactionsMap } from "../../hooks/useAllTripReactions";
-import type { TripMember } from "../../hooks/useTripMembers";
+import type { TripMember } from "@/hooks/useTripMembers";
 import { CategoryFilterBar } from "../filters/CategoryFilterBar";
 import { RatingCard } from "./RatingCard";
 

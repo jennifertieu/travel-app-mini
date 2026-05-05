@@ -12,7 +12,7 @@ import { useModal } from "@/contexts/ModalContext";
 import { useMember } from "../../contexts/MemberContext";
 import { useUpdateIdea } from "../../hooks/useIdeas";
 import { useReactions } from "../../hooks/useReactions";
-import { useTripMembers } from "../../hooks/useTripMembers";
+import { useTripMembers } from "@/hooks/useTripMembers";
 import { ReactionBar } from "../ui/ReactionBar";
 import { ReviewsSection } from "../cards/ReviewsSection";
 import { supabase } from "../../lib/supabase";

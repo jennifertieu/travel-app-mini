@@ -5,7 +5,7 @@ import { useModal } from "@/contexts/ModalContext";
 import { useMember } from "../../contexts/MemberContext";
 import { useMyReactions } from "../../hooks/useMyReactions";
 import { useAllTripReactions } from "../../hooks/useAllTripReactions";
-import { useTripMembers } from "../../hooks/useTripMembers";
+import { useTripMembers } from "@/hooks/useTripMembers";
 import { SwipeMode } from "../rating/SwipeMode";
 import { MyRatingsGrid } from "../rating/MyRatingsGrid";
 import { GroupConsensus } from "../rating/GroupConsensus";

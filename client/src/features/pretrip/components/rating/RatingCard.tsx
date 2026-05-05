@@ -1,6 +1,6 @@
 import { ImageIcon } from "lucide-react";
 import type { Database } from "@/types";
-import type { TripMember } from "../../hooks/useTripMembers";
+import type { TripMember } from "@/hooks/useTripMembers";
 import { SIGNAL_CONFIG } from "../../lib/signals";
 import type { SignalType } from "../../lib/signals";
 import { VoteSummary } from "./VoteSummary";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Crown, AlertCircle } from "lucide-react";
-import { useTripMembers } from "../hooks/useTripMembers";
+import { useTripMembers } from "@/hooks/useTripMembers";
 import { useModal } from "@/contexts/ModalContext";
 import { Button } from "./ui/button";
 

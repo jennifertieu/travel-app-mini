@@ -12,7 +12,7 @@ import { useMember } from "../contexts/MemberContext";
 import { TripPlanningForm } from "../components/TripPlanningForm";
 import { useCurrentTrip } from "../hooks/useCurrentTrip";
 import { useRealtimeTrip, type Annotation } from "../hooks/useRealtimeTrip";
-import { useTripMembers } from "../hooks/useTripMembers";
+import { useTripMembers } from "@/hooks/useTripMembers";
 import { useBroadcastTripSummary } from "../hooks/useBroadcastTripSummary";
 import { supabase } from "../lib/supabase";
 import {

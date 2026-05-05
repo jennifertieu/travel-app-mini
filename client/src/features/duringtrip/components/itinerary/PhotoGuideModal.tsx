@@ -16,7 +16,7 @@ import {
 import type {
   SpotPhotosMap,
   UsePhotoGuideResult,
-} from "../../hooks/usePhotoGuide";
+} from "@/hooks/usePhotoGuide";
 import { cn } from "../../lib/utils";
 import type {
   PhotoGuideData,

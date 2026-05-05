@@ -1,6 +1,6 @@
 import React from "react";
 import { Users, Crown } from "lucide-react";
-import { useTripMembers } from "../hooks/useTripMembers";
+import { useTripMembers } from "@/hooks/useTripMembers";
 import { Badge } from "./ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 

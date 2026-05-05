@@ -9,7 +9,7 @@ import {
   RefreshCw,
   User,
 } from "lucide-react";
-import { useTripMembers } from "../../hooks/useTripMembers";
+import { useTripMembers } from "@/hooks/useTripMembers";
 import { generateInviteLink } from "../../lib/collaboration";
 import { useMember } from "../../contexts/MemberContext";
 import { Badge } from "../ui/badge";

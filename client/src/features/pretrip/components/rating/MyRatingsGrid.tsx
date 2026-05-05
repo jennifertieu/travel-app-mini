@@ -1,7 +1,7 @@
 import { useSetReaction } from "../../hooks/useReactions";
 import type { MyReactionMap } from "../../hooks/useMyReactions";
 import type { AllReactionsMap } from "../../hooks/useAllTripReactions";
-import type { TripMember } from "../../hooks/useTripMembers";
+import type { TripMember } from "@/hooks/useTripMembers";
 import { CategoryFilterBar } from "../filters/CategoryFilterBar";
 import { SignalFilterBar } from "../filters/SignalFilterBar";
 import { RatingCard } from "./RatingCard";

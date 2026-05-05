@@ -2,7 +2,7 @@
 // Phase 5 Task 28 replaces this with the mf-pretrip React Query version.
 
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "../lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 export interface Trip {
   id: string;
