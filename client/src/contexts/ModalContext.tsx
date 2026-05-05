@@ -1,16 +1,39 @@
 import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
 
-type ModalName = "inviteLink" | "tripSettings" | "createTrip" | "tripMembers";
+export type ModalName =
+  | "inviteLink"
+  | "tripSettings"
+  | "createTrip"
+  | "tripMembers"
+  | "addIdea"
+  | "ideaDetail"
+  | "ratingMode"
+  | "profile"
+  | "shortlist"
+  | "changeLocation";
 
 interface ModalOptions {
   tripId?: string;
   [key: string]: unknown;
 }
 
+interface ModalState {
+  [key: string]: boolean;
+}
+
+interface ModalDataMap {
+  [key: string]: ModalOptions | undefined;
+}
+
 interface ModalContextValue {
-  openModal: (name: ModalName, options?: ModalOptions) => void;
-  closeModal: () => void;
+  // Rich multi-modal API (used by pretrip components)
+  isOpen: (modalType: ModalName) => boolean;
+  openModal: (modalType: ModalName, options?: ModalOptions) => void;
+  closeModal: (modalType?: ModalName) => void;
+  getModalData: (modalType: ModalName) => ModalOptions | undefined;
+  modalData: ModalDataMap;
+  // Single-modal convenience (used by shell)
   activeModal: ModalName | null;
   modalOptions: ModalOptions;
 }
@@ -24,21 +47,56 @@ export function useModal(): ModalContextValue {
 }
 
 export function ModalProvider({ children }: { children: ReactNode }) {
-  const [activeModal, setActiveModal] = useState<ModalName | null>(null);
-  const [modalOptions, setModalOptions] = useState<ModalOptions>({});
+  const [modalState, setModalState] = useState<ModalState>({});
+  const [modalDataMap, setModalDataMap] = useState<ModalDataMap>({});
 
-  const openModal = (name: ModalName, options: ModalOptions = {}) => {
-    setActiveModal(name);
-    setModalOptions(options);
+  const isOpen = (modalType: ModalName): boolean => {
+    return modalState[modalType] || false;
   };
 
-  const closeModal = () => {
-    setActiveModal(null);
-    setModalOptions({});
+  const openModal = (modalType: ModalName, options: ModalOptions = {}) => {
+    setModalState((prev) => ({ ...prev, [modalType]: true }));
+    setModalDataMap((prev) => ({ ...prev, [modalType]: options }));
   };
+
+  const closeModal = (modalType?: ModalName) => {
+    if (modalType) {
+      setModalState((prev) => ({ ...prev, [modalType]: false }));
+      setModalDataMap((prev) => {
+        const next = { ...prev };
+        delete next[modalType];
+        return next;
+      });
+    } else {
+      // Close all modals (shell convenience usage)
+      setModalState({});
+      setModalDataMap({});
+    }
+  };
+
+  const getModalData = (modalType: ModalName): ModalOptions | undefined => {
+    return modalDataMap[modalType];
+  };
+
+  // Shell-compat: activeModal = first open modal (or null)
+  const activeModal =
+    (Object.keys(modalState).find((k) => modalState[k]) as ModalName) ?? null;
+  const modalOptions: ModalOptions = activeModal
+    ? (modalDataMap[activeModal] ?? {})
+    : {};
 
   return (
-    <ModalContext.Provider value={{ openModal, closeModal, activeModal, modalOptions }}>
+    <ModalContext.Provider
+      value={{
+        isOpen,
+        openModal,
+        closeModal,
+        getModalData,
+        modalData: modalDataMap,
+        activeModal,
+        modalOptions,
+      }}
+    >
       {children}
     </ModalContext.Provider>
   );

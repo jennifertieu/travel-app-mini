@@ -13,7 +13,6 @@ export interface TripSummary {
 const STORAGE_KEY = "trip-summary";
 const TRIP_ID_KEY = "current-trip-id";
 const SUMMARY_EVENT = "tripSummaryChanged";
-const TRIP_CHANGED_EVENT = "currentTripChanged";
 
 function readCachedSummary(): TripSummary | null {
   try {
@@ -103,13 +102,8 @@ export function useTripSummary(): TripSummary | null {
     return () => abortRef.current?.abort();
   }, [tripId, fetchFromBackend]);
 
-  // Listen for trip switches and localStorage broadcasts
+  // Listen for localStorage broadcasts (e.g. after settings save or cross-tab changes)
   useEffect(() => {
-    const handleTripChanged = () => {
-      const id = readTripId();
-      setTripId(id);
-    };
-
     const handleSummaryBroadcast = () => {
       const cached = readCachedSummary();
       if (cached) setSummary(cached);
@@ -118,12 +112,10 @@ export function useTripSummary(): TripSummary | null {
       if (id) fetchFromBackend(id);
     };
 
-    window.addEventListener(TRIP_CHANGED_EVENT, handleTripChanged);
     window.addEventListener(SUMMARY_EVENT, handleSummaryBroadcast);
     window.addEventListener("storage", handleSummaryBroadcast);
 
     return () => {
-      window.removeEventListener(TRIP_CHANGED_EVENT, handleTripChanged);
       window.removeEventListener(SUMMARY_EVENT, handleSummaryBroadcast);
       window.removeEventListener("storage", handleSummaryBroadcast);
     };

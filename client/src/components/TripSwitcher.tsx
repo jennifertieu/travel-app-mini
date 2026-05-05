@@ -9,14 +9,10 @@ import { useTripSummary } from "../hooks/useTripSummary";
 const PENDING_CREATE_KEY = "pending-open-create-trip";
 
 const TRIP_ID_KEY = "current-trip-id";
-const TRIP_CHANGED_EVENT = "currentTripChanged";
 
 function setCurrentTripId(tripId: string) {
   try {
     localStorage.setItem(TRIP_ID_KEY, tripId);
-    window.dispatchEvent(
-      new CustomEvent(TRIP_CHANGED_EVENT, { detail: { tripId } }),
-    );
   } catch {
     // localStorage unavailable
   }
