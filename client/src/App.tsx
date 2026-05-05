@@ -22,11 +22,11 @@ import { useTripSummary, type TripSummary } from "./hooks/useTripSummary";
 import PretripApp from "./features/pretrip/App";
 import { JoinTripPage } from "./features/pretrip/views/JoinTripPage";
 import ItineraryApp from "./features/itinerary/App";
+import DuringtripApp from "./features/duringtrip/App";
+import { TripsListView } from "./features/duringtrip/views/TripsListView";
 
 const queryClient = new QueryClient();
 
-// Phase 1 placeholders — replaced in Phases 2-4
-const DuringtripApp = () => <div className="p-8 text-gray-500">During trip (Phase 4)</div>;
 
 const TripWeaveLogo = () => (
   <svg width="42" height="16" viewBox="0 0 83 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -237,12 +237,26 @@ const duringtripRoute = createRoute({
   component: () => <AuthGuard><DuringtripApp /></AuthGuard>,
 });
 
+const duringtripTripsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/duringtrip/trips",
+  component: () => <AuthGuard><TripsListView /></AuthGuard>,
+});
+
+const tripRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/trip/$tripId",
+  component: () => <AuthGuard><DuringtripApp /></AuthGuard>,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   pretripRoute,
   joinRoute,
   itineraryRoute,
   duringtripRoute,
+  duringtripTripsRoute,
+  tripRoute,
 ]);
 
 const router = createRouter({ routeTree });

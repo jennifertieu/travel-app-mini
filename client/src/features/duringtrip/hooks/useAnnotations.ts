@@ -22,7 +22,7 @@ export function useAnnotations(tripId: string | null): Annotation[] {
           setAnnotations([]);
           return;
         }
-        setAnnotations((data as Annotation[]) ?? []);
+        setAnnotations(((data as unknown) as Annotation[]) ?? []);
       });
 
     // Subscribe to realtime changes

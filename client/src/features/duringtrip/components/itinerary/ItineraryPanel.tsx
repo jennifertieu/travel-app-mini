@@ -13,7 +13,6 @@ import { TravelGuidePanel } from "./TravelGuidePanel";
 import { PhotoGuideModal } from "./PhotoGuideModal";
 import { groupActivitiesByTimeOfDay, getCurrentDayNumber } from "../../lib/utils";
 import { calculateBudgetFromDays } from "../../lib/budget-utils";
-import { useDemoContext } from "../../demo/DemoContext";
 import { useItineraryDeletion } from "../../hooks/useItineraryDeletion";
 import { useTripMembers } from "../../hooks/useTripMembers";
 import { useTravelGuide } from "../../hooks/useTravelGuide";
@@ -48,9 +47,6 @@ export function ItineraryPanel({
   isChatOpen,
   onToggleChat,
 }: ItineraryPanelProps) {
-  const { isDemo, demoTime } = useDemoContext();
-  const effectiveNow = isDemo ? demoTime : undefined;
-
   const [activeSection, setActiveSection] = useState<Section>("itinerary");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -72,8 +68,8 @@ export function ItineraryPanel({
   const deletion = useItineraryDeletion(data);
 
   const currentDayNumber = useMemo(
-    () => getCurrentDayNumber(deletion.localDays, effectiveNow),
-    [deletion.localDays, effectiveNow],
+    () => getCurrentDayNumber(deletion.localDays, undefined),
+    [deletion.localDays],
   );
 
   const [activeDay, setActiveDay] = useState(
@@ -391,7 +387,7 @@ export function ItineraryPanel({
                     onToggleSelect={handleToggleSelect}
                     onOpenActivity={onOpenActivity}
                     onLocateActivity={onLocateActivity}
-                    now={effectiveNow}
+                    now={undefined}
                     deletedSlots={freeTimeSlotsBySection[tod]}
                     spotlightMap={spotlightMap}
                     onOpenGuide={() => setActiveSection("guide")}

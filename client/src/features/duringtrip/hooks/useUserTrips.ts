@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
-import { Database } from "@travel-app/shared-types";
+import { Database } from "@/types";
 import { queryKeys } from "../lib/queryKeys";
 
 type Trip = Database["public"]["Tables"]["trips"]["Row"];

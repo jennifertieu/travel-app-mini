@@ -9,7 +9,6 @@ import {
   getCurrentDayNumber,
   groupActivitiesByTimeOfDay,
 } from "../../lib/utils";
-import { useDemoContext } from "../../demo/DemoContext";
 import type { Activity, ItineraryData, TimeOfDay } from "../../types/itinerary";
 
 interface CurrentAndNext {
@@ -123,22 +122,19 @@ export function MobileItinerarySheet({
   onLocateActivity,
   onNavigate,
 }: MobileItinerarySheetProps) {
-  const { isDemo, demoTime } = useDemoContext();
-  const effectiveNow = isDemo ? demoTime : undefined;
-
   const { current, next, currentDayNumber } = useMemo(
-    () => getCurrentAndNextActivity(itineraryData, effectiveNow),
-    [itineraryData, effectiveNow],
+    () => getCurrentAndNextActivity(itineraryData, undefined),
+    [itineraryData],
   );
 
   const todayDayNumber = useMemo(
-    () => getCurrentDayNumber(itineraryData.days, effectiveNow),
-    [itineraryData.days, effectiveNow],
+    () => getCurrentDayNumber(itineraryData.days, undefined),
+    [itineraryData.days],
   );
 
   const [activeDay, setActiveDay] = useState(currentDayNumber);
 
-  // Sync activeDay when demo time changes the current day (or demo is toggled off)
+  // Sync activeDay when current day changes
   useEffect(() => {
     setActiveDay(currentDayNumber);
   }, [currentDayNumber]);
@@ -239,7 +235,7 @@ export function MobileItinerarySheet({
               onToggleSelect={() => {}}
               onOpenActivity={onOpenActivity}
               onLocateActivity={onLocateActivity}
-              now={effectiveNow}
+              now={undefined}
             />
           ))}
         </div>
