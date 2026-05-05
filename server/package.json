@@ -15,7 +15,6 @@
   "dependencies": {
     "@google/genai": "^1.43.0",
     "@supabase/supabase-js": "^2.89.0",
-    "@travel-app/shared-types": "workspace:*",
     "@types/cors": "^2.8.19",
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
